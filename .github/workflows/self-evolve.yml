@@ -1,0 +1,3 @@
+name: Self-Evolve
+on: [push, schedule]
+jobs: {evolve: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}, {run: python .grok/skills/self-evolve-dash/scripts/self_evolve.py}]}}
