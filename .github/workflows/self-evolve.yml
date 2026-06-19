@@ -1,4 +1,31 @@
-name: Self-Evolve
-on: [push]
+name: Self-Evolve-Dash-MM-LAN
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [ main ]
+  issues:
+    types: [opened, labeled]
+
 jobs:
-  evolve: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}, {run: echo 'Evolving...'}]}
+  evolve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Run Self-Evolve
+        run: python .grok/skills/self-evolve-dash/scripts/self_evolve.py
+      - name: Auto Commit Upgrades
+        if: success()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'self-evolve-dash v1.5.x: autonomous upgrade + MM LAN'
