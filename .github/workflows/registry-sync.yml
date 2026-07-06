@@ -1,4 +1,4 @@
-name: nexus-core auto-discovery sync
+name: registry sync
 
 on:
   schedule:
@@ -11,43 +11,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Fetch repo list
-        run: |
-          curl -s https://api.github.com/users/eric847b/repos > repos.json
+      - name: fetch repos
+        run: curl -s https://api.github.com/users/eric847b/repos > repos.json
 
-      - name: Sync registry
+      - name: build registry
         run: |
           node -e "
-          const fs = require('fs');
-          const repos = JSON.parse(fs.readFileSync('repos.json','utf8'));
-          let reg = {system:'nexus-core',version:'0.4',modules:[],roles:{execution:[],coordination:[],memory:[],ui:[],automation:[],unclassified:[]},rules:[]};
+          const fs=require('fs');
+          const repos=JSON.parse(fs.readFileSync('repos.json','utf8'));
 
-          if (fs.existsSync('nexus-core/registry.json')) {
-            reg = JSON.parse(fs.readFileSync('nexus-core/registry.json','utf8'));
+          function role(n){
+            n=n.toLowerCase();
+            if(n.includes('dashboard')||n.includes('ui')) return 'ui';
+            if(n.includes('agent')||n.includes('operator')) return 'execution';
+            if(n.includes('hub')) return 'coordination';
+            if(n.includes('vector')||n.includes('fs')) return 'memory';
+            if(n.includes('script')) return 'automation';
+            return 'unclassified';
           }
 
-          const existing = new Set(reg.modules.map(m=>m.name));
+          let reg={system:'nexus-core',version:'0.6',modules:[],roles:{execution:[],coordination:[],memory:[],ui:[],automation:[],unclassified:[]}};
 
-          for (const r of repos) {
-            const name = r.name;
-            if (!existing.has(name)) {
-              reg.modules.push({name, role:'unclassified'});
-              reg.roles.unclassified.push(name);
+          if(fs.existsSync('nexus-core/registry.json')){
+            reg=JSON.parse(fs.readFileSync('nexus-core/registry.json','utf8'));
+          }
+
+          const seen=new Set(reg.modules.map(m=>m.name));
+
+          for(const r of repos){
+            if(!seen.has(r.name)){
+              const rr=role(r.name);
+              reg.modules.push({name:r.name,role:rr});
+              if(!reg.roles[rr]) reg.roles[rr]=[];
+              reg.roles[rr].push(r.name);
             }
           }
 
-          fs.mkdirSync('nexus-core', {recursive:true});
-          fs.writeFileSync('nexus-core/registry.json', JSON.stringify(reg,null,2));
-          console.log('registry synced');
+          fs.mkdirSync('nexus-core',{recursive:true});
+          fs.writeFileSync('nexus-core/registry.json',JSON.stringify(reg,null,2));
+          console.log('done');
           "
 
-      - name: Commit changes
-        run: |
-          git config user.name "nexus-core-bot"
-          git config user.email "nexus@core.bot"
-          git add nexus-core/registry.json || true
-          git diff --cached --quiet || git commit -m "nexus-core: auto-sync registry"
-          git push || true
+      - name: create pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "registry sync"
+          commit-message: "update registry"
+          branch: "registry-sync"
+          base: "main"
+          add-paths: |
+            nexus-core/registry.json
+          body: "update registry"
