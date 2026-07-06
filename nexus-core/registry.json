@@ -1,0 +1,16 @@
+{
+  "system": "nexus-core",
+  "version": "0.1",
+  "modules": [],
+  "roles": {
+    "execution": [],
+    "coordination": [],
+    "memory": [],
+    "ui": [],
+    "automation": []
+  },
+  "rules": [
+    "All execution must be registered",
+    "No cross-repo mutation without registry entry"
+  ]
+}
