@@ -1,0 +1,53 @@
+name: nexus-core auto-discovery sync
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+  push:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch repo list
+        run: |
+          curl -s https://api.github.com/users/eric847b/repos > repos.json
+
+      - name: Sync registry
+        run: |
+          node -e "
+          const fs = require('fs');
+          const repos = JSON.parse(fs.readFileSync('repos.json','utf8'));
+          let reg = {system:'nexus-core',version:'0.4',modules:[],roles:{execution:[],coordination:[],memory:[],ui:[],automation:[],unclassified:[]},rules:[]};
+
+          if (fs.existsSync('nexus-core/registry.json')) {
+            reg = JSON.parse(fs.readFileSync('nexus-core/registry.json','utf8'));
+          }
+
+          const existing = new Set(reg.modules.map(m=>m.name));
+
+          for (const r of repos) {
+            const name = r.name;
+            if (!existing.has(name)) {
+              reg.modules.push({name, role:'unclassified'});
+              reg.roles.unclassified.push(name);
+            }
+          }
+
+          fs.mkdirSync('nexus-core', {recursive:true});
+          fs.writeFileSync('nexus-core/registry.json', JSON.stringify(reg,null,2));
+          console.log('registry synced');
+          "
+
+      - name: Commit changes
+        run: |
+          git config user.name "nexus-core-bot"
+          git config user.email "nexus@core.bot"
+          git add nexus-core/registry.json || true
+          git diff --cached --quiet || git commit -m "nexus-core: auto-sync registry"
+          git push || true
