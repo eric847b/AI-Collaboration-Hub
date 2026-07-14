@@ -41,6 +41,30 @@
     {
       "name": "luaforwindows",
       "role": "unclassified"
+    },
+    {
+      "name": "DiceBot",
+      "role": "unclassified"
+    },
+    {
+      "name": "Gambler.Bot",
+      "role": "unclassified"
+    },
+    {
+      "name": "Gambler.Bot.Core",
+      "role": "unclassified"
+    },
+    {
+      "name": "Gambler.Bot.Strategies",
+      "role": "unclassified"
+    },
+    {
+      "name": "mydicebot.github.io",
+      "role": "coordination"
+    },
+    {
+      "name": "zero-cost-wealth-playbook-tool",
+      "role": "unclassified"
     }
   ],
   "roles": {
@@ -51,7 +75,8 @@
     ],
     "coordination": [
       "AI-Collaboration-Hub",
-      "collabhub-modules"
+      "collabhub-modules",
+      "mydicebot.github.io"
     ],
     "memory": [
       "VectorFS"
@@ -64,7 +89,12 @@
     ],
     "unclassified": [
       "AutoGPT",
-      "luaforwindows"
+      "luaforwindows",
+      "DiceBot",
+      "Gambler.Bot",
+      "Gambler.Bot.Core",
+      "Gambler.Bot.Strategies",
+      "zero-cost-wealth-playbook-tool"
     ]
   },
   "rules": [
