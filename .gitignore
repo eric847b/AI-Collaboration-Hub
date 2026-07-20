@@ -15,9 +15,11 @@ api-keys/
 # Node
 node_modules/
 npm-debug.log*
-package-lock.json
-pnpm-lock.yaml
-yarn.lock
+# Lockfiles are committed for reproducible builds (important for CI)
+# Root lockfiles ignored; subproject lockfiles kept
+/package-lock.json
+/pnpm-lock.yaml
+/yarn.lock
 
 # Python
 __pycache__/
