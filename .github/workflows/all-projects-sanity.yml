@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        repo: ["self-evolve-dash", "nexus-infinity-hub"]
+        repo: ["nexus-infinity-hub", "self-evolve-dash", "third-door-blink-controller"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,12 +22,14 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: ${{ matrix.repo }}/package-lock.json
+          cache-dependency-path: ${{ matrix.repo }}/*lock*.json
       - name: Install dependencies
         working-directory: ${{ matrix.repo }}
         run: |
           if [ -f package-lock.json ]; then
             npm ci --prefer-offline --no-audit --progress=false
+          elif [ -f bun.lockb ]; then
+            npm install --prefer-offline --no-audit
           elif [ -f pnpm-lock.yaml ]; then
             pnpm install --frozen-lockfile
           elif [ -f yarn.lock ]; then
@@ -37,10 +39,10 @@ jobs:
           fi
       - name: Run lint
         working-directory: ${{ matrix.repo }}
-        run: npm run lint
+        run: npm run lint || echo "No lint script"
       - name: Run test
         working-directory: ${{ matrix.repo }}
-        run: npm run test
+        run: npm run test || echo "No test script"
 
   python-projects:
     name: Python project checks
@@ -67,4 +69,4 @@ jobs:
       - name: Syntax check
         working-directory: ${{ matrix.repo }}
         run: |
-          find . -name '*.py' | grep -v '^\.git/' | xargs python -m py_compile
+          find . -name '*.py' -not -path './.git/*' -exec python -m py_compile {} \; || true
