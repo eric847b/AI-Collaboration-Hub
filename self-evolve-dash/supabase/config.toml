@@ -1,0 +1,22 @@
+project_id = "eyjmqdginayjmtweoyce"
+
+[functions.self-improve]
+verify_jwt = false
+
+[functions.process-task]
+verify_jwt = false
+
+[functions.test-script]
+verify_jwt = false
+
+[functions.autonomous-improve]
+verify_jwt = false
+
+[functions.rollback-script]
+verify_jwt = false
+
+[functions.generate-code]
+verify_jwt = false
+
+[functions.apply-improvement]
+verify_jwt = false

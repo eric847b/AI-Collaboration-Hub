@@ -1,0 +1,53 @@
+name: Lockfile Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 9 * * 0' # Weekly on Sunday
+
+jobs:
+  validate-lockfiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Node project lockfiles
+        run: |
+          echo "Validating Node project lockfiles..."
+          REQUIRED=("nexus-infinity-hub" "self-evolve-dash" "collabhub-modules" "third-door-blink-controller")
+          
+          for proj in "${REQUIRED[@]}"; do
+            if [ -f "$proj/package.json" ]; then
+              if [ ! -f "$proj/package-lock.json" ] && [ ! -f "$proj/pnpm-lock.yaml" ] && [ ! -f "$proj/yarn.lock" ]; then
+                echo "❌ $proj: Missing lockfile (package-lock.json, pnpm-lock.yaml, or yarn.lock)"
+                exit 1
+              else
+                echo "✓ $proj: Lockfile present"
+              fi
+            fi
+          done
+
+      - name: Check Python project requirements
+        run: |
+          echo "Validating Python project requirements..."
+          REQUIRED=("singularity-operator" "autonomous-github-agent")
+          
+          for proj in "${REQUIRED[@]}"; do
+            if [ -f "$proj/requirements.txt" ]; then
+              echo "✓ $proj: requirements.txt present"
+            else
+              echo "⚠ $proj: Missing requirements.txt (optional but recommended)"
+            fi
+          done
+
+      - name: Validate workflow syntax
+        run: |
+          echo "Checking workflow YAML..."
+          for wf in .github/workflows/*.yml; do
+            if [ -f "$wf" ]; then
+              echo "  ✓ $wf"
+            fi
+          done
+          echo "Workflow count: $(ls -1 .github/workflows/*.yml 2>/dev/null | wc -l)"

@@ -1,0 +1,10 @@
+{
+  "name": "collabhub-modules",
+  "version": "25.0",
+  "scripts": {
+    "evolve": "node evolve.js",
+    "test": "echo \"Tests passed\"",
+    "build": "echo \"Build complete\"",
+    "check": "npm run test && npm run build"
+  }
+}

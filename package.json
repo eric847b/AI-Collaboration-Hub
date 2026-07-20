@@ -1,0 +1,12 @@
+{
+  "name": "workspace-root",
+  "private": true,
+  "description": "Multi-project AI collaboration workspace",
+  "scripts": {
+    "bootstrap": "powershell -ExecutionPolicy Bypass -File ./tools/bootstrap.ps1",
+    "verify": "powershell -ExecutionPolicy Bypass -File ./tools/verify-workspace.ps1",
+    "health": "powershell -ExecutionPolicy Bypass -File ./tools/health-check.ps1",
+    "lint": "echo 'Use: npm run lint:fix to auto-fix all projects (requires PowerShell)'",
+    "ci": "npm run verify && npm run health"
+  }
+}

@@ -1,0 +1,66 @@
+name: registry sync
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+  push:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: fetch repos
+        run: curl -s https://api.github.com/users/eric847b/repos > repos.json
+
+      - name: build registry
+        run: |
+          node -e "
+          const fs=require('fs');
+          const repos=JSON.parse(fs.readFileSync('repos.json','utf8'));
+
+          function role(n){
+            n=n.toLowerCase();
+            if(n.includes('dashboard')||n.includes('ui')) return 'ui';
+            if(n.includes('agent')||n.includes('operator')) return 'execution';
+            if(n.includes('hub')) return 'coordination';
+            if(n.includes('vector')||n.includes('fs')) return 'memory';
+            if(n.includes('script')) return 'automation';
+            return 'unclassified';
+          }
+
+          let reg={system:'nexus-core',version:'0.6',modules:[],roles:{execution:[],coordination:[],memory:[],ui:[],automation:[],unclassified:[]}};
+
+          if(fs.existsSync('nexus-core/registry.json')){
+            reg=JSON.parse(fs.readFileSync('nexus-core/registry.json','utf8'));
+          }
+
+          const seen=new Set(reg.modules.map(m=>m.name));
+
+          for(const r of repos){
+            if(!seen.has(r.name)){
+              const rr=role(r.name);
+              reg.modules.push({name:r.name,role:rr});
+              if(!reg.roles[rr]) reg.roles[rr]=[];
+              reg.roles[rr].push(r.name);
+            }
+          }
+
+          fs.mkdirSync('nexus-core',{recursive:true});
+          fs.writeFileSync('nexus-core/registry.json',JSON.stringify(reg,null,2));
+          console.log('done');
+          "
+
+      - name: create pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "registry sync"
+          commit-message: "update registry"
+          branch: "registry-sync"
+          base: "main"
+          add-paths: |
+            nexus-core/registry.json
+          body: "update registry"

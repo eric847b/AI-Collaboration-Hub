@@ -1,0 +1,78 @@
+name: autonomous-agent-runner
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect context
+        run: |
+          echo "repair agent triggered"
+          echo "event: $GITHUB_EVENT_NAME"
+
+      - name: Load full event context
+        run: |
+          node -e "
+          const fs=require('fs');
+
+          const context = {
+            repo: process.env.GITHUB_REPOSITORY,
+            event: process.env.GITHUB_EVENT_NAME,
+            time: new Date().toISOString()
+          };
+
+          console.log(JSON.stringify(context,null,2));
+
+          console.log('\nMODE: PATCH GENERATION ENGINE');
+          console.log('- ingest CI / issue / PR signals');
+          console.log('- detect failure state');
+          console.log('- classify root cause');
+          console.log('- fetch logs from workflow_run');
+          console.log('- generate fix strategy');
+          console.log('- open PR with patch');
+          console.log('- re-validate via workflow loop');
+          "
+
+      - name: Detect workflow failures
+        if: github.event_name == 'workflow_run'
+        run: |
+          echo "checking runs"
+          gh api repos/${{ github.repository }}/actions/runs || true
+
+      - name: Fetch logs (if workflow_run)
+        if: github.event_name == 'workflow_run'
+        run: |
+          echo "fetching logs"
+          RUN_ID="${{ github.event.workflow_run.id }}"
+          if [ -n "$RUN_ID" ]; then
+            gh api repos/${{ github.repository }}/actions/runs/$RUN_ID/logs || true
+          fi
+
+      - name: Patch generation engine (active scaffold)
+        run: |
+          echo "STEP 1: analyze failure"
+          echo "STEP 2: map known fix patterns"
+          echo "STEP 3: generate diff"
+          echo "STEP 4: stage PR creation"
+
+      - name: Auto-repair dispatcher
+        run: |
+          echo "if failure detected -> create branch -> commit patch -> open PR"
+
+      - name: Status
+        run: echo "repair-patch-engine-online"

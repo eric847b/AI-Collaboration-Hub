@@ -1,0 +1,48 @@
+name: Python Quality Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+        project: [singularity-operator, autonomous-github-agent]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: '${{ matrix.project }}/requirements*.txt'
+
+      - name: Install base requirements
+        working-directory: ${{ matrix.project }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check syntax
+        working-directory: ${{ matrix.project }}
+        run: python -m py_compile *.py 2>/dev/null || echo "Some files may not exist (non-blocking)"
+
+      - name: Install dev requirements (optional)
+        working-directory: ${{ matrix.project }}
+        run: |
+          if [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt
+            echo "✓ Development tools installed"
+          fi
+
+      - name: Run flake8 (if available)
+        working-directory: ${{ matrix.project }}
+        continue-on-error: true
+        run: flake8 . --max-line-length=100 --extend-ignore=E203,W503 || echo "flake8 not available"

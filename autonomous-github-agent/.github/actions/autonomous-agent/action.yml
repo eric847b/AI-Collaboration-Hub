@@ -1,0 +1,48 @@
+name: 'autonomous-agent'
+description: 'Unified multi-model autonomous agent runtime (router + executor)'
+
+inputs:
+  task:
+    description: 'Task input for the agent'
+    required: false
+    default: ''
+  fallback:
+    description: 'Enable fallback mode'
+    required: false
+    default: '0'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup environment
+      shell: bash
+      run: |
+        echo "Initializing autonomous agent (composite mode)"
+
+    - name: Execute agent runtime
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+        HF_API_KEY: ${{ env.HF_API_KEY }}
+        HF_TOKEN: ${{ env.HF_TOKEN }}
+        OPENAI_API_KEY: ${{ env.OPENAI_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ env.ANTHROPIC_API_KEY }}
+        GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}
+        OPENROUTER_API_KEY: ${{ env.OPENROUTER_API_KEY }}
+        TASK: ${{ inputs.task }}
+        AGENT_FALLBACK: ${{ inputs.fallback }}
+      run: |
+        echo "Routing task into autonomous execution layer..."
+        echo "TASK=$TASK"
+        echo "FALLBACK=$AGENT_FALLBACK"
+
+        if [ -f .github/scripts/agent.py ]; then
+          python .github/scripts/agent.py
+        else
+          echo "No agent.py found - running placeholder mode"
+        fi
+
+    - name: Emit status
+      shell: bash
+      run: echo "autonomous-agent: completed"

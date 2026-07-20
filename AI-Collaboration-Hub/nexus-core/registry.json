@@ -1,0 +1,74 @@
+{
+  "system": "nexus-core",
+  "version": "0.3",
+  "modules": [
+    {
+      "name": "autonomous-github-agent",
+      "role": "execution"
+    },
+    {
+      "name": "singularity-operator",
+      "role": "execution"
+    },
+    {
+      "name": "self-evolve-dash",
+      "role": "execution"
+    },
+    {
+      "name": "AI-Collaboration-Hub",
+      "role": "coordination"
+    },
+    {
+      "name": "collabhub-modules",
+      "role": "coordination"
+    },
+    {
+      "name": "VectorFS",
+      "role": "memory"
+    },
+    {
+      "name": "adaptiveos-dashboard",
+      "role": "ui"
+    },
+    {
+      "name": "Userscripts",
+      "role": "automation"
+    },
+    {
+      "name": "AutoGPT",
+      "role": "unclassified"
+    },
+    {
+      "name": "luaforwindows",
+      "role": "unclassified"
+    }
+  ],
+  "roles": {
+    "execution": [
+      "autonomous-github-agent",
+      "singularity-operator",
+      "self-evolve-dash"
+    ],
+    "coordination": [
+      "AI-Collaboration-Hub",
+      "collabhub-modules"
+    ],
+    "memory": [
+      "VectorFS"
+    ],
+    "ui": [
+      "adaptiveos-dashboard"
+    ],
+    "automation": [
+      "Userscripts"
+    ],
+    "unclassified": [
+      "AutoGPT",
+      "luaforwindows"
+    ]
+  },
+  "rules": [
+    "All execution must be registered",
+    "No cross-repo mutation without registry entry"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "resources": {
+    "local-llm": {
+      "type": "model",
+      "free_tier": true,
+      "unit": "tokens",
+      "low_watermark": 0.15,
+      "latency_ms": 1600,
+      "quality_score": 0.72,
+      "cost_per_unit": 0.0
+    },
+    "free-ci": {
+      "type": "compute",
+      "free_tier": true,
+      "unit": "minutes",
+      "low_watermark": 0.15,
+      "latency_ms": 800,
+      "quality_score": 0.63,
+      "cost_per_unit": 0.0
+    },
+    "community-inference": {
+      "type": "model",
+      "free_tier": true,
+      "unit": "tokens",
+      "low_watermark": 0.15,
+      "latency_ms": 2200,
+      "quality_score": 0.68,
+      "cost_per_unit": 0.0
+    },
+    "oss-runner": {
+      "type": "compute",
+      "free_tier": true,
+      "unit": "minutes",
+      "low_watermark": 0.15,
+      "latency_ms": 1200,
+      "quality_score": 0.58,
+      "cost_per_unit": 0.0
+    }
+  },
+  "budgets": {
+    "local-llm": {
+      "limit": 2000000,
+      "used": 1810000,
+      "remaining": 190000,
+      "ratio_remaining": 0.095
+    },
+    "free-ci": {
+      "limit": 2000,
+      "used": 2000,
+      "remaining": 0,
+      "ratio_remaining": 0.0
+    },
+    "community-inference": {
+      "limit": 500000,
+      "used": 0.0,
+      "remaining": 500000.0,
+      "ratio_remaining": 1.0
+    },
+    "oss-runner": {
+      "limit": 500000,
+      "used": 0.0,
+      "remaining": 500000.0,
+      "ratio_remaining": 1.0
+    }
+  },
+  "history": [
+    {
+      "timestamp": "2026-05-22T03:31:01.162952+00:00",
+      "resource": "free-ci",
+      "amount": 1500,
+      "unit": "minutes",
+      "task": "next-highest-value",
+      "decision_reason": "selected=free-ci; remaining=0.00/2000.00 minutes; quality=0.63; latency_ms=800"
+    }
+  ],
+  "auto_added_resources": [
+    "community-inference",
+    "oss-runner"
+  ]
+}

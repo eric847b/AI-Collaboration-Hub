@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 35% 4%;
+    --foreground: 180 30% 92%;
+
+    --card: 230 30% 7%;
+    --card-foreground: 180 25% 92%;
+
+    --popover: 230 35% 6%;
+    --popover-foreground: 180 25% 92%;
+
+    --primary: 180 100% 55%;
+    --primary-foreground: 230 40% 6%;
+
+    --secondary: 270 80% 65%;
+    --secondary-foreground: 230 40% 6%;
+
+    --muted: 230 25% 12%;
+    --muted-foreground: 200 15% 60%;
+
+    --accent: 320 90% 60%;
+    --accent-foreground: 230 40% 6%;
+
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 200 50% 20%;
+    --input: 230 30% 12%;
+    --ring: 180 100% 55%;
+
+    --radius: 0.75rem;
+
+    /* Nexus design tokens */
+    --neon-cyan: 180 100% 55%;
+    --neon-violet: 270 90% 65%;
+    --neon-magenta: 320 100% 60%;
+    --neon-lime: 90 100% 55%;
+    --neon-amber: 40 100% 60%;
+
+    --glass-bg: 230 35% 8% / 0.55;
+    --glass-border: 180 80% 60% / 0.18;
+
+    --gradient-aurora: linear-gradient(135deg, hsl(180 100% 55% / 0.25), hsl(270 90% 65% / 0.25), hsl(320 100% 60% / 0.2));
+    --gradient-neon: linear-gradient(135deg, hsl(180 100% 55%), hsl(270 90% 65%));
+    --gradient-panel: linear-gradient(160deg, hsl(230 40% 10% / 0.7), hsl(230 40% 6% / 0.85));
+
+    --glow-cyan: 0 0 20px hsl(180 100% 55% / 0.5), 0 0 40px hsl(180 100% 55% / 0.2);
+    --glow-violet: 0 0 20px hsl(270 90% 65% / 0.5), 0 0 40px hsl(270 90% 65% / 0.2);
+    --glow-soft: 0 0 30px hsl(180 100% 55% / 0.15);
+
+    --sidebar-background: 230 40% 5%;
+    --sidebar-foreground: 180 20% 80%;
+    --sidebar-primary: 180 100% 55%;
+    --sidebar-primary-foreground: 230 40% 6%;
+    --sidebar-accent: 230 30% 10%;
+    --sidebar-accent-foreground: 180 100% 70%;
+    --sidebar-border: 200 50% 15%;
+    --sidebar-ring: 180 100% 55%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    overflow: hidden;
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(hsl(180 100% 55% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(180 100% 55% / 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, hsl(270 90% 65% / 0.18), transparent 40%),
+      radial-gradient(circle at 85% 80%, hsl(180 100% 55% / 0.15), transparent 45%),
+      radial-gradient(circle at 50% 50%, hsl(320 100% 60% / 0.08), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: hsl(230 40% 6%); }
+  ::-webkit-scrollbar-thumb { background: hsl(180 80% 30% / 0.5); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(180 100% 55% / 0.7); }
+}
+
+@layer components {
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--glow-soft), inset 0 1px 0 hsl(180 100% 80% / 0.05);
+  }
+  .glass-strong {
+    background: var(--gradient-panel);
+    backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid hsl(180 80% 60% / 0.22);
+    box-shadow: var(--glow-soft), inset 0 1px 0 hsl(180 100% 80% / 0.08);
+  }
+  .neon-text {
+    background: var(--gradient-neon);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .neon-border {
+    border: 1px solid hsl(var(--neon-cyan) / 0.4);
+    box-shadow: var(--glow-cyan);
+  }
+  .scanline {
+    background: linear-gradient(180deg, transparent 0%, hsl(180 100% 55% / 0.04) 50%, transparent 100%);
+    background-size: 100% 4px;
+  }
+  .data-stream {
+    position: absolute;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, hsl(180 100% 55% / 0.6), transparent);
+    animation: streamFall linear infinite;
+  }
+  .module-tile {
+    @apply glass rounded-xl p-4 transition-all duration-300 cursor-pointer relative overflow-hidden;
+  }
+  .module-tile:hover {
+    border-color: hsl(var(--neon-cyan) / 0.5);
+    box-shadow: var(--glow-cyan);
+    transform: translateY(-2px);
+  }
+  .pulse-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+    background: hsl(var(--neon-cyan));
+    box-shadow: 0 0 8px hsl(var(--neon-cyan));
+    animation: pulseDot 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes streamFall {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.4); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes signalRoute {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, hsl(180 100% 55% / 0.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}

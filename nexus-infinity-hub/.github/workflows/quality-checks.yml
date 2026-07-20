@@ -1,0 +1,33 @@
+name: Quality Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (lockfile-aware)
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --prefer-offline --no-audit --progress=false
+          elif [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          else
+            npm install
+          fi
+
+      - name: Run checks
+        run: npm run check

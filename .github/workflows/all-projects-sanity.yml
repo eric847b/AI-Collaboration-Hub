@@ -1,0 +1,70 @@
+name: All Projects Sanity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  node-projects:
+    name: Node project checks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: ["self-evolve-dash", "nexus-infinity-hub"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ${{ matrix.repo }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.repo }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ matrix.repo }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --prefer-offline --no-audit --progress=false
+          elif [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          else
+            npm install
+          fi
+      - name: Run lint
+        working-directory: ${{ matrix.repo }}
+        run: npm run lint
+      - name: Run test
+        working-directory: ${{ matrix.repo }}
+        run: npm run test
+
+  python-projects:
+    name: Python project checks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: ["autonomous-github-agent", "singularity-operator"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ${{ matrix.repo }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        working-directory: ${{ matrix.repo }}
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          elif [ -f pyproject.toml ]; then
+            python -m pip install .
+          fi
+      - name: Syntax check
+        working-directory: ${{ matrix.repo }}
+        run: |
+          find . -name '*.py' | grep -v '^\.git/' | xargs python -m py_compile

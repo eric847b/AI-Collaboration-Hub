@@ -1,0 +1,22 @@
+{
+  "name":"VectorFS",
+  "version":"10.07.2026.1",
+  "type":"userscript-runtime",
+  "entry":"releases/vectorfs.user.js",
+  "features":[
+    "immutable-roots",
+    "transactional-state",
+    "lineage-runtime",
+    "browser-persistence",
+    "rollback-model",
+    "snapshot-engine"
+  ],
+  "capabilities":{
+    "indexedDB":true,
+    "worker":true,
+    "broadcast":true,
+    "opfs":true,
+    "gpu-detection":true,
+    "wasm":true
+  }
+}
