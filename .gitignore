@@ -1,0 +1,52 @@
+# Secrets - NEVER commit
+*.key
+*.pem
+*.secret
+secrets/
+.env
+.env.*
+
+# API Keys
+openai-api-key.txt
+api-keys/
+*groq*
+*gemini*
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Build outputs
+build/
+dist/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+tmp/
+temp/
