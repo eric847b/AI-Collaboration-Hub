@@ -1,0 +1,65 @@
+name: Autonomous Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Custom task for the agent'
+        required: false
+        default: ''
+      provider:
+        description: 'LLM provider to use (auto, openai, anthropic, gemini, etc.)'
+        required: false
+        default: 'auto'
+  push:
+    branches: [main]
+  issues:
+    types: [opened, edited, synchronize, reopened]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install PyGithub openai anthropic requests 2>/dev/null || pip install PyGithub requests
+
+      - name: Run Autonomous Agent on Monorepo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REPO: ${{ github.repository }}
+          TASK: ${{ inputs.task }}
+          PROVIDER: ${{ inputs.provider }}
+        run: |
+          # Run agent on each subproject
+          cd autonomous-github-agent && python .github/scripts/agent.py || true
+          cd ../singularity-operator && python .github/scripts/agent.py || true
+
+      - name: Status Report
+        run: |
+          echo "Monorepo autonomous agent run completed"
+          cat .agent_profile.json 2>/dev/null || echo "No global profile yet"
