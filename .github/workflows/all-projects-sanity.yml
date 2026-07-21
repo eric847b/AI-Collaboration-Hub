@@ -20,7 +20,7 @@ jobs:
           path: ${{ matrix.repo }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: ${{ matrix.repo }}/*lock*.json
       - name: Install dependencies
@@ -56,7 +56,7 @@ jobs:
           path: ${{ matrix.repo }}
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.13'
       - name: Install dependencies
         working-directory: ${{ matrix.repo }}
         run: |
