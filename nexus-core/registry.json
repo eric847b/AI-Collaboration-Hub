@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "1.0",
+  "version": "1.1",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -8,7 +8,7 @@
     {"name": "nexus-infinity-hub", "role": "ui", "entrypoint": "npm run dev", "deps": []},
     {"name": "collabhub-modules", "role": "automation", "entrypoint": "npx", "deps": []},
     {"name": "VectorFS", "role": "memory", "entrypoint": "./build/vectorfs", "deps": []},
-    {"name": "AI-Collaboration-Hub", "role": "coordination", "entrypoint": "nexus-core", "deps": ["*"]},
+    {"name": "AI-Collaboration-Hub", "role": "coordination", "entrypoint": "python nexus-core/orchestrator.py", "deps": ["*"]},
     {"name": "third-door-blink-controller", "role": "ui", "entrypoint": "npx expo start", "deps": []},
     {"name": "third-door-system", "role": "automation", "entrypoint": "python main.py", "deps": []},
     {"name": "solutions-dynamics", "role": "execution", "entrypoint": "python runtime_failure_handler.py", "deps": []}
@@ -20,5 +20,11 @@
     "ui": ["nexus-infinity-hub", "third-door-blink-controller"],
     "automation": ["collabhub-modules", "third-door-system"]
   },
-  "rules": ["All execution flows MUST register here", "No cross-repo mutation without registry entry", "Shrink code at every step", "Single orchestration source"]
+  "rules": [
+    "All execution flows MUST register here",
+    "No cross-repo mutation without registry entry",
+    "Shrink code at every step",
+    "Single orchestration source",
+    "Always emit next-catalyst prompt after scope"
+  ]
 }

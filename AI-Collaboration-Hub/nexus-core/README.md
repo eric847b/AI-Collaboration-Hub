@@ -1,11 +1,10 @@
-# nexus-core v1.0
-
-Unified minimal control plane.
+# nexus-core v1.1 — Self-Upgrading Meta-Orchestrator
 
 ```bash
-python orchestrator.py          # status
-python orchestrator.py graph    # mermaid
-python orchestrator.py run NAME # execute registered module
+python orchestrator.py          # full scope of all repos + next prompt
+python orchestrator.py graph
+python orchestrator.py check
+python orchestrator.py run NAME
 ```
 
-Rules: All flows register. Shrink always. Single source.
+This is the current successor pattern. Improve this file to upgrade the system.
