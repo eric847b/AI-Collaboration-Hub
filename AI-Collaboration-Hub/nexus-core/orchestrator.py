@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""nexus-core v1.8 - agent owns GitHub, free stack, zero user time
-Live health + JSON scope + quiet autonomous executor.
+"""nexus-core v1.9 - agent owns GitHub (releases, merges, upgrades, actions)
+Free stack, zero user time, JSON scope, quiet executor.
 This file is the permanent successor.
 """
 import json, sys, datetime, subprocess, os
@@ -23,10 +23,8 @@ def health_probe(m):
     name = m["name"]
     if not exists(name): return "MISSING"
     candidates = [
-        ROOT / name / "README.md",
-        ROOT / name / "package.json",
-        ROOT / name / "requirements.txt",
-        ROOT / name / "pyproject.toml",
+        ROOT / name / "README.md", ROOT / name / "package.json",
+        ROOT / name / "requirements.txt", ROOT / name / "pyproject.toml",
         ROOT / name / "CMakeLists.txt",
         ROOT / "AI-Collaboration-Hub" / name / "README.md",
     ]
@@ -47,15 +45,13 @@ def build_scope_data():
     for m in r["modules"]:
         status = health_probe(m)
         if status != "HEALTHY": unhealthy.append(m["name"])
-        modules.append({
-            "name": m["name"], "role": m["role"], "status": status,
-            "entrypoint": m.get("entrypoint", ""), "deps": m.get("deps", [])
-        })
+        modules.append({"name": m["name"], "role": m["role"], "status": status,
+                        "entrypoint": m.get("entrypoint", ""), "deps": m.get("deps", [])})
     return {
         "system": "nexus-core", "version": r["version"], "generated": now,
         "modules": modules, "unhealthy": unhealthy, "rules": r["rules"],
         "canonical": "AI-Collaboration-Hub/nexus-core",
-        "executor": "autonomous-github-agent (quiet, owns all GitHub)",
+        "executor": "autonomous-github-agent (owns releases/merges/upgrades/actions)",
         "cost": "zero", "user_time": "zero"
     }
 
@@ -65,7 +61,7 @@ def scope(json_only=False):
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
-    print(f"modules: {len(data['modules'])} | free stack | agent owns GitHub")
+    print(f"modules: {len(data['modules'])} | free | agent owns GitHub fully")
     for m in data["modules"]:
         print(f"- [{m['status']:8}] {m['name']:30} {m['role']}")
     print("\n## Rules")
@@ -74,25 +70,25 @@ def scope(json_only=False):
         "Run nexus-core improve, then apply the top proposed change. "
         "Stronger pattern found? Replace orchestrator and bump version. "
         "Always finish with scope + update NEXT_CATALYST.md. "
-        "Agent owns all GitHub responsibilities and notifications. Free stack. Zero user time."
+        "Agent owns releases, merges, python upgrades, actions. Free stack. Zero user time."
     )
     NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {data['generated']}\nVersion: {data['version']}\n")
-    print("\n## Next Catalyst (written to NEXT_CATALYST.md)")
+    print("\n## Next Catalyst")
     print("```")
     print(prompt)
     print("```")
-    print(f"\n## Machine scope → {SCOPE_JSON.name}")
+    print(f"\n## scope.json written")
     if data["unhealthy"]:
         print(f"## Health note: {len(data['unhealthy'])} not fully HEALTHY")
     return data
 
 def improve():
     print("# IMPROVE PROPOSALS (ordered by return)")
-    print("1-5. [DONE] CI, health, canonical, quiet agent, JSON scope")
-    print("6. [DONE] Agent owns notifications + all GitHub responsibilities (free stack)")
-    print("7. Expand agent problem-solving skill set (local free tools only)")
-    print("8. Auto-close or auto-triage issues/PRs that the agent has already handled")
-    print("\nTop remaining: #7 (expand free problem-solving skills)")
+    print("1-6. [DONE] CI, health, canonical, quiet agent, JSON scope, agent owns GitHub")
+    print("7. [DONE] Expand free skills: releases, merges, python upgrades, actions investigation")
+    print("8. Auto-triage + auto-close handled issues/PRs")
+    print("9. Wire free MCP / marketplace skills when available (no paid)")
+    print("\nTop remaining: #8 (auto-triage/close handled work)")
     print("After any change: python orchestrator.py scope")
 
 def run_agent():
@@ -101,12 +97,12 @@ def run_agent():
     os.environ["QUIET"] = "1"
     os.environ["SUPPRESS_NOTIFICATIONS"] = "1"
     os.environ["AGENT_OWNS_GITHUB"] = "1"
-    print("Launching autonomous-github-agent (owns all GitHub, quiet, free)...")
+    print("Launching autonomous-github-agent (full GitHub ownership, free, quiet)...")
     subprocess.run([sys.executable, str(AGENT)], cwd=str(ROOT))
 
 def check():
     r = load()
-    print(f"nexus-core v{r['version']} | free | agent-owns-github | json-scope")
+    print(f"nexus-core v{r['version']} | free | agent-owns-everything | json-scope")
     for rule in r["rules"]: print(f"  ✓ {rule}")
 
 if __name__ == "__main__":

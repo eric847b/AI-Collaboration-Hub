@@ -1,17 +1,19 @@
-# nexus-core v1.8
+# nexus-core v1.9
 
 ```bash
 python orchestrator.py          # human + scope.json
-python orchestrator.py json     # machine only
+python orchestrator.py json
 python orchestrator.py improve
-python orchestrator.py agent    # agent owns GitHub (quiet, free)
+python orchestrator.py agent    # full GitHub ownership (quiet, free)
 python orchestrator.py check
 ```
 
-- Agent owns notifications and all routine GitHub work
-- Free / zero-cost stack preferred
-- Zero user time for routine operations
-- Quiet failure + test absorption
-- Machine-readable scope.json
+Agent now has free skills for:
+- releases (standard naming + notes)
+- safe merges
+- python upgrade checks
+- GitHub Actions investigation
+- notifications, triage, tests, diffs
 
+All free / zero-cost. Zero user time for routine work.
 This is the permanent successor.
