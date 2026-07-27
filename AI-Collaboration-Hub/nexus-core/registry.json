@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "1.1",
+  "version": "1.2",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -25,6 +25,7 @@
     "No cross-repo mutation without registry entry",
     "Shrink code at every step",
     "Single orchestration source",
-    "Always emit next-catalyst prompt after scope"
+    "Always emit next-catalyst prompt after scope",
+    "improve mode must propose concrete, ordered actions"
   ]
 }

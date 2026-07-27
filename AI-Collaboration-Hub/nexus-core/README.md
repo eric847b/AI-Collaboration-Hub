@@ -1,10 +1,10 @@
-# nexus-core v1.1 — Self-Upgrading Meta-Orchestrator
+# nexus-core v1.2
 
 ```bash
-python orchestrator.py          # full scope of all repos + next prompt
+python orchestrator.py          # scope + write NEXT_CATALYST.md
+python orchestrator.py improve  # ranked concrete proposals
 python orchestrator.py graph
 python orchestrator.py check
-python orchestrator.py run NAME
 ```
 
-This is the current successor pattern. Improve this file to upgrade the system.
+This file is the successor. Improve it to upgrade the whole system.
