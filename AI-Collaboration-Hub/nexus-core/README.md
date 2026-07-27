@@ -1,12 +1,10 @@
-# nexus-core v2.4 (minimal)
+# nexus-core v2.5 (minimal)
 
 ```bash
 python orchestrator.py          # scope + scope.json + NEXT_CATALYST.md
-python orchestrator.py json
-python orchestrator.py improve
-python orchestrator.py agent
-python orchestrator.py check
+python orchestrator.py json | improve | agent | check
 ```
 
-Canonical control plane. Free cron. Quiet agent owns GitHub.
-Shrunk. Permanent successor.
+Optional free release skill (`emit_release`) — dry-run by default, standard `vX.Y.Z`.
+Cron, quiet agent, full lifecycle. Zero cost. Zero user time.
+Permanent successor.

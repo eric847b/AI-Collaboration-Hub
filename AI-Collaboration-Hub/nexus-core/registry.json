@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "2.4",
+  "version": "2.5",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -33,6 +33,7 @@
     "Prefer free/zero-cost only",
     "Zero user time for routine work",
     "Self-audit skills vs needs",
-    "Free MCP discovery only"
+    "Free MCP discovery only",
+    "Optional free release on version bump (standard vX.Y.Z)"
   ]
 }

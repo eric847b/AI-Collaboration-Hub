@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Free problem-solving skill set + self-audit for autonomous-github-agent"""
+"""Free skills for autonomous-github-agent — full lifecycle + optional release"""
 import os, re, json, subprocess, logging
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -7,13 +7,13 @@ from datetime import datetime
 
 log = logging.getLogger("skills")
 
-def skill_list_files(pattern: str = "**/*", root: str = ".") -> List[str]:
+def skill_list_files(pattern="**/*", root="."):
     return [str(p) for p in Path(root).glob(pattern) if p.is_file()][:200]
 
-def skill_grep(pattern: str, path: str = ".") -> List[str]:
+def skill_grep(pattern, path="."):
     hits = []
     for p in Path(path).rglob("*"):
-        if p.is_file() and p.suffix in {".py", ".js", ".ts", ".md", ".yml", ".yaml", ".json"}:
+        if p.is_file() and p.suffix in {".py",".js",".ts",".md",".yml",".yaml",".json"}:
             try:
                 for i, line in enumerate(p.read_text(errors="ignore").splitlines(), 1):
                     if re.search(pattern, line):
@@ -22,209 +22,161 @@ def skill_grep(pattern: str, path: str = ".") -> List[str]:
             except: pass
     return hits
 
-def skill_run_tests(cmd: str = "pytest -q || npm test --silent || echo no-tests") -> Dict:
+def skill_run_tests(cmd="pytest -q || npm test --silent || echo no-tests"):
     try:
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
-        return {"ok": r.returncode == 0, "code": r.returncode, "stdout": r.stdout[-2000:], "stderr": r.stderr[-1000:]}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": r.returncode==0, "code": r.returncode, "stdout": r.stdout[-2000:], "stderr": r.stderr[-1000:]}
+    except Exception as e: return {"ok": False, "error": str(e)}
 
-def skill_summarize_diff() -> str:
-    try:
-        return subprocess.check_output("git diff --stat HEAD~3 2>/dev/null || git status -s", shell=True, text=True)[:2000]
+def skill_summarize_diff():
+    try: return subprocess.check_output("git diff --stat HEAD~3 2>/dev/null || git status -s", shell=True, text=True)[:2000]
     except: return ""
 
-def skill_mark_notifications_read(token: Optional[str] = None) -> int:
+def skill_mark_notifications_read(token=None):
     token = token or os.getenv("GITHUB_TOKEN")
     if not token: return 0
     try:
         import requests
-        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
-        r = requests.get("https://api.github.com/notifications", headers=headers, params={"per_page": 50}, timeout=15)
+        h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+        r = requests.get("https://api.github.com/notifications", headers=h, params={"per_page":50}, timeout=15)
         if not r.ok: return 0
         n = len(r.json())
-        if n:
-            requests.put("https://api.github.com/notifications", headers=headers,
-                         json={"last_read_at": datetime.utcnow().isoformat()+"Z"}, timeout=15)
+        if n: requests.put("https://api.github.com/notifications", headers=h, json={"last_read_at": datetime.utcnow().isoformat()+"Z"}, timeout=15)
         return n
     except: return 0
 
-def skill_triage_issue(title: str, body: str) -> Dict:
-    text = (title + " " + body).lower()
+def skill_triage_issue(title, body):
+    text = (title+" "+body).lower()
     labels = []
-    if any(k in text for k in ["bug", "error", "fail", "crash"]): labels.append("bug")
-    if any(k in text for k in ["feat", "enhancement", "add "]): labels.append("enhancement")
-    if any(k in text for k in ["doc", "readme"]): labels.append("documentation")
-    if any(k in text for k in ["security", "vuln", "cve"]): labels.append("security")
-    priority = "high" if "security" in labels or "critical" in text else "normal"
-    return {"labels": labels or ["triage"], "priority": priority, "handled_by": "agent"}
+    if any(k in text for k in ["bug","error","fail","crash"]): labels.append("bug")
+    if any(k in text for k in ["feat","enhancement","add "]): labels.append("enhancement")
+    if any(k in text for k in ["doc","readme"]): labels.append("documentation")
+    if any(k in text for k in ["security","vuln","cve"]): labels.append("security")
+    return {"labels": labels or ["triage"], "priority": "high" if "security" in labels or "critical" in text else "normal", "handled_by": "agent"}
 
-def skill_list_branches() -> List[str]:
-    try:
-        out = subprocess.check_output("git branch -a --format='%(refname:short)'", shell=True, text=True)
-        return [b.strip() for b in out.splitlines() if b.strip()]
+def skill_list_branches():
+    try: return [b.strip() for b in subprocess.check_output("git branch -a --format='%(refname:short)'", shell=True, text=True).splitlines() if b.strip()]
     except: return []
 
-def skill_merge_safe(branch: str, target: str = "main") -> Dict:
+def skill_merge_safe(branch, target="main"):
     try:
         subprocess.check_call(f"git checkout {target}", shell=True)
-        r = subprocess.run(f"git merge --ff-only {branch}", shell=True, capture_output=True, text=True)
-        if r.returncode == 0:
+        if subprocess.run(f"git merge --ff-only {branch}", shell=True, capture_output=True).returncode == 0:
             return {"ok": True, "method": "ff-only", "branch": branch}
-        r2 = subprocess.run(f"git merge --no-commit --no-ff {branch}", shell=True, capture_output=True, text=True)
-        if r2.returncode != 0:
+        r = subprocess.run(f"git merge --no-commit --no-ff {branch}", shell=True, capture_output=True, text=True)
+        if r.returncode != 0:
             subprocess.run("git merge --abort", shell=True)
-            return {"ok": False, "error": "conflict", "stderr": r2.stderr[-500:]}
+            return {"ok": False, "error": "conflict", "stderr": r.stderr[-500:]}
         subprocess.check_call(f"git commit -m 'merge: {branch} into {target} (agent)'", shell=True)
         return {"ok": True, "method": "no-ff", "branch": branch}
     except Exception as e:
         subprocess.run("git merge --abort 2>/dev/null", shell=True)
         return {"ok": False, "error": str(e)}
 
-def skill_standard_release_name(version: str, prefix: str = "v") -> str:
+def skill_standard_release_name(version, prefix="v"):
     v = re.sub(r"[^0-9.]", "", version)
     parts = v.split(".")
     while len(parts) < 3: parts.append("0")
     return f"{prefix}{'.'.join(parts[:3])}"
 
-def skill_create_release_notes(version: str) -> str:
+def skill_create_release_notes(version):
     try:
         logtxt = subprocess.check_output("git log -20 --pretty=format:'- %s (%h)'", shell=True, text=True)
         return f"# Release {version}\n\n## Changes\n{logtxt}\n\nGenerated by autonomous-github-agent (free).\n"
-    except:
-        return f"# Release {version}\n\nAutomated release.\n"
+    except: return f"# Release {version}\n\nAutomated release.\n"
 
-def skill_python_upgrade_check(path: str = ".") -> Dict:
+def skill_python_upgrade_check(path="."):
     try:
         r = subprocess.run("pip list --outdated --format=json 2>/dev/null", shell=True, capture_output=True, text=True)
-        if r.returncode == 0 and r.stdout.strip():
-            return {"outdated": json.loads(r.stdout)}
-        return {"outdated": [], "note": "pip list --outdated not available or empty"}
-    except Exception as e:
-        return {"error": str(e)}
+        if r.returncode == 0 and r.stdout.strip(): return {"outdated": json.loads(r.stdout)}
+        return {"outdated": [], "note": "empty or unavailable"}
+    except Exception as e: return {"error": str(e)}
 
-def skill_list_workflows() -> List[str]:
-    return [str(p) for p in Path(".github/workflows").glob("*.yml")] + \
-           [str(p) for p in Path(".github/workflows").glob("*.yaml")]
+def skill_list_workflows():
+    return [str(p) for p in Path(".github/workflows").glob("*.yml")] + [str(p) for p in Path(".github/workflows").glob("*.yaml")]
 
-def skill_investigate_actions() -> Dict:
-    files = skill_list_workflows()
-    return {"workflows": files, "count": len(files), "note": "Inspect for autonomous opportunities (free)"}
+def skill_investigate_actions():
+    f = skill_list_workflows()
+    return {"workflows": f, "count": len(f)}
 
-def skill_auto_close_handled(token: Optional[str] = None, repo: Optional[str] = None, dry_run: bool = True) -> Dict:
-    token = token or os.getenv("GITHUB_TOKEN")
-    repo = repo or os.getenv("REPO")
-    if not token or not repo:
-        return {"ok": False, "error": "GITHUB_TOKEN or REPO missing"}
+def skill_auto_close_handled(token=None, repo=None, dry_run=True):
+    token, repo = token or os.getenv("GITHUB_TOKEN"), repo or os.getenv("REPO")
+    if not token or not repo: return {"ok": False, "error": "missing token/repo"}
     try:
         import requests
-        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+        h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
         closed = []
-        r = requests.get(f"https://api.github.com/repos/{repo}/issues",
-                         headers=headers, params={"state": "open", "per_page": 30}, timeout=20)
+        r = requests.get(f"https://api.github.com/repos/{repo}/issues", headers=h, params={"state":"open","per_page":30}, timeout=20)
         if r.ok:
             for issue in r.json():
                 if "pull_request" in issue: continue
                 title = (issue.get("title") or "").lower()
                 body = (issue.get("body") or "").lower()
                 labels = [l["name"].lower() for l in issue.get("labels", [])]
-                handled = ("handled-by-agent" in labels or "agent-done" in labels or
-                           "handled by agent" in body or title.startswith("[agent]"))
+                handled = "handled-by-agent" in labels or "agent-done" in labels or "handled by agent" in body or title.startswith("[agent]")
                 if handled:
-                    if dry_run:
-                        closed.append({"number": issue["number"], "title": issue["title"], "action": "would-close"})
+                    if dry_run: closed.append({"number": issue["number"], "action": "would-close"})
                     else:
-                        requests.patch(f"https://api.github.com/repos/{repo}/issues/{issue['number']}",
-                                       headers=headers, json={"state": "closed", "state_reason": "completed"}, timeout=15)
-                        closed.append({"number": issue["number"], "title": issue["title"], "action": "closed"})
+                        requests.patch(f"https://api.github.com/repos/{repo}/issues/{issue['number']}", headers=h, json={"state":"closed","state_reason":"completed"}, timeout=15)
+                        closed.append({"number": issue["number"], "action": "closed"})
         return {"ok": True, "dry_run": dry_run, "items": closed, "count": len(closed)}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    except Exception as e: return {"ok": False, "error": str(e)}
 
-def skill_label_handled(token: Optional[str] = None, repo: Optional[str] = None, number: int = 0) -> Dict:
-    token = token or os.getenv("GITHUB_TOKEN")
-    repo = repo or os.getenv("REPO")
-    if not token or not repo or not number:
-        return {"ok": False, "error": "missing token/repo/number"}
+def skill_label_handled(token=None, repo=None, number=0):
+    token, repo = token or os.getenv("GITHUB_TOKEN"), repo or os.getenv("REPO")
+    if not token or not repo or not number: return {"ok": False, "error": "missing args"}
     try:
         import requests
-        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
-        requests.post(f"https://api.github.com/repos/{repo}/labels",
-                      headers=headers, json={"name": "handled-by-agent", "color": "0e8a16"}, timeout=10)
-        r = requests.post(f"https://api.github.com/repos/{repo}/issues/{number}/labels",
-                          headers=headers, json=["handled-by-agent"], timeout=10)
+        h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+        requests.post(f"https://api.github.com/repos/{repo}/labels", headers=h, json={"name":"handled-by-agent","color":"0e8a16"}, timeout=10)
+        r = requests.post(f"https://api.github.com/repos/{repo}/issues/{number}/labels", headers=h, json=["handled-by-agent"], timeout=10)
         return {"ok": r.ok, "number": number}
+    except Exception as e: return {"ok": False, "error": str(e)}
+
+def skill_discover_free_mcp():
+    return {"local_skills": available_skills(), "github_free_api": ["issues","pulls","notifications","actions","releases","labels"],
+            "local_tools": ["git","pytest","npm","pip","grep","filesystem"], "note": "free only"}
+
+def skill_self_audit():
+    skills = set(available_skills())
+    signals = {"has_python": bool(list(Path(".").rglob("*.py"))[:1]), "has_workflows": bool(skill_list_workflows()),
+               "has_tests": bool(list(Path(".").rglob("test_*.py"))[:1])}
+    gaps = [s for s in ["python_upgrade_check","run_tests","investigate_actions","auto_close_handled","discover_free_mcp","emit_release"] if s not in skills]
+    return {"skills_count": len(skills), "skills": sorted(skills), "signals": signals, "gaps": gaps,
+            "status": "complete" if not gaps else "gaps_found"}
+
+def skill_emit_release(token=None, repo=None, version=None, dry_run=True):
+    """Optional free release. Standard name vX.Y.Z. Dry-run by default."""
+    token, repo = token or os.getenv("GITHUB_TOKEN"), repo or os.getenv("REPO")
+    version = version or os.getenv("NEXUS_VERSION", "0.0.0")
+    tag = skill_standard_release_name(version)
+    notes = skill_create_release_notes(tag)
+    if dry_run:
+        return {"ok": True, "dry_run": True, "tag": tag, "notes_preview": notes[:400]}
+    if not token or not repo:
+        return {"ok": False, "error": "missing token/repo"}
+    try:
+        import requests
+        h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+        r = requests.post(f"https://api.github.com/repos/{repo}/releases", headers=h,
+                          json={"tag_name": tag, "name": tag, "body": notes, "draft": True}, timeout=20)
+        return {"ok": r.ok, "tag": tag, "status": r.status_code, "draft": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
-def skill_discover_free_mcp() -> Dict:
-    local_skills = available_skills()
-    return {
-        "local_skills": local_skills,
-        "github_free_api": ["issues", "pulls", "notifications", "actions", "releases", "labels"],
-        "local_tools": ["git", "pytest", "npm", "pip", "grep", "filesystem"],
-        "note": "Only free/zero-cost resources. No paid MCP auto-enabled.",
-        "integration": "Add new free skills to this file; agent picks them up next run."
-    }
-
-def skill_self_audit() -> Dict:
-    """Compare available skills against simple repo signals (free, local)."""
-    skills = set(available_skills())
-    signals = {
-        "has_python": bool(list(Path(".").rglob("*.py"))[:1]),
-        "has_node": (Path("package.json").exists() or any(Path(".").rglob("package.json"))),
-        "has_workflows": bool(skill_list_workflows()),
-        "has_tests": bool(list(Path(".").rglob("test_*.py"))[:1] or list(Path(".").rglob("*.test.js"))[:1]),
-        "has_requirements": Path("requirements.txt").exists() or any(Path(".").rglob("requirements.txt")),
-    }
-    gaps = []
-    if signals["has_python"] and "python_upgrade_check" not in skills:
-        gaps.append("python_upgrade_check")
-    if signals["has_tests"] and "run_tests" not in skills:
-        gaps.append("run_tests")
-    if signals["has_workflows"] and "investigate_actions" not in skills:
-        gaps.append("investigate_actions")
-    if "auto_close_handled" not in skills:
-        gaps.append("auto_close_handled")
-    if "discover_free_mcp" not in skills:
-        gaps.append("discover_free_mcp")
-    return {
-        "skills_count": len(skills),
-        "skills": sorted(skills),
-        "signals": signals,
-        "gaps": gaps,
-        "status": "complete" if not gaps else "gaps_found",
-        "recommendation": "Add missing skills to skills.py" if gaps else "Skills cover current repo signals"
-    }
-
 SKILLS = {
-    "list_files": skill_list_files,
-    "grep": skill_grep,
-    "run_tests": skill_run_tests,
-    "summarize_diff": skill_summarize_diff,
-    "mark_notifications_read": skill_mark_notifications_read,
-    "triage_issue": skill_triage_issue,
-    "list_branches": skill_list_branches,
-    "merge_safe": skill_merge_safe,
-    "standard_release_name": skill_standard_release_name,
-    "create_release_notes": skill_create_release_notes,
-    "python_upgrade_check": skill_python_upgrade_check,
-    "list_workflows": skill_list_workflows,
-    "investigate_actions": skill_investigate_actions,
-    "auto_close_handled": skill_auto_close_handled,
-    "label_handled": skill_label_handled,
-    "discover_free_mcp": skill_discover_free_mcp,
-    "self_audit": skill_self_audit,
+    "list_files": skill_list_files, "grep": skill_grep, "run_tests": skill_run_tests,
+    "summarize_diff": skill_summarize_diff, "mark_notifications_read": skill_mark_notifications_read,
+    "triage_issue": skill_triage_issue, "list_branches": skill_list_branches, "merge_safe": skill_merge_safe,
+    "standard_release_name": skill_standard_release_name, "create_release_notes": skill_create_release_notes,
+    "python_upgrade_check": skill_python_upgrade_check, "list_workflows": skill_list_workflows,
+    "investigate_actions": skill_investigate_actions, "auto_close_handled": skill_auto_close_handled,
+    "label_handled": skill_label_handled, "discover_free_mcp": skill_discover_free_mcp,
+    "self_audit": skill_self_audit, "emit_release": skill_emit_release,
 }
 
-def available_skills() -> List[str]:
-    return list(SKILLS.keys())
-
-def run_skill(name: str, *args, **kwargs):
-    if name not in SKILLS:
-        return {"error": f"unknown skill {name}"}
-    return SKILLS[name](*args, **kwargs)
+def available_skills(): return list(SKILLS.keys())
+def run_skill(name, *a, **k): return SKILLS[name](*a, **k) if name in SKILLS else {"error": f"unknown {name}"}
 
 if __name__ == "__main__":
-    print("Available free skills:", available_skills())
-    print(json.dumps(skill_self_audit(), indent=2))
+    print("skills:", available_skills())
