@@ -1,13 +1,17 @@
-# nexus-core v1.7
+# nexus-core v1.8
 
 ```bash
-python orchestrator.py          # human + writes scope.json
-python orchestrator.py json     # machine-only JSON
+python orchestrator.py          # human + scope.json
+python orchestrator.py json     # machine only
 python orchestrator.py improve
-python orchestrator.py agent    # quiet autonomous executor
+python orchestrator.py agent    # agent owns GitHub (quiet, free)
 python orchestrator.py check
 ```
 
-Machine-readable scope.json is always produced.
-Quiet agent absorbs runtime/test failures before notifications.
-Canonical. CI enforced. This is the permanent successor.
+- Agent owns notifications and all routine GitHub work
+- Free / zero-cost stack preferred
+- Zero user time for routine operations
+- Quiet failure + test absorption
+- Machine-readable scope.json
+
+This is the permanent successor.

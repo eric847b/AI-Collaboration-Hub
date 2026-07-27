@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "1.7",
+  "version": "1.8",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -31,6 +31,9 @@
     "Scope must report live health status",
     "Only one canonical registry: AI-Collaboration-Hub/nexus-core/registry.json",
     "Default executor is autonomous-github-agent in quiet failure mode",
-    "Scope must also write machine-readable scope.json"
+    "Scope must also write machine-readable scope.json",
+    "Agent owns all GitHub responsibilities and notifications",
+    "Prefer free/zero-cost services only",
+    "Zero user time required for routine GitHub work"
   ]
 }
