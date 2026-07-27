@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "2.3",
+  "version": "2.4",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -26,19 +26,13 @@
     "Shrink code at every step",
     "Single orchestration source",
     "Always emit next-catalyst prompt after scope",
-    "improve mode must propose concrete, ordered actions",
     "CI must fail if any registered module is missing on disk",
-    "Scope must report live health status",
-    "Only one canonical registry: AI-Collaboration-Hub/nexus-core/registry.json",
-    "Default executor is autonomous-github-agent in quiet failure mode",
-    "Scope must also write machine-readable scope.json",
-    "Agent owns all GitHub responsibilities and notifications",
-    "Prefer free/zero-cost services only",
-    "Zero user time required for routine GitHub work",
-    "Agent handles releases, merges, python upgrades, and actions investigation",
-    "Agent auto-triages and can auto-close handled issues/PRs",
-    "Agent may discover and use free MCP / marketplace skills only",
-    "Agent periodically self-audits skills against actual repo needs",
-    "Agent may run on free GitHub Actions cron"
+    "Scope must report live health and write scope.json",
+    "Only one canonical registry",
+    "Agent owns GitHub lifecycle (quiet, free, cron)",
+    "Prefer free/zero-cost only",
+    "Zero user time for routine work",
+    "Self-audit skills vs needs",
+    "Free MCP discovery only"
   ]
 }

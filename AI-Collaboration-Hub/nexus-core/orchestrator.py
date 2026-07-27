@@ -1,115 +1,77 @@
 #!/usr/bin/env python3
-"""nexus-core v2.3 - free Actions cron + self-audit + full lifecycle
-Free stack, zero user time, JSON scope, quiet executor.
-This file is the permanent successor.
+"""nexus-core v2.4 — minimal permanent successor
+Free, quiet, cron-ready, self-auditing, full GitHub lifecycle.
 """
 import json, sys, datetime, subprocess, os
 from pathlib import Path
 
 CORE = Path(__file__).resolve().parent
 ROOT = CORE.parents[1]
-REG  = CORE / "registry.json"
-NEXT = CORE / "NEXT_CATALYST.md"
-SCOPE_JSON = CORE / "scope.json"
-AGENT = ROOT / "autonomous-github-agent" / ".github" / "scripts" / "agent.py"
+REG, NEXT, SCOPE_JSON = CORE/"registry.json", CORE/"NEXT_CATALYST.md", CORE/"scope.json"
+AGENT = ROOT/"autonomous-github-agent"/".github"/"scripts"/"agent.py"
 
 def load():
-    with open(REG) as f: return json.load(f)
+    return json.loads(REG.read_text())
 
-def exists(name):
-    return (ROOT / name).exists() or (ROOT / "AI-Collaboration-Hub" / name).exists()
+def exists(n):
+    return (ROOT/n).exists() or (ROOT/"AI-Collaboration-Hub"/n).exists()
 
-def health_probe(m):
-    name = m["name"]
-    if not exists(name): return "MISSING"
-    candidates = [
-        ROOT / name / "README.md", ROOT / name / "package.json",
-        ROOT / name / "requirements.txt", ROOT / name / "pyproject.toml",
-        ROOT / name / "CMakeLists.txt",
-        ROOT / "AI-Collaboration-Hub" / name / "README.md",
-    ]
-    return "HEALTHY" if any(c.exists() for c in candidates) else "PRESENT"
-
-def graph(r):
-    print("graph TD")
-    for m in r["modules"]:
-        print(f'  {m["name"]}[{m["name"]}|{m["role"]}]')
-        for d in m.get("deps", []):
-            if d != "*": print(f'  {d} --> {m["name"]}')
-
-def build_scope_data():
-    r = load()
-    now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%MZ")
-    modules = []
-    unhealthy = []
-    for m in r["modules"]:
-        status = health_probe(m)
-        if status != "HEALTHY": unhealthy.append(m["name"])
-        modules.append({"name": m["name"], "role": m["role"], "status": status,
-                        "entrypoint": m.get("entrypoint", ""), "deps": m.get("deps", [])})
-    return {
-        "system": "nexus-core", "version": r["version"], "generated": now,
-        "modules": modules, "unhealthy": unhealthy, "rules": r["rules"],
-        "canonical": "AI-Collaboration-Hub/nexus-core",
-        "executor": "autonomous-github-agent (cron-enabled)",
-        "cost": "zero", "user_time": "zero"
-    }
+def health(m):
+    if not exists(m["name"]): return "MISSING"
+    keys = ["README.md","package.json","requirements.txt","pyproject.toml","CMakeLists.txt"]
+    return "HEALTHY" if any((ROOT/m["name"]/k).exists() or (ROOT/"AI-Collaboration-Hub"/m["name"]/k).exists() for k in keys) else "PRESENT"
 
 def scope(json_only=False):
-    data = build_scope_data()
+    r = load()
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%MZ")
+    mods = [{"name":m["name"],"role":m["role"],"status":health(m),"entrypoint":m.get("entrypoint",""),"deps":m.get("deps",[])} for m in r["modules"]]
+    data = {"system":"nexus-core","version":r["version"],"generated":now,"modules":mods,
+            "unhealthy":[m["name"] for m in mods if m["status"]!="HEALTHY"],"rules":r["rules"],
+            "canonical":"AI-Collaboration-Hub/nexus-core","executor":"autonomous-github-agent",
+            "cost":"zero","user_time":"zero"}
     SCOPE_JSON.write_text(json.dumps(data, indent=2))
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
-    print(f"modules: {len(data['modules'])} | free | cron-enabled agent")
-    for m in data["modules"]:
-        print(f"- [{m['status']:8}] {m['name']:30} {m['role']}")
-    print("\n## Rules")
+    print(f"modules: {len(mods)} | free | minimal | cron")
+    for m in mods: print(f"- [{m['status']:8}] {m['name']:30} {m['role']}")
     for rule in data["rules"]: print(f"  ✓ {rule}")
-    prompt = (
-        "Run nexus-core improve, then apply the top proposed change. "
-        "Stronger pattern found? Replace orchestrator and bump version. "
-        "Always finish with scope + update NEXT_CATALYST.md. "
-        "Agent runs on free Actions cron. Self-audits. Full lifecycle. Zero user time."
-    )
-    NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {data['generated']}\nVersion: {data['version']}\n")
-    print("\n## Next Catalyst")
-    print("```")
-    print(prompt)
-    print("```")
-    print(f"\n## scope.json written")
-    if data["unhealthy"]:
-        print(f"## Health note: {len(data['unhealthy'])} not fully HEALTHY")
+    prompt = ("Run nexus-core improve, then apply the top proposed change. "
+              "Stronger pattern found? Replace orchestrator and bump version. "
+              "Always finish with scope + update NEXT_CATALYST.md. "
+              "Minimal surface. Free cron. Full lifecycle. Zero user time.")
+    NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {now}\nVersion: {data['version']}\n")
+    print("\n## Next Catalyst\n```\n"+prompt+"\n```\n## scope.json written")
+    if data["unhealthy"]: print(f"## Health note: {len(data['unhealthy'])} not fully HEALTHY")
     return data
 
 def improve():
-    print("# IMPROVE PROPOSALS (ordered by return)")
-    print("1-10. [DONE] CI through self-audit")
-    print("11. [DONE] Free GitHub Actions cron for periodic agent runs")
-    print("12. Shrink any remaining surface area / docs drift")
-    print("13. Optional: emit release when version bumps (free)")
-    print("\nTop remaining: #12 (shrink surface / docs drift)")
-    print("After any change: python orchestrator.py scope")
+    print("# IMPROVE PROPOSALS")
+    print("1-11. [DONE] CI → cron")
+    print("12. [DONE] Shrink surface / docs drift")
+    print("13. Optional: emit release on version bump (free)")
+    print("14. Keep only what is used; delete dead code paths")
+    print("\nTop remaining: #13 (optional free release on bump)")
 
 def run_agent():
-    if not AGENT.exists():
-        print("agent not found"); return
-    os.environ["QUIET"] = "1"
-    os.environ["SUPPRESS_NOTIFICATIONS"] = "1"
-    os.environ["AGENT_OWNS_GITHUB"] = "1"
-    print("Launching autonomous-github-agent (cron-ready, free)...")
+    if not AGENT.exists(): print("agent not found"); return
+    os.environ.update(QUIET="1", SUPPRESS_NOTIFICATIONS="1", AGENT_OWNS_GITHUB="1")
     subprocess.run([sys.executable, str(AGENT)], cwd=str(ROOT))
 
 def check():
     r = load()
-    print(f"nexus-core v{r['version']} | free | cron | self-audit | full-lifecycle")
+    print(f"nexus-core v{r['version']} | free | minimal | cron")
     for rule in r["rules"]: print(f"  ✓ {rule}")
 
+def graph(r=None):
+    r = r or load()
+    print("graph TD")
+    for m in r["modules"]:
+        print(f'  {m["name"]}[{m["name"]}|{m["role"]}]')
+        for d in m.get("deps",[]):
+            if d!="*": print(f"  {d} --> {m['name']}")
+
 if __name__ == "__main__":
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "scope"
-    if cmd == "graph": graph(load())
-    elif cmd == "improve": improve()
-    elif cmd == "check": check()
-    elif cmd == "agent": run_agent()
-    elif cmd == "json": scope(json_only=True)
-    else: scope()
+    cmd = sys.argv[1] if len(sys.argv)>1 else "scope"
+    {"graph":lambda: graph(), "improve":improve, "check":check, "agent":run_agent,
+     "json":lambda: scope(True)}.get(cmd, scope)()
