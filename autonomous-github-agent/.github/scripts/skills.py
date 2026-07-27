@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Free problem-solving skill set for autonomous-github-agent
-All tools local or free-tier. Includes free MCP/skill discovery hooks.
-"""
+"""Free problem-solving skill set + self-audit for autonomous-github-agent"""
 import os, re, json, subprocess, logging
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -160,19 +158,44 @@ def skill_label_handled(token: Optional[str] = None, repo: Optional[str] = None,
         return {"ok": False, "error": str(e)}
 
 def skill_discover_free_mcp() -> Dict:
-    """Discover free MCP / skill integration points available in this environment.
-    Never suggests paid services. Returns local + known-free hooks only.
-    """
     local_skills = available_skills()
-    # Local free discovery only
-    free_hooks = {
+    return {
         "local_skills": local_skills,
         "github_free_api": ["issues", "pulls", "notifications", "actions", "releases", "labels"],
         "local_tools": ["git", "pytest", "npm", "pip", "grep", "filesystem"],
-        "note": "Only free/zero-cost resources. No paid MCP or marketplace items are auto-enabled.",
-        "integration": "Add new free skills to this file; agent will pick them up on next run."
+        "note": "Only free/zero-cost resources. No paid MCP auto-enabled.",
+        "integration": "Add new free skills to this file; agent picks them up next run."
     }
-    return free_hooks
+
+def skill_self_audit() -> Dict:
+    """Compare available skills against simple repo signals (free, local)."""
+    skills = set(available_skills())
+    signals = {
+        "has_python": bool(list(Path(".").rglob("*.py"))[:1]),
+        "has_node": (Path("package.json").exists() or any(Path(".").rglob("package.json"))),
+        "has_workflows": bool(skill_list_workflows()),
+        "has_tests": bool(list(Path(".").rglob("test_*.py"))[:1] or list(Path(".").rglob("*.test.js"))[:1]),
+        "has_requirements": Path("requirements.txt").exists() or any(Path(".").rglob("requirements.txt")),
+    }
+    gaps = []
+    if signals["has_python"] and "python_upgrade_check" not in skills:
+        gaps.append("python_upgrade_check")
+    if signals["has_tests"] and "run_tests" not in skills:
+        gaps.append("run_tests")
+    if signals["has_workflows"] and "investigate_actions" not in skills:
+        gaps.append("investigate_actions")
+    if "auto_close_handled" not in skills:
+        gaps.append("auto_close_handled")
+    if "discover_free_mcp" not in skills:
+        gaps.append("discover_free_mcp")
+    return {
+        "skills_count": len(skills),
+        "skills": sorted(skills),
+        "signals": signals,
+        "gaps": gaps,
+        "status": "complete" if not gaps else "gaps_found",
+        "recommendation": "Add missing skills to skills.py" if gaps else "Skills cover current repo signals"
+    }
 
 SKILLS = {
     "list_files": skill_list_files,
@@ -191,6 +214,7 @@ SKILLS = {
     "auto_close_handled": skill_auto_close_handled,
     "label_handled": skill_label_handled,
     "discover_free_mcp": skill_discover_free_mcp,
+    "self_audit": skill_self_audit,
 }
 
 def available_skills() -> List[str]:
@@ -203,4 +227,4 @@ def run_skill(name: str, *args, **kwargs):
 
 if __name__ == "__main__":
     print("Available free skills:", available_skills())
-    print(json.dumps(skill_discover_free_mcp(), indent=2))
+    print(json.dumps(skill_self_audit(), indent=2))

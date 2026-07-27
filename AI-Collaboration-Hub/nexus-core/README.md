@@ -1,16 +1,15 @@
-# nexus-core v2.1
+# nexus-core v2.2
 
 ```bash
 python orchestrator.py          # human + scope.json
 python orchestrator.py json
 python orchestrator.py improve
-python orchestrator.py agent    # full lifecycle + free MCP ready
+python orchestrator.py agent    # self-auditing full lifecycle
 python orchestrator.py check
 ```
 
-Agent free skills include `discover_free_mcp` for zero-cost integration points.
-No paid services are auto-enabled.
+New free skill: `self_audit` — compares available skills against repo signals
+(Python, Node, tests, workflows, etc.) and reports gaps.
 
-Full ownership: notifications, releases, merges, upgrades, actions, triage/close, free skill discovery.
-Zero cost. Zero user time for routine work.
+Full ownership + self-improvement loop. Free. Zero user time.
 This is the permanent successor.
