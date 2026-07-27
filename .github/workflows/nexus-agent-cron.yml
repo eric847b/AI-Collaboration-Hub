@@ -1,0 +1,47 @@
+name: nexus-agent periodic (free)
+
+on:
+  schedule:
+    # Every Monday 06:00 UTC — free GitHub Actions minutes
+    - cron: "0 6 * * 1"
+  workflow_dispatch:  # manual trigger still free
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install minimal deps (free)
+        run: |
+          pip install requests PyGithub || true
+
+      - name: Run autonomous agent (quiet)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          QUIET: "1"
+          SUPPRESS_NOTIFICATIONS: "1"
+          AGENT_OWNS_GITHUB: "1"
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/agent.py ]; then
+            python autonomous-github-agent/.github/scripts/agent.py || true
+          else
+            echo "agent.py not found — skip"
+          fi
+
+      - name: nexus-core scope (record state)
+        run: |
+          if [ -f AI-Collaboration-Hub/nexus-core/orchestrator.py ]; then
+            python AI-Collaboration-Hub/nexus-core/orchestrator.py scope || true
+          fi

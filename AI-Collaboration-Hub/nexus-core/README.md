@@ -1,15 +1,17 @@
-# nexus-core v2.2
+# nexus-core v2.3
 
 ```bash
 python orchestrator.py          # human + scope.json
 python orchestrator.py json
 python orchestrator.py improve
-python orchestrator.py agent    # self-auditing full lifecycle
+python orchestrator.py agent    # full lifecycle (also runs via free cron)
 python orchestrator.py check
 ```
 
-New free skill: `self_audit` — compares available skills against repo signals
-(Python, Node, tests, workflows, etc.) and reports gaps.
+New: `.github/workflows/nexus-agent-cron.yml`
+- Runs every Monday 06:00 UTC (free GitHub Actions)
+- Also triggerable manually (workflow_dispatch)
+- Quiet mode, owns GitHub, records scope
 
-Full ownership + self-improvement loop. Free. Zero user time.
+Zero cost. Zero user time for routine work.
 This is the permanent successor.
