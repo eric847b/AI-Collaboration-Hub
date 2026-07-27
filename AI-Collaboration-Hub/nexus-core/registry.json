@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "1.4",
+  "version": "1.5",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -28,6 +28,7 @@
     "Always emit next-catalyst prompt after scope",
     "improve mode must propose concrete, ordered actions",
     "CI must fail if any registered module is missing on disk",
-    "Scope must report live health status"
+    "Scope must report live health status",
+    "Only one canonical registry: AI-Collaboration-Hub/nexus-core/registry.json"
   ]
 }

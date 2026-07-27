@@ -1,30 +1,5 @@
 {
-  "system": "nexus-core",
-  "version": "1.1",
-  "modules": [
-    {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
-    {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
-    {"name": "self-evolve-dash", "role": "execution", "entrypoint": "npm run dev", "deps": ["nexus-infinity-hub"]},
-    {"name": "nexus-infinity-hub", "role": "ui", "entrypoint": "npm run dev", "deps": []},
-    {"name": "collabhub-modules", "role": "automation", "entrypoint": "npx", "deps": []},
-    {"name": "VectorFS", "role": "memory", "entrypoint": "./build/vectorfs", "deps": []},
-    {"name": "AI-Collaboration-Hub", "role": "coordination", "entrypoint": "python nexus-core/orchestrator.py", "deps": ["*"]},
-    {"name": "third-door-blink-controller", "role": "ui", "entrypoint": "npx expo start", "deps": []},
-    {"name": "third-door-system", "role": "automation", "entrypoint": "python main.py", "deps": []},
-    {"name": "solutions-dynamics", "role": "execution", "entrypoint": "python runtime_failure_handler.py", "deps": []}
-  ],
-  "roles": {
-    "execution": ["autonomous-github-agent", "singularity-operator", "self-evolve-dash", "solutions-dynamics"],
-    "coordination": ["AI-Collaboration-Hub"],
-    "memory": ["VectorFS"],
-    "ui": ["nexus-infinity-hub", "third-door-blink-controller"],
-    "automation": ["collabhub-modules", "third-door-system"]
-  },
-  "rules": [
-    "All execution flows MUST register here",
-    "No cross-repo mutation without registry entry",
-    "Shrink code at every step",
-    "Single orchestration source",
-    "Always emit next-catalyst prompt after scope"
-  ]
+  "_comment": "DEPRECATED - canonical registry is AI-Collaboration-Hub/nexus-core/registry.json. This file kept only as a redirect marker and will be removed in a future cleanup.",
+  "canonical": "AI-Collaboration-Hub/nexus-core/registry.json",
+  "version": "redirect-1.5"
 }
