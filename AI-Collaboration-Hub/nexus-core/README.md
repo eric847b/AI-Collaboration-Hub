@@ -1,11 +1,12 @@
-# nexus-core v1.5 — Canonical
+# nexus-core v1.6
 
 ```bash
-python orchestrator.py          # live health scope + NEXT_CATALYST.md
+python orchestrator.py          # live health scope
 python orchestrator.py improve
+python orchestrator.py agent    # launch autonomous-github-agent (quiet)
 python orchestrator.py check
-python orchestrator.py graph
 ```
 
-Single source of truth: this directory only.
-CI enforces presence. Health is live. This file is the permanent successor.
+Default executor = autonomous-github-agent with quiet failure handler.
+Notifications are batch-marked read; only critical failures surface.
+Canonical registry. CI enforced. This is the permanent successor.
