@@ -1,6 +1,6 @@
 {
   "system": "nexus-core",
-  "version": "2.0",
+  "version": "2.1",
   "modules": [
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
@@ -36,6 +36,7 @@
     "Prefer free/zero-cost services only",
     "Zero user time required for routine GitHub work",
     "Agent handles releases, merges, python upgrades, and actions investigation",
-    "Agent auto-triages and can auto-close handled issues/PRs"
+    "Agent auto-triages and can auto-close handled issues/PRs",
+    "Agent may discover and use free MCP / marketplace skills only"
   ]
 }

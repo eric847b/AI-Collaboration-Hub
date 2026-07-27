@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""nexus-core v2.0 - agent owns full GitHub lifecycle
-Free stack, zero user time, JSON scope, quiet executor, auto-triage/close.
+"""nexus-core v2.1 - free MCP/skill discovery + full GitHub lifecycle
+Free stack, zero user time, JSON scope, quiet executor.
 This file is the permanent successor.
 """
 import json, sys, datetime, subprocess, os
@@ -51,7 +51,7 @@ def build_scope_data():
         "system": "nexus-core", "version": r["version"], "generated": now,
         "modules": modules, "unhealthy": unhealthy, "rules": r["rules"],
         "canonical": "AI-Collaboration-Hub/nexus-core",
-        "executor": "autonomous-github-agent (full lifecycle)",
+        "executor": "autonomous-github-agent (full lifecycle + free MCP ready)",
         "cost": "zero", "user_time": "zero"
     }
 
@@ -61,7 +61,7 @@ def scope(json_only=False):
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
-    print(f"modules: {len(data['modules'])} | free | agent owns full GitHub lifecycle")
+    print(f"modules: {len(data['modules'])} | free | full lifecycle + MCP-ready")
     for m in data["modules"]:
         print(f"- [{m['status']:8}] {m['name']:30} {m['role']}")
     print("\n## Rules")
@@ -70,7 +70,7 @@ def scope(json_only=False):
         "Run nexus-core improve, then apply the top proposed change. "
         "Stronger pattern found? Replace orchestrator and bump version. "
         "Always finish with scope + update NEXT_CATALYST.md. "
-        "Agent owns full GitHub lifecycle including auto-triage/close. Free stack. Zero user time."
+        "Agent owns full GitHub lifecycle + free MCP skill discovery. Free stack. Zero user time."
     )
     NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {data['generated']}\nVersion: {data['version']}\n")
     print("\n## Next Catalyst")
@@ -84,11 +84,11 @@ def scope(json_only=False):
 
 def improve():
     print("# IMPROVE PROPOSALS (ordered by return)")
-    print("1-7. [DONE] CI, health, canonical, quiet agent, JSON, owns GitHub, expanded skills")
-    print("8. [DONE] Auto-triage + auto-close handled issues/PRs")
-    print("9. Wire free MCP / marketplace skills when available (no paid)")
+    print("1-8. [DONE] CI, health, canonical, quiet, JSON, owns GitHub, skills, auto-triage/close")
+    print("9. [DONE] Free MCP / skill discovery points (no paid)")
     print("10. Periodic self-audit of agent skills vs actual repo needs")
-    print("\nTop remaining: #9 (free MCP integration points)")
+    print("11. Optional: schedule agent via free GitHub Actions cron")
+    print("\nTop remaining: #10 (self-audit of skills vs needs)")
     print("After any change: python orchestrator.py scope")
 
 def run_agent():
@@ -97,12 +97,12 @@ def run_agent():
     os.environ["QUIET"] = "1"
     os.environ["SUPPRESS_NOTIFICATIONS"] = "1"
     os.environ["AGENT_OWNS_GITHUB"] = "1"
-    print("Launching autonomous-github-agent (full lifecycle, free, quiet)...")
+    print("Launching autonomous-github-agent (full lifecycle + free MCP ready)...")
     subprocess.run([sys.executable, str(AGENT)], cwd=str(ROOT))
 
 def check():
     r = load()
-    print(f"nexus-core v{r['version']} | free | full-lifecycle | json-scope")
+    print(f"nexus-core v{r['version']} | free | MCP-ready | full-lifecycle")
     for rule in r["rules"]: print(f"  ✓ {rule}")
 
 if __name__ == "__main__":

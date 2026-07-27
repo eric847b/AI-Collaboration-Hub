@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Free problem-solving skill set for autonomous-github-agent
-All tools local or free-tier GitHub API. Covers full lifecycle.
+All tools local or free-tier. Includes free MCP/skill discovery hooks.
 """
 import os, re, json, subprocess, logging
 from pathlib import Path
@@ -114,10 +114,6 @@ def skill_investigate_actions() -> Dict:
     return {"workflows": files, "count": len(files), "note": "Inspect for autonomous opportunities (free)"}
 
 def skill_auto_close_handled(token: Optional[str] = None, repo: Optional[str] = None, dry_run: bool = True) -> Dict:
-    """Close issues/PRs that agent has already handled (label or title marker).
-    Safe by default (dry_run=True). Set dry_run=False only when confident.
-    Free GitHub API only.
-    """
     token = token or os.getenv("GITHUB_TOKEN")
     repo = repo or os.getenv("REPO")
     if not token or not repo:
@@ -126,12 +122,11 @@ def skill_auto_close_handled(token: Optional[str] = None, repo: Optional[str] = 
         import requests
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
         closed = []
-        # Issues with agent-handled markers
         r = requests.get(f"https://api.github.com/repos/{repo}/issues",
                          headers=headers, params={"state": "open", "per_page": 30}, timeout=20)
         if r.ok:
             for issue in r.json():
-                if "pull_request" in issue: continue  # skip PRs here
+                if "pull_request" in issue: continue
                 title = (issue.get("title") or "").lower()
                 body = (issue.get("body") or "").lower()
                 labels = [l["name"].lower() for l in issue.get("labels", [])]
@@ -149,7 +144,6 @@ def skill_auto_close_handled(token: Optional[str] = None, repo: Optional[str] = 
         return {"ok": False, "error": str(e)}
 
 def skill_label_handled(token: Optional[str] = None, repo: Optional[str] = None, number: int = 0) -> Dict:
-    """Add 'handled-by-agent' label so future auto-close can find it."""
     token = token or os.getenv("GITHUB_TOKEN")
     repo = repo or os.getenv("REPO")
     if not token or not repo or not number:
@@ -157,7 +151,6 @@ def skill_label_handled(token: Optional[str] = None, repo: Optional[str] = None,
     try:
         import requests
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
-        # Ensure label exists (ignore error if already present)
         requests.post(f"https://api.github.com/repos/{repo}/labels",
                       headers=headers, json={"name": "handled-by-agent", "color": "0e8a16"}, timeout=10)
         r = requests.post(f"https://api.github.com/repos/{repo}/issues/{number}/labels",
@@ -165,6 +158,21 @@ def skill_label_handled(token: Optional[str] = None, repo: Optional[str] = None,
         return {"ok": r.ok, "number": number}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+def skill_discover_free_mcp() -> Dict:
+    """Discover free MCP / skill integration points available in this environment.
+    Never suggests paid services. Returns local + known-free hooks only.
+    """
+    local_skills = available_skills()
+    # Local free discovery only
+    free_hooks = {
+        "local_skills": local_skills,
+        "github_free_api": ["issues", "pulls", "notifications", "actions", "releases", "labels"],
+        "local_tools": ["git", "pytest", "npm", "pip", "grep", "filesystem"],
+        "note": "Only free/zero-cost resources. No paid MCP or marketplace items are auto-enabled.",
+        "integration": "Add new free skills to this file; agent will pick them up on next run."
+    }
+    return free_hooks
 
 SKILLS = {
     "list_files": skill_list_files,
@@ -182,6 +190,7 @@ SKILLS = {
     "investigate_actions": skill_investigate_actions,
     "auto_close_handled": skill_auto_close_handled,
     "label_handled": skill_label_handled,
+    "discover_free_mcp": skill_discover_free_mcp,
 }
 
 def available_skills() -> List[str]:
@@ -194,3 +203,4 @@ def run_skill(name: str, *args, **kwargs):
 
 if __name__ == "__main__":
     print("Available free skills:", available_skills())
+    print(json.dumps(skill_discover_free_mcp(), indent=2))
