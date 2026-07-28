@@ -1,0 +1,5 @@
+{
+  "_comment": "DEPRECATED - canonical registry is AI-Collaboration-Hub/nexus-core/registry.json. This file kept only as a redirect marker and will be removed in a future cleanup.",
+  "canonical": "AI-Collaboration-Hub/nexus-core/registry.json",
+  "version": "redirect-1.5"
+}

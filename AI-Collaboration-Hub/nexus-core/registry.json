@@ -1,74 +1,40 @@
 {
   "system": "nexus-core",
-  "version": "0.3",
+  "version": "2.6",
   "modules": [
-    {
-      "name": "autonomous-github-agent",
-      "role": "execution"
-    },
-    {
-      "name": "singularity-operator",
-      "role": "execution"
-    },
-    {
-      "name": "self-evolve-dash",
-      "role": "execution"
-    },
-    {
-      "name": "AI-Collaboration-Hub",
-      "role": "coordination"
-    },
-    {
-      "name": "collabhub-modules",
-      "role": "coordination"
-    },
-    {
-      "name": "VectorFS",
-      "role": "memory"
-    },
-    {
-      "name": "adaptiveos-dashboard",
-      "role": "ui"
-    },
-    {
-      "name": "Userscripts",
-      "role": "automation"
-    },
-    {
-      "name": "AutoGPT",
-      "role": "unclassified"
-    },
-    {
-      "name": "luaforwindows",
-      "role": "unclassified"
-    }
+    {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
+    {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
+    {"name": "self-evolve-dash", "role": "execution", "entrypoint": "npm run dev", "deps": ["nexus-infinity-hub"]},
+    {"name": "nexus-infinity-hub", "role": "ui", "entrypoint": "npm run dev", "deps": []},
+    {"name": "collabhub-modules", "role": "automation", "entrypoint": "npx", "deps": []},
+    {"name": "VectorFS", "role": "memory", "entrypoint": "./build/vectorfs", "deps": []},
+    {"name": "AI-Collaboration-Hub", "role": "coordination", "entrypoint": "python nexus-core/orchestrator.py", "deps": ["*"]},
+    {"name": "third-door-blink-controller", "role": "ui", "entrypoint": "npx expo start", "deps": []},
+    {"name": "third-door-system", "role": "automation", "entrypoint": "python main.py", "deps": []},
+    {"name": "solutions-dynamics", "role": "execution", "entrypoint": "python runtime_failure_handler.py", "deps": []}
   ],
   "roles": {
-    "execution": [
-      "autonomous-github-agent",
-      "singularity-operator",
-      "self-evolve-dash"
-    ],
-    "coordination": [
-      "AI-Collaboration-Hub",
-      "collabhub-modules"
-    ],
-    "memory": [
-      "VectorFS"
-    ],
-    "ui": [
-      "adaptiveos-dashboard"
-    ],
-    "automation": [
-      "Userscripts"
-    ],
-    "unclassified": [
-      "AutoGPT",
-      "luaforwindows"
-    ]
+    "execution": ["autonomous-github-agent", "singularity-operator", "self-evolve-dash", "solutions-dynamics"],
+    "coordination": ["AI-Collaboration-Hub"],
+    "memory": ["VectorFS"],
+    "ui": ["nexus-infinity-hub", "third-door-blink-controller"],
+    "automation": ["collabhub-modules", "third-door-system"]
   },
   "rules": [
-    "All execution must be registered",
-    "No cross-repo mutation without registry entry"
+    "All execution flows MUST register here",
+    "No cross-repo mutation without registry entry",
+    "Shrink code at every step",
+    "Single orchestration source",
+    "Always emit next-catalyst prompt after scope",
+    "CI must fail if any registered module is missing on disk",
+    "Scope must report live health and write scope.json",
+    "Only one canonical registry",
+    "Agent owns GitHub lifecycle (quiet, free, cron)",
+    "Prefer free/zero-cost only",
+    "Zero user time for routine work",
+    "Self-audit skills vs needs",
+    "Free MCP discovery only",
+    "Optional free release on version bump (standard vX.Y.Z)",
+    "Runtime fails are absorbed; never bomb the user"
   ]
 }

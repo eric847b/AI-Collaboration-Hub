@@ -1,0 +1,43 @@
+name: nexus-core enforce
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"  # weekly Monday
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check registry exists
+        run: |
+          test -f AI-Collaboration-Hub/nexus-core/registry.json || (echo "MISSING registry.json" && exit 1)
+
+      - name: Validate modules against disk
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+          root = Path(".")
+          reg = json.loads((root / "AI-Collaboration-Hub/nexus-core/registry.json").read_text())
+          missing = []
+          for m in reg["modules"]:
+              name = m["name"]
+              # Accept either top-level or nested under AI-Collaboration-Hub
+              exists = (root / name).exists() or (root / "AI-Collaboration-Hub" / name).exists()
+              if not exists:
+                  missing.append(name)
+          if missing:
+              print("MISSING on disk:", ", ".join(missing))
+              sys.exit(1)
+          print(f"OK: {len(reg['modules'])} modules registered and present")
+          PY
+
+      - name: Orchestrator self-check
+        run: |
+          cd AI-Collaboration-Hub/nexus-core
+          python3 orchestrator.py check
