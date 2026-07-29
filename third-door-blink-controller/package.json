@@ -3,6 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=26.0.0"
+  },
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 npx expo start --web --port 3000",
     "start": "EXPO_NO_TELEMETRY=1 npx expo start",
