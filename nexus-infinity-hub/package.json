@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Self-evolving AI collaboration and userscript hub",
+  "engines": {
+    "node": ">=26.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "dev:host": "vite --host 0.0.0.0",
