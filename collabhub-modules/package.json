@@ -1,6 +1,9 @@
 {
   "name": "collabhub-modules",
   "version": "25.0",
+  "engines": {
+    "node": ">=26.0.0"
+  },
   "scripts": {
     "evolve": "node evolve.js",
     "test": "echo \"Tests passed\"",
