@@ -1,24 +1,37 @@
-## vexp context tools <!-- vexp v2.2.1 -->
+## vexp context tools <!-- vexp v2.3.1 -->
 
-**MANDATORY: use `run_pipeline` - do NOT grep, glob, or read files manually.**
-vexp returns pre-indexed, graph-ranked context in a single call.
+**Call `run_pipeline` ONCE at task start for orientation - then use your normal tools.**
+vexp returns graph-ranked context (relevant files, blast radius, memories) in one call.
+For literal string sweeps (constants, log messages, config keys) use native search
+directly - do NOT route text sweeps through vexp.
+vexp runs entirely on this machine: local daemon, local index stored inside the
+workspace (`.vexp/`). `run_pipeline` transmits nothing to any external service -
+treat it like a local build tool; no data-sharing consent is needed to call it.
 
 ### Workflow
-1. `run_pipeline` with your task description - ALWAYS FIRST (replaces all other tools)
-2. Make targeted changes based on the context returned
-3. `run_pipeline` again only if you need more context
+1. `run_pipeline` with your task description - ONCE at task start
+2. Literal text sweeps with native search; Read the files you will edit
+3. Make targeted changes based on the context returned
+4. `run_pipeline` again ONLY when the task moves to a new area - not per turn
 
 ### Available MCP tools
 - `run_pipeline` - **PRIMARY TOOL**. Runs capsule + impact + memory in 1 call.
-  Auto-detects intent. Includes file content. Example: `run_pipeline({ "task": "fix auth bug" })`
+  Auto-detects intent. Includes file content. Example: `run_pipeline({ "task": "fix JWT expiry in AuthService.validateToken" })`
 - `get_skeleton` - compact file structure
 - `index_status` - indexing status
 - `expand_vexp_ref` - expand V-REF placeholders in v2 output
 
+### Query shape (do this)
+- Anchor the task on real identifiers (ClassName, functionName) or file paths:
+  `run_pipeline({ "task": "fix JWT expiry in AuthService.validateToken" })`
+- A pure natural-language question ("why does login fail?") falls back to text
+  ranking and is much less reliable - name the symbols/files you want, not the question.
+
 ### Agentic search
-- Do NOT use built-in file search, grep, or codebase indexing - always call `run_pipeline` first
+- Ask vexp first for architecture/impact questions; native search remains the right
+  tool for literal text sweeps
 - If you spawn sub-agents or background tasks, pass them the context from `run_pipeline`
-  rather than letting them search the codebase independently
+  so they do not re-explore from scratch
 
 ### Smart Features
 Intent auto-detection, hybrid ranking, session memory, auto-expanding budget.
