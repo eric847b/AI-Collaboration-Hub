@@ -1,0 +1,108 @@
+// ==UserScript==
+// @name         9/* AI Remote Mobile Desktop Debugging and Logging
+// @namespace    http://tampermonkey.net/
+// @version      1.1
+// @description  Debugging and logging module for AI-powered remote desktop control
+// @include      http://*/*
+// @include      https://*/*
+// @grant        none
+// @require      http://path/to/apiModule.js
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Function to capture console logs
+    (function() {
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            sendLogToAI('log', args);
+        };
+
+        const originalError = console.error;
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            sendLogToAI('error', args);
+        };
+
+        function sendLogToAI(type, message) {
+            window.apiModule.sendToAPI('https://api-inference.huggingface.co/models/gpt-3.5-turbo', { type: type, message: message })
+                .then(data => console.log("Log sent to AI:", data))
+                .catch(error => console.error("Error sending log to AI:", error));
+        }
+    })();
+
+    // Function to capture alert messages
+    (function() {
+        const originalAlert = window.alert;
+        window.alert = function(message) {
+            originalAlert.apply(window, arguments);
+            sendAlertToAI(message);
+        };
+
+        function sendAlertToAI(message) {
+            window.apiModule.sendToAPI('https://api-inference.huggingface.co/models/gpt-3.5-turbo', { message: message })
+                .then(data => console.log("Alert sent to AI:", data))
+                .catch(error => console.error("Error sending alert to AI:", error));
+        }
+    })();
+
+    // Detailed error reporting
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.log("Error message: " + message);
+        console.log("Source: " + source);
+        console.log("Line number: " + lineno);
+        console.log("Column number: " + colno);
+        console.log("Error object: " + JSON.stringify(error));
+        window.apiModule.sendToAPI('https://api-inference.huggingface.co/models/gpt-3.5-turbo', { message, source, lineno, colno, error });
+    };
+
+    // Example function with try-catch block
+    function exampleFunction() {
+        try {
+            // Your code here
+            console.log("This is a test message.");
+            // Simulate an error
+            throw new Error("Test error");
+        } catch (error) {
+            console.error("Caught an error: ", error);
+            window.apiModule.sendToAPI('https://api-inference.huggingface.co/models/gpt-3.5-turbo', { message: error.message, stack: error.stack });
+        }
+    }
+
+    // Check network requests
+    function checkNetworkRequests() {
+        fetch('https://example.com/api')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+            })
+            .catch(error => {
+                console.error('Network request failed:', error);
+                window.apiModule.sendToAPI('https://api-inference.huggingface.co/models/gpt-3.5-turbo', { message: error.message, stack: error.stack });
+            });
+    }
+
+    // Function to log additional information
+    function logAdditionalInfo() {
+        console.log("User agent: " + navigator.userAgent);
+        console.log("Current URL: " + window.location.href);
+        console.log("Timestamp: " + new Date().toISOString());
+    }
+
+    // Call the example function
+    exampleFunction();
+
+    // Call the network request check function
+    checkNetworkRequests();
+
+    // Log additional information
+    logAdditionalInfo();
+
+})();

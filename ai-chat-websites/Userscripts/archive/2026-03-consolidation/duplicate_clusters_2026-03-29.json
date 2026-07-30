@@ -1,0 +1,64 @@
+{
+    "generated_at": "2026-03-29T12:00:00Z",
+    "version": "1.0",
+    "clusters": [
+        {
+            "id": "chatgpt-hub-modules",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/00-hub.user.js",
+            "duplicates": [
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/01-automation.module.user.js",
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js",
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/_archive/0. Hub .H.user 2024-10-15.downloads.js",
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/_archive/0. Hub .H.user 2024-10-15.1.js"
+            ],
+            "rationale": "Hub and modules share domain lists and overlapping features; treat Studio modules as canonical source and dist as release artifact.",
+            "suggested_action": "Keep modules as source, keep dist as release; archive legacy hub copies in _archive."
+        },
+        {
+            "id": "global-wildcards",
+            "canonical": "AI Chat Websites/Userscripts/Advanced Features/AI-Powered Universal Automation Suite.user.js",
+            "duplicates": [
+                "AI Chat Websites/Userscripts/Security/Advanced Security Suite.user.js",
+                "AI Chat Websites/Userscripts/Experimental/AI-Script-Generator.user.js",
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js"
+            ],
+            "rationale": "Multiple scripts declare broad @match rules (*://*/*); high collision risk.",
+            "suggested_action": "Narrow @match rules for feature scripts; keep a single global security script if required."
+        },
+        {
+            "id": "copilot",
+            "canonical": "AI Chat Websites/Userscripts/Copilot Scripts/Copilot Automation - Guardian + ROI v16.0.user.js",
+            "duplicates": [
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/01-automation.module.user.js",
+                "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js"
+            ],
+            "rationale": "Copilot-specific handlers appear both standalone and inside the Suite bundle.",
+            "suggested_action": "Centralize Copilot logic into a single file/module and remove duplicate listeners."
+        },
+        {
+            "id": "utilities",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/00-utilities.module.user.js",
+            "duplicates": [
+                "AI Chat Websites/Userscripts/Utilities/ComprehensiveUserscript.user.js"
+            ],
+            "rationale": "Utilities duplicated across modules and standalone scripts.",
+            "suggested_action": "Keep canonical utilities module and refactor dependents to import/use it."
+        },
+        {
+            "id": "generator",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/06-userscript-generator.module.user.js",
+            "duplicates": [
+                "AI Chat Websites/Userscripts/Experimental/AI-Script-Generator.user.js"
+            ],
+            "rationale": "Builder/generator exists in both Studio and experimental locations.",
+            "suggested_action": "Consolidate generator into Studio module; archive experimental copies."
+        },
+        {
+            "id": "dist-release",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js",
+            "duplicates": [],
+            "rationale": "Dist is a build artifact containing merged modules; treat as release-only.",
+            "suggested_action": "Do not edit dist directly; edit source modules and rebuild."
+        }
+    ]
+}

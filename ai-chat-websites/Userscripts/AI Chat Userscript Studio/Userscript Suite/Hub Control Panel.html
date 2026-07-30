@@ -1,0 +1,2861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hub Control Panel</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<style>
+  :root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --bg-card: #1c2129;
+    --border: #30363d;
+    --border-focus: #58a6ff;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --green: #3fb950;
+    --green-dim: #1a4028;
+    --red: #f85149;
+    --red-dim: #4a1e1e;
+    --yellow: #d29922;
+    --yellow-dim: #3d2e00;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+    --cyan: #39d2c0;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    --transition: 0.2s ease;
+    --nav-width: 240px;
+  }
+
+  /* Light theme overrides */
+  [data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eaeef2;
+    --bg-card: #ffffff;
+    --border: #d0d7de;
+    --border-focus: #0969da;
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --text-muted: #8b949e;
+    --accent: #0969da;
+    --accent-hover: #0550ae;
+    --green: #1a7f37;
+    --green-dim: #dafbe1;
+    --red: #cf222e;
+    --red-dim: #ffebe9;
+    --yellow: #9a6700;
+    --yellow-dim: #fff8c5;
+    --purple: #8250df;
+    --cyan: #1b7c83;
+    --shadow: 0 1px 3px rgba(0,0,0,0.12);
+    --orange: #bd561d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── SKIP-TO-CONTENT LINK ── */
+  .skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    z-index: 1000;
+    padding: 8px 16px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 var(--radius) 0;
+    transition: top 0.2s ease;
+  }
+  .skip-link:focus { top: 0; }
+
+  /* ── SCREEN-READER-ONLY ── */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .app-header .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .app-header .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff;
+  }
+  .app-header h1 {
+    font-size: 16px; font-weight: 600;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .app-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .app-header .connection-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--yellow);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  .status-dot.connected { background: var(--green); }
+  .status-dot.disconnected { background: var(--red); animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── HEADER TOOLBAR BUTTONS ── */
+  .header-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all var(--transition);
+  }
+  .header-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+  .header-btn .badge-count {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 16px;
+    text-align: center;
+  }
+
+  /* ── MOBILE MENU TOGGLE ── */
+  .menu-toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .header-logo-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── NAV TABS ── */
+  .nav-tabs {
+    display: flex;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    overflow-x: auto;
+    gap: 2px;
+    transition: transform 0.3s ease;
+  }
+  .nav-tabs.nav-open {
+    transform: translateX(0);
+  }
+  .nav-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition);
+    outline-offset: -2px;
+    font-family: var(--font-sans);
+  }
+  .nav-tab:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+  .nav-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .nav-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .nav-tab .tab-icon { margin-right: 6px; }
+
+  /* ── LAYOUT ── */
+  .app-body { padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .section[aria-hidden="true"] { display: none; }
+  .section[aria-hidden="false"] { display: block; }
+  .section-hidden { display: none; }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .section-header h2 {
+    font-size: 18px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-header .badge {
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px;
+    background: var(--bg-tertiary); color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .section-header .badge.pulse {
+    animation: badgePulse 1s ease;
+  }
+  @keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); background: var(--accent); color: #fff; }
+  }
+
+  /* ── SECTION TOOLBAR ── */
+  .section-toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .search-box {
+    position: relative;
+    flex: 1;
+    min-width: 180px;
+    max-width: 320px;
+  }
+  .search-box input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    padding: 7px 12px 7px 30px;
+    outline: none;
+    transition: border-color var(--transition);
+  }
+  .search-box input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(88,166,255,0.15); }
+  .search-box .search-icon {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .search-box .search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    display: none;
+    padding: 2px;
+    line-height: 1;
+  }
+  .search-box .search-clear.visible { display: block; }
+  .search-box .search-clear:hover { color: var(--text-primary); }
+
+  /* ── AUTO-REFRESH CONTROLS ── */
+  .auto-refresh-controls {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .auto-refresh-controls select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 12px;
+    padding: 4px 6px;
+    outline: none;
+    font-family: var(--font-sans);
+  }
+  .auto-refresh-indicator {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  .auto-refresh-indicator.paused { background: var(--text-muted); animation: none; }
+
+  /* ── FORM ELEMENTS ── */
+  .controls-row {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .control-group {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .control-group label {
+    font-size: 11px; font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  input[type="text"], input[type="search"], select, textarea {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color var(--transition);
+    min-width: 160px;
+  }
+  input[type="text"]:focus, input[type="search"]:focus, select:focus, textarea:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+  }
+  input[type="text"]:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  textarea {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    min-height: 180px;
+    resize: vertical;
+    width: 100%;
+    tab-size: 2;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px; font-weight: 500;
+    font-family: var(--font-sans);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+    position: relative;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn .spinner {
+    display: none;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  .btn.loading .spinner { display: inline-block; }
+  .btn.loading .btn-text { opacity: 0.7; }
+  .btn.loading { pointer-events: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+  .btn-secondary:hover:not(:disabled) { background: var(--border); }
+  .btn-danger { background: var(--red-dim); color: var(--red); border-color: rgba(248,81,73,0.3); }
+  .btn-danger:hover:not(:disabled) { background: rgba(248,81,73,0.25); }
+  .btn-success { background: var(--green-dim); color: var(--green); border-color: rgba(63,185,80,0.3); }
+  .btn-success:hover:not(:disabled) { background: rgba(63,185,80,0.25); }
+  .btn-warning { background: var(--yellow-dim); color: var(--yellow); border-color: rgba(210,153,34,0.3); }
+  .btn-warning:hover:not(:disabled) { background: rgba(210,153,34,0.25); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+
+  /* ── PANELS & CARDS ── */
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .panel-header:hover { background: rgba(255,255,255,0.02); }
+  .panel-header .collapse-icon {
+    font-size: 10px;
+    transition: transform var(--transition);
+    color: var(--text-muted);
+  }
+  .panel-header.collapsed .collapse-icon { transform: rotate(-90deg); }
+  .panel-body { padding: 14px; }
+  .panel-body.collapsed { display: none; }
+  .panel-body.scroll {
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .panel-body.scroll::-webkit-scrollbar { width: 6px; }
+  .panel-body.scroll::-webkit-scrollbar-track { background: transparent; }
+  .panel-body.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── HEALTH SUMMARY ── */
+  .health-summary {
+    display: flex; gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .health-stat {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+  .health-stat .stat-value {
+    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 15px;
+  }
+  .health-stat .stat-label {
+    color: var(--text-secondary);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .empty-state .empty-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+  }
+
+  /* ── TABLE ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table caption {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+  }
+  .data-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .data-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    color: var(--text-primary);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(88,166,255,0.04); }
+  .data-table tr:focus-within td { background: rgba(88,166,255,0.08); }
+  .data-table .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 500;
+  }
+  .status-badge.active, .status-badge.healthy { background: var(--green-dim); color: var(--green); }
+  .status-badge.inactive, .status-badge.unhealthy { background: var(--red-dim); color: var(--red); }
+  .status-badge.loading { background: var(--yellow-dim); color: var(--yellow); }
+  .status-badge.initialized { background: var(--green-dim); color: var(--green); }
+  .status-badge.pending { background: var(--yellow-dim); color: var(--yellow); }
+  .status-badge.failed { background: var(--red-dim); color: var(--red); }
+
+  /* ── DETAIL KV PAIRS ── */
+  .kv-grid {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 0;
+    font-size: 13px;
+  }
+  .kv-grid .kv-key {
+    padding: 6px 10px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    border-bottom: 1px solid rgba(48,54,61,0.3);
+  }
+  .kv-grid .kv-val {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(48,54,61,0.3);
+    word-break: break-word;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .kv-grid .kv-key:last-of-type,
+  .kv-grid .kv-val:last-of-type { border-bottom: none; }
+
+  /* ── COPY BUTTON ── */
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 6px;
+    transition: all var(--transition);
+  }
+  .copy-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+  .copy-btn.copied { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+
+  /* ── LOG ENTRIES ── */
+  .log-entry {
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(48,54,61,0.3);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-entry .log-time {
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 11px;
+  }
+  .log-entry .log-msg { color: var(--text-primary); word-break: break-word; flex: 1; }
+  .log-entry .log-actions { flex-shrink: 0; }
+  .log-entry.error .log-msg { color: var(--red); }
+  .log-entry.warn .log-msg { color: var(--yellow); }
+  .log-entry.info .log-msg { color: var(--cyan); }
+  .log-entry.success .log-msg { color: var(--green); }
+
+  /* ── COMMAND HISTORY ── */
+  .cmd-history-item {
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(48,54,61,0.3);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .cmd-history-item:last-child { border-bottom: none; }
+  .cmd-history-item .cmd-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+    flex: 1;
+  }
+  .cmd-history-item .cmd-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ── KEYBOARD SHORTCUTS MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .modal-overlay.open { display: flex; opacity: 1; }
+  .modal-dialog {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 480px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .modal-dialog h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .modal-close:hover { color: var(--text-primary); }
+  .shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(48,54,61,0.3);
+    font-size: 13px;
+  }
+  .shortcut-row:last-child { border-bottom: none; }
+  .shortcut-keys {
+    display: flex; gap: 4px;
+  }
+  .shortcut-key {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+
+  /* ── METRICS GRID ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .metric-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .metric-card .metric-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .metric-card .metric-value {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+  }
+  .metric-card .metric-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .metric-value.green { color: var(--green); }
+  .metric-value.yellow { color: var(--yellow); }
+  .metric-value.red { color: var(--red); }
+  .metric-value.blue { color: var(--accent); }
+  .metric-value.purple { color: var(--purple); }
+  .metric-value.cyan { color: var(--cyan); }
+
+  /* ── TWO-COLUMN LAYOUT ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* ── FILE INPUT HIDDEN ── */
+  .hidden-input { display: none; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .two-col { grid-template-columns: 1fr; }
+    .controls-row { flex-direction: column; align-items: stretch; }
+    input[type="text"], select { min-width: unset; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .section-toolbar { flex-direction: column; align-items: stretch; }
+    .search-box { max-width: none; }
+    .app-header .connection-status span { display: none; }
+    .menu-toggle { display: block; }
+    .nav-tabs {
+      position: fixed;
+      top: 56px; left: 0; right: 0; bottom: 0;
+      flex-direction: column;
+      background: var(--bg-secondary);
+      z-index: 99;
+      padding: 8px;
+      transform: translateX(-100%);
+      overflow-y: auto;
+    }
+    .nav-tabs.nav-open {
+      transform: translateX(0);
+    }
+    .nav-tab {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-btn .btn-label { display: none; }
+    .health-summary { gap: 8px; }
+    .health-stat { flex: 1; min-width: 80px; }
+    .kv-grid { grid-template-columns: 120px 1fr; }
+  }
+  @media (max-width: 600px) {
+    .metrics-grid { grid-template-columns: 1fr; }
+    .health-stat { min-width: 100%; }
+    .app-body { padding: 12px; }
+    .modal-dialog { width: 95%; padding: 16px; }
+  }
+
+  /* ── TOAST NOTIFICATION ── */
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 6px;
+    pointer-events: none;
+  }
+  .toast {
+    pointer-events: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 8px;
+    animation: slideIn 0.25s ease;
+    max-width: 340px;
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--accent); }
+  .toast.warn { border-left: 3px solid var(--yellow); }
+  .toast .toast-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .toast .toast-close:hover { color: var(--text-primary); }
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* ── LOADING SHIMMER ── */
+  .shimmer {
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border) 50%, var(--bg-tertiary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease infinite;
+    border-radius: var(--radius);
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ SKIP LINK ════════ -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- ════════ HEADER ════════ -->
+<header class="app-header" role="banner">
+  <div class="header-logo-group">
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false">☰</button>
+    <div class="logo">
+      <div class="logo-icon" aria-hidden="true">H</div>
+      <h1>Hub Control Panel</h1>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="connection-status" role="status" aria-live="polite" aria-atomic="true">
+      <span class="status-dot" id="connDot" aria-hidden="true"></span>
+      <span id="connLabel">Waiting for Hub…</span>
+    </div>
+    <button class="header-btn" id="themeToggle" type="button" title="Toggle dark/light theme" aria-label="Toggle dark/light theme">
+      <span id="themeIcon">🌙</span>
+      <span class="btn-label">Theme</span>
+    </button>
+    <button class="header-btn" id="shortcutsToggle" type="button" title="Show keyboard shortcuts" aria-label="Show keyboard shortcuts">
+      ⌨ <span class="btn-label">Shortcuts</span>
+    </button>
+    <button class="header-btn" id="demoDataBtn" type="button" title="Load demo data for testing" aria-label="Load demo data for testing">
+      🧪 <span class="btn-label">Demo Data</span>
+    </button>
+  </div>
+</header>
+
+<!-- ════════ NAV ════════ -->
+<nav class="nav-tabs" id="navTabs" role="tablist" aria-label="Dashboard sections">
+  <button class="nav-tab active" data-tab="modules" role="tab" aria-selected="true" aria-controls="sec-modules" id="tab-modules" type="button">
+    <span class="tab-icon" aria-hidden="true">📦</span>Modules
+  </button>
+  <button class="nav-tab" data-tab="services" role="tab" aria-selected="false" aria-controls="sec-services" id="tab-services" type="button">
+    <span class="tab-icon" aria-hidden="true">🔌</span>Services
+  </button>
+  <button class="nav-tab" data-tab="memory" role="tab" aria-selected="false" aria-controls="sec-memory" id="tab-memory" type="button">
+    <span class="tab-icon" aria-hidden="true">🧠</span>Memory
+  </button>
+  <button class="nav-tab" data-tab="config" role="tab" aria-selected="false" aria-controls="sec-config" id="tab-config" type="button">
+    <span class="tab-icon" aria-hidden="true">⚙️</span>Config
+  </button>
+  <button class="nav-tab" data-tab="errors" role="tab" aria-selected="false" aria-controls="sec-errors" id="tab-errors" type="button">
+    <span class="tab-icon" aria-hidden="true">🛡️</span>Errors & Events
+  </button>
+  <button class="nav-tab" data-tab="performance" role="tab" aria-selected="false" aria-controls="sec-performance" id="tab-performance" type="button">
+    <span class="tab-icon" aria-hidden="true">📊</span>Performance
+  </button>
+  <button class="nav-tab" data-tab="system" role="tab" aria-selected="false" aria-controls="sec-system" id="tab-system" type="button">
+    <span class="tab-icon" aria-hidden="true">🖥️</span>System
+  </button>
+  <button class="nav-tab" data-tab="history" role="tab" aria-selected="false" aria-controls="sec-history" id="tab-history" type="button">
+    <span class="tab-icon" aria-hidden="true">📜</span>History
+  </button>
+</nav>
+
+<!-- ════════ KEYBOARD SHORTCUTS MODAL ════════ -->
+<div class="modal-overlay" id="shortcutsModal" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+  <div class="modal-dialog">
+    <h3 id="shortcutsTitle">⌨ Keyboard Shortcuts
+      <button class="modal-close" id="shortcutsClose" type="button" aria-label="Close shortcuts">&times;</button>
+    </h3>
+    <div class="shortcut-row"><span>Toggle dark/light theme</span><span class="shortcut-keys"><span class="shortcut-key">T</span></span></div>
+    <div class="shortcut-row"><span>Show keyboard shortcuts</span><span class="shortcut-keys"><span class="shortcut-key">?</span></span></div>
+    <div class="shortcut-row"><span>Search modules</span><span class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">F</span></span></div>
+    <div class="shortcut-row"><span>Execute module action</span><span class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">Enter</span></span></div>
+    <div class="shortcut-row"><span>Close shortcuts / modals</span><span class="shortcut-keys"><span class="shortcut-key">Esc</span></span></div>
+    <div class="shortcut-row"><span>Refresh registry</span><span class="shortcut-keys"><span class="shortcut-key">R</span></span></div>
+    <div class="shortcut-row"><span>Switch tabs (next/prev)</span><span class="shortcut-keys"><span class="shortcut-key">←</span><span class="shortcut-key">→</span></span></div>
+    <div class="shortcut-row"><span>Focus search box</span><span class="shortcut-keys"><span class="shortcut-key">/</span></span></div>
+  </div>
+</div>
+
+<!-- ════════ APP BODY ════════ -->
+<main class="app-body" id="main-content" role="main">
+
+<!-- ──────── SECTION 1: MODULE REGISTRY ──────── -->
+<section class="section active" id="sec-modules" role="tabpanel" aria-labelledby="tab-modules" aria-hidden="false">
+  <div class="section-header">
+    <h2><span aria-hidden="true">📦</span> Module Registry <span class="badge" id="moduleCount" aria-live="polite">0 modules</span></h2>
+    <div class="auto-refresh-controls">
+      <span class="auto-refresh-indicator" id="refreshIndicator"></span>
+      <label for="refreshInterval">Auto-refresh:</label>
+      <select id="refreshInterval" aria-label="Auto-refresh interval">
+        <option value="0">Off</option>
+        <option value="5000">5s</option>
+        <option value="10000">10s</option>
+        <option value="30000">30s</option>
+        <option value="60000">60s</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Health Summary -->
+  <div class="health-summary" id="moduleHealthSummary" role="status" aria-live="polite">
+    <div class="health-stat"><span class="stat-value green" id="modHealthTotal">0</span> <span class="stat-label">total</span></div>
+    <div class="health-stat"><span class="stat-value green" id="modHealthActive">0</span> <span class="stat-label">active</span></div>
+    <div class="health-stat"><span class="stat-value green" id="modHealthHealthy">0</span> <span class="stat-label">healthy</span></div>
+  </div>
+
+  <div class="controls-row">
+    <div class="control-group">
+      <label for="modName">Module Name</label>
+      <input type="text" id="modName" placeholder="e.g. automation" autocomplete="off" aria-describedby="modNameHint">
+      <span id="modNameHint" class="sr-only">Enter the name of the module to manage</span>
+    </div>
+    <div class="control-group">
+      <label for="modURL">Module URL</label>
+      <input type="text" id="modURL" placeholder="https://..." autocomplete="url" inputmode="url">
+    </div>
+    <div class="control-group">
+      <label for="modAction">Action</label>
+      <select id="modAction" title="Select an action">
+        <option value="registerModule">Register Module</option>
+        <option value="reloadModule">Reload Module</option>
+        <option value="unloadModule">Unload Module</option>
+        <option value="refreshRegistry">Refresh Registry</option>
+        <option value="inspectModule">Inspect Module</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="modExec" type="button" aria-label="Execute selected module action">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">▶ Execute Action</span>
+    </button>
+  </div>
+
+  <div class="section-toolbar">
+    <div class="search-box">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input type="search" id="moduleSearch" placeholder="Filter modules..." aria-label="Filter modules by name">
+      <button class="search-clear" id="moduleSearchClear" type="button" aria-label="Clear search">&times;</button>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="exportModulesBtn" type="button" aria-label="Export modules as JSON">📤 Export</button>
+    <button class="btn btn-secondary btn-sm" id="importModulesBtn" type="button" aria-label="Import modules from JSON">📥 Import</button>
+    <input type="file" id="importFileInput" class="hidden-input" accept=".json">
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="modulesTableWrap">
+      Loaded Modules
+      <span class="collapse-icon" aria-hidden="true">▼</span>
+    </div>
+    <div class="panel-body scroll" id="modulesTableWrap">
+      <table class="data-table" id="modulesTable" aria-label="Loaded modules list">
+        <caption>Currently loaded modules in the hub registry</caption>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Version</th>
+            <th scope="col">Status</th>
+            <th scope="col">Load Time</th>
+            <th scope="col">Healthy</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="modulesBody">
+          <tr><td colspan="6"><div class="empty-state"><div class="empty-icon" aria-hidden="true">📦</div>No modules loaded yet.<br>Use Refresh Registry to populate.</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="moduleDetailsPanel">
+      Module Details
+      <span class="collapse-icon" aria-hidden="true">▼</span>
+    </div>
+    <div class="panel-body" id="moduleDetailsPanel" aria-live="polite" aria-atomic="true">
+      <div class="empty-state"><div class="empty-icon" aria-hidden="true">🔍</div>Select a module and click Inspect to see details.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 2: SERVICE CONTAINER INSPECTOR ──────── -->
+<section class="section section-hidden" id="sec-services" role="tabpanel" aria-labelledby="tab-services" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">🔌</span> Service Container Inspector</h2>
+  </div>
+
+  <div class="controls-row">
+    <div class="control-group">
+      <label for="serviceSelect">Service</label>
+      <select id="serviceSelect" title="Select a service">
+        <option value="">— Select a service —</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="svcInspect" type="button" aria-label="Inspect selected service">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">🔍 Inspect Service</span>
+    </button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="serviceInfoPanel">
+      Service Info
+      <span class="collapse-icon" aria-hidden="true">▼</span>
+    </div>
+    <div class="panel-body" id="serviceInfoPanel" aria-live="polite" aria-atomic="true">
+      <div class="empty-state"><div class="empty-icon" aria-hidden="true">🔌</div>Select a service and click Inspect.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 3: MEMORY MANAGER ──────── -->
+<section class="section section-hidden" id="sec-memory" role="tabpanel" aria-labelledby="tab-memory" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">🧠</span> Memory Manager</h2>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="memRecord" type="button" aria-label="Record a memory sample">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">📝 Record Memory Sample</span>
+    </button>
+    <button class="btn btn-secondary" id="memStats" type="button" aria-label="Show memory statistics">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">📊 Show Memory Stats</span>
+    </button>
+    <button class="btn btn-warning" id="memCleanup" type="button" aria-label="Trigger memory cleanup">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">🧹 Trigger Cleanup</span>
+    </button>
+    <button class="btn btn-secondary btn-sm" id="exportMemBtn" type="button" aria-label="Export memory data as JSON">📤 Export</button>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="memorySamplesPanel">
+        Memory Samples <span class="badge" id="sampleCount" aria-live="polite">0</span>
+        <span class="collapse-icon" aria-hidden="true">▼</span>
+      </div>
+      <div class="panel-body scroll" id="memorySamplesPanel" aria-live="polite" aria-atomic="true">
+        <div class="empty-state"><div class="empty-icon" aria-hidden="true">📝</div>No memory samples recorded yet.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="memoryStatsPanel">
+        Memory Stats
+        <span class="collapse-icon" aria-hidden="true">▼</span>
+      </div>
+      <div class="panel-body" id="memoryStatsPanel" aria-live="polite" aria-atomic="true">
+        <div class="empty-state"><div class="empty-icon" aria-hidden="true">📊</div>Click "Show Memory Stats" to load.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 4: CONFIG MANAGER ──────── -->
+<section class="section section-hidden" id="sec-config" role="tabpanel" aria-labelledby="tab-config" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">⚙️</span> Config Manager</h2>
+  </div>
+
+  <div class="controls-row">
+    <div class="control-group">
+      <label for="cfgModule">Module</label>
+      <select id="cfgModule" title="Select a module for configuration">
+        <option value="hub">hub</option>
+        <option value="automation">automation</option>
+        <option value="errorHandling">errorHandling</option>
+        <option value="ui">ui</option>
+        <option value="promptSplitter">promptSplitter</option>
+        <option value="codeShrinker">codeShrinker</option>
+      </select>
+    </div>
+    <button class="btn btn-secondary" id="cfgLoad" type="button" aria-label="Load configuration for selected module">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">📥 Load Config</span>
+    </button>
+    <button class="btn btn-primary" id="cfgSave" type="button" aria-label="Save configuration">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">💾 Save Config</span>
+    </button>
+    <button class="btn btn-danger" id="cfgReset" type="button" aria-label="Reset configuration to defaults">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">🔄 Reset to Defaults</span>
+    </button>
+    <button class="btn btn-secondary btn-sm" id="cfgDownload" type="button" aria-label="Download config as JSON file">📤 Download</button>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="panel">
+        <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="cfgEditorPanel">
+          Config Editor
+          <span class="collapse-icon" aria-hidden="true">▼</span>
+        </div>
+        <div class="panel-body" id="cfgEditorPanel">
+          <textarea id="cfgEditor" spellcheck="false" placeholder='{ "key": "value" }' aria-label="Configuration JSON editor">{}</textarea>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="cfgCurrentPanel">
+          Current Config
+          <span class="collapse-icon" aria-hidden="true">▼</span>
+        </div>
+        <div class="panel-body scroll" id="cfgCurrentPanel" aria-live="polite" aria-atomic="true">
+          <div class="empty-state"><div class="empty-icon" aria-hidden="true">⚙️</div>Load a config to view it here.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="cfgLogPanel">
+          Config Update Log <span class="badge" id="cfgLogCount" aria-live="polite">0</span>
+          <span class="collapse-icon" aria-hidden="true">▼</span>
+        </div>
+        <div class="panel-body scroll" id="cfgLogPanel" aria-live="polite" aria-atomic="true">
+          <div class="empty-state"><div class="empty-icon" aria-hidden="true">📋</div>No config updates yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 5: ERROR & EVENT MONITOR ──────── -->
+<section class="section section-hidden" id="sec-errors" role="tabpanel" aria-labelledby="tab-errors" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">🛡️</span> Error & Event Monitor</h2>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="errShow" type="button" aria-label="Show error log">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="btn-text">📋 Show Error Log</span>
+        </button>
+        <button class="btn btn-danger" id="errClear" type="button" aria-label="Clear error log">🗑️ Clear Error Log</button>
+        <button class="btn btn-secondary btn-sm" id="errCopy" type="button" aria-label="Copy errors to clipboard">📋 Copy All</button>
+      </div>
+      <div class="panel">
+        <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="errorsPanel">
+          Errors <span class="badge" id="errCount" aria-live="polite">0</span>
+          <span class="collapse-icon" aria-hidden="true">▼</span>
+        </div>
+        <div class="panel-body scroll" id="errorsPanel" role="log" aria-live="polite" aria-label="Error log">
+          <div class="empty-state"><div class="empty-icon" aria-hidden="true">✅</div>No errors captured.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="evtShow" type="button" aria-label="Show event stream">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="btn-text">📡 Show Event Stream</span>
+        </button>
+        <button class="btn btn-warning" id="evtPause" type="button" aria-label="Toggle event stream pause">⏸ Pause Event Stream</button>
+        <button class="btn btn-secondary btn-sm" id="evtCopy" type="button" aria-label="Copy events to clipboard">📋 Copy All</button>
+      </div>
+      <div class="panel">
+        <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="eventsPanel">
+          Event Stream <span class="badge" id="evtCount" aria-live="polite">0</span>
+          <span class="collapse-icon" aria-hidden="true">▼</span>
+        </div>
+        <div class="panel-body scroll" id="eventsPanel" role="log" aria-live="polite" aria-label="Event stream">
+          <div class="empty-state"><div class="empty-icon" aria-hidden="true">📡</div>No events captured yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 6: PERFORMANCE DASHBOARD ──────── -->
+<section class="section section-hidden" id="sec-performance" role="tabpanel" aria-labelledby="tab-performance" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">📊</span> Performance Dashboard</h2>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="perfShow" type="button" aria-label="Show performance metrics">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="btn-text">📊 Show Performance Metrics</span>
+    </button>
+    <button class="btn btn-danger" id="perfReset" type="button" aria-label="Reset performance metrics">🔄 Reset Metrics</button>
+  </div>
+
+  <div class="metrics-grid" id="perfMetricsGrid" role="region" aria-label="Performance metrics summary">
+    <div class="metric-card">
+      <div class="metric-label">Module Exec Times</div>
+      <div class="metric-value blue" id="pm-execTimes" aria-live="polite">—</div>
+      <div class="metric-sub">avg ms per module</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Service Init Times</div>
+      <div class="metric-value green" id="pm-initTimes" aria-live="polite">—</div>
+      <div class="metric-sub">avg ms per service</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Queue Lengths</div>
+      <div class="metric-value yellow" id="pm-queueLen" aria-live="polite">—</div>
+      <div class="metric-sub">pending items</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Worker Threads</div>
+      <div class="metric-value purple" id="pm-workers" aria-live="polite">—</div>
+      <div class="metric-sub">active / total</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Request Batching</div>
+      <div class="metric-value cyan" id="pm-batching" aria-live="polite">—</div>
+      <div class="metric-sub">batched / total requests</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="perfDetailPanel">
+      Detailed Performance Data
+      <span class="collapse-icon" aria-hidden="true">▼</span>
+    </div>
+    <div class="panel-body scroll" id="perfDetailPanel" aria-live="polite" aria-atomic="true">
+      <div class="empty-state"><div class="empty-icon" aria-hidden="true">📊</div>Click "Show Performance Metrics" to load data.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 7: SYSTEM COMMANDS ──────── -->
+<section class="section section-hidden" id="sec-system" role="tabpanel" aria-labelledby="tab-system" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">🖥️</span> System Commands</h2>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary sys-cmd" data-cmd="restart" type="button" aria-label="Restart hub">🔄 Restart Hub</button>
+    <button class="btn btn-danger sys-cmd" data-cmd="shutdown" type="button" aria-label="Shutdown hub">⏹️ Shutdown Hub</button>
+    <button class="btn btn-secondary sys-cmd" data-cmd="reloadAll" type="button" aria-label="Reload all modules">📦 Reload All Modules</button>
+    <button class="btn btn-warning sys-cmd" data-cmd="flushCache" type="button" aria-label="Flush cache">🧹 Flush Cache</button>
+    <button class="btn btn-danger sys-cmd" data-cmd="forceGC" type="button" aria-label="Force garbage collection">♻️ Force Garbage Collection</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="systemStatusPanel">
+      System Status
+      <span class="collapse-icon" aria-hidden="true">▼</span>
+    </div>
+    <div class="panel-body" id="systemStatusPanel" aria-live="polite" aria-atomic="true">
+      <div class="kv-grid">
+        <div class="kv-key">Last Command</div>
+        <div class="kv-val" id="sys-lastCmd">—</div>
+        <div class="kv-key">Result</div>
+        <div class="kv-val" id="sys-result" aria-live="polite">—</div>
+        <div class="kv-key">Timestamp</div>
+        <div class="kv-val" id="sys-ts">—</div>
+        <div class="kv-key">Notes</div>
+        <div class="kv-val" id="sys-notes">—</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────── SECTION 8: COMMAND HISTORY ──────── -->
+<section class="section section-hidden" id="sec-history" role="tabpanel" aria-labelledby="tab-history" aria-hidden="true">
+  <div class="section-header">
+    <h2><span aria-hidden="true">📜</span> Command History <span class="badge" id="cmdHistoryCount" aria-live="polite">0</span></h2>
+    <button class="btn btn-danger btn-sm" id="cmdHistoryClear" type="button" aria-label="Clear command history">🗑️ Clear</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" tabindex="0" role="button" aria-expanded="true" aria-controls="cmdHistoryPanel">
+      Recent Commands
+      <span class="collapse-icon" aria-hidden="true">▼</span>
+    </div>
+    <div class="panel-body scroll" id="cmdHistoryPanel" aria-live="polite" aria-atomic="true">
+      <div class="empty-state"><div class="empty-icon" aria-hidden="true">📜</div>No commands executed yet.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ════════ TOAST CONTAINER ════════ -->
+<div class="toast-container" id="toastContainer" role="alert" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ════════ APPLICATION LOGIC ════════ -->
+<script>
+(function() {
+  "use strict";
+
+  // ══════════════════════════════════════════════════════
+  // CONSTANTS
+  // ══════════════════════════════════════════════════════
+  const COMMAND_TIMEOUT_MS = 10000;
+  const CONNECTION_TIMEOUT_MS = 15000;
+  const TOAST_DURATION_MS = 3500;
+  const MAX_COMMAND_HISTORY = 100;
+  const STORAGE_KEYS = {
+    theme: "hubpanel_theme",
+    refreshInterval: "hubpanel_refresh_interval",
+    commandHistory: "hubpanel_cmd_history"
+  };
+
+  // DOM cache
+  const dom = {};
+
+  // State
+  const state = {
+    modules: [],
+    filteredModules: [],
+    moduleSearchQuery: "",
+    selectedModule: null,
+    moduleDetails: {},
+    services: [],
+    selectedService: null,
+    serviceDetails: {},
+    memorySamples: [],
+    memoryStats: {},
+    configModule: "hub",
+    configData: {},
+    configLog: [],
+    errors: [],
+    events: [],
+    eventsPaused: false,
+    performance: {},
+    resilience: {},
+    systemStatus: { lastCommand: "", result: "", timestamp: "", notes: "" },
+    commandHistory: [],
+    autoRefreshTimer: null,
+    autoRefreshInterval: 0,
+    theme: "dark"
+  };
+
+  // ══════════════════════════════════════════════════════
+  // UTILITY FUNCTIONS
+  // ══════════════════════════════════════════════════════
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  function ts() {
+    return new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+
+  function isoDate() {
+    return new Date().toISOString();
+  }
+
+  function safeJSONparse(str, fallback) {
+    try { return JSON.parse(str); }
+    catch { return fallback !== undefined ? fallback : {}; }
+  }
+
+  function escHTML(s) {
+    if (s === null || s === undefined) return "";
+    const d = document.createElement("div");
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function sanitizeURL(url) {
+    if (!url || typeof url !== "string") return "";
+    try {
+      const u = new URL(url);
+      return u.protocol === "http:" || u.protocol === "https:" ? u.href : "";
+    } catch { return ""; }
+  }
+
+  function setButtonLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) { btn.classList.add("loading"); btn.disabled = true; }
+    else { btn.classList.remove("loading"); btn.disabled = false; }
+  }
+
+  function getSafeArray(arr) { return Array.isArray(arr) ? arr : []; }
+  function getSafeString(val, fallback) { return typeof val === "string" ? val : (fallback || ""); }
+  function validateData(data) { return (data && typeof data === "object") ? data : {}; }
+
+  function readStorage(key, fallback) {
+    try { const v = localStorage.getItem(key); return v !== null ? v : fallback; }
+    catch { return fallback; }
+  }
+
+  function writeStorage(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch { /* noop */ }
+  }
+
+  function removeStorage(key) {
+    try { localStorage.removeItem(key); } catch { /* noop */ }
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("success", "Copied to clipboard.");
+    } catch {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed"; ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      showToast("success", "Copied to clipboard.");
+    }
+  }
+
+  function triggerFileDownload(filename, content) {
+    const blob = new Blob([content], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function pulseBadge(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove("pulse");
+    void el.offsetWidth; // force reflow
+    el.classList.add("pulse");
+    setTimeout(() => el.classList.remove("pulse"), 1000);
+  }
+
+  function formatDuration(ms) {
+    if (!ms && ms !== 0) return "—";
+    if (ms < 1000) return ms + " ms";
+    return (ms / 1000).toFixed(1) + " s";
+  }
+
+  // ══════════════════════════════════════════════════════
+  // HUB COMMUNICATION
+  // ══════════════════════════════════════════════════════
+  const pendingCommands = new Map();
+  let commandIdCounter = 0;
+
+  function emitHub(detail) {
+    const commandId = ++commandIdCounter;
+    const fullDetail = { ...detail, _commandId: commandId };
+    window.dispatchEvent(new CustomEvent("HubCommand", { detail: fullDetail }));
+    showToast("info", `Command sent: ${detail.type}`);
+
+    const timeoutId = setTimeout(() => {
+      if (pendingCommands.has(commandId)) {
+        pendingCommands.delete(commandId);
+        showToast("warn", `Command "${detail.type}" timed out.`);
+      }
+    }, COMMAND_TIMEOUT_MS);
+    pendingCommands.set(commandId, { type: detail.type, timeoutId, startTime: Date.now() });
+
+    // Add to command history
+    addCommandHistory(detail.type, detail);
+  }
+
+  function resolveCommand(commandId) {
+    if (pendingCommands.has(commandId)) {
+      const entry = pendingCommands.get(commandId);
+      clearTimeout(entry.timeoutId);
+      pendingCommands.delete(commandId);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════
+  // COMMAND HISTORY
+  // ══════════════════════════════════════════════════════
+  function addCommandHistory(type, detail) {
+    const entry = {
+      id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      type: type,
+      params: JSON.stringify(detail),
+      timestamp: ts(),
+      iso: isoDate()
+    };
+    state.commandHistory.unshift(entry);
+    if (state.commandHistory.length > MAX_COMMAND_HISTORY) {
+      state.commandHistory = state.commandHistory.slice(0, MAX_COMMAND_HISTORY);
+    }
+    persistCommandHistory();
+    renderCommandHistory();
+  }
+
+  function persistCommandHistory() {
+    try { localStorage.setItem(STORAGE_KEYS.commandHistory, JSON.stringify(state.commandHistory)); }
+    catch { /* noop */ }
+  }
+
+  function loadCommandHistory() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.commandHistory);
+      if (stored) state.commandHistory = safeJSONparse(stored, []);
+    } catch { state.commandHistory = []; }
+  }
+
+  function renderCommandHistory() {
+    const panel = dom.cmdHistoryPanel;
+    if (!panel) return;
+    const count = dom.cmdHistoryCount;
+    if (!state.commandHistory.length) {
+      panel.innerHTML = `<div class="empty-state"><div class="empty-icon" aria-hidden="true">📜</div>No commands executed yet.</div>`;
+      if (count) count.textContent = "0";
+      return;
+    }
+    if (count) count.textContent = String(state.commandHistory.length);
+    panel.innerHTML = state.commandHistory.map(cmd => `
+      <div class="cmd-history-item">
+        <span class="cmd-text">${escHTML(cmd.type)}</span>
+        <span class="cmd-time" title="${escHTML(cmd.iso)}">${escHTML(cmd.timestamp)}</span>
+        <button class="copy-btn btn-sm" data-cmd-replay="${escHTML(cmd.type)}" title="Re-execute command" aria-label="Re-execute ${escHTML(cmd.type)}">↻</button>
+      </div>`).join("");
+
+    panel.querySelectorAll("[data-cmd-replay]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const type = btn.dataset.cmdReplay;
+        emitHub({ type: type });
+        showToast("info", `Re-issuing command: ${type}`);
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // THEME MANAGEMENT
+  // ══════════════════════════════════════════════════════
+  function setTheme(theme) {
+    state.theme = theme;
+    document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "");
+    const icon = dom.themeIcon;
+    if (icon) icon.textContent = theme === "light" ? "☀️" : "🌙";
+    writeStorage(STORAGE_KEYS.theme, theme);
+  }
+
+  function toggleTheme() {
+    setTheme(state.theme === "dark" ? "light" : "dark");
+    showToast("info", `Switched to ${state.theme} theme.`);
+  }
+
+  // ══════════════════════════════════════════════════════
+  // AUTO-REFRESH
+  // ══════════════════════════════════════════════════════
+  function startAutoRefresh(intervalMs) {
+    stopAutoRefresh();
+    if (intervalMs <= 0) {
+      const ind = dom.refreshIndicator;
+      if (ind) ind.className = "auto-refresh-indicator paused";
+      return;
+    }
+    state.autoRefreshInterval = intervalMs;
+    const ind = dom.refreshIndicator;
+    if (ind) ind.className = "auto-refresh-indicator";
+    state.autoRefreshTimer = setInterval(() => {
+      emitHub({ type: "refreshRegistry" });
+    }, intervalMs);
+  }
+
+  function stopAutoRefresh() {
+    if (state.autoRefreshTimer) {
+      clearInterval(state.autoRefreshTimer);
+      state.autoRefreshTimer = null;
+    }
+    state.autoRefreshInterval = 0;
+  }
+
+  // ══════════════════════════════════════════════════════
+  // TOAST NOTIFICATIONS
+  // ══════════════════════════════════════════════════════
+  function showToast(type, msg) {
+    const container = dom.toastContainer;
+    if (!container) return;
+    const el = document.createElement("div");
+    el.className = "toast " + type;
+    const msgSpan = document.createElement("span");
+    msgSpan.textContent = msg;
+    el.appendChild(msgSpan);
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "toast-close";
+    closeBtn.textContent = "\u2715";
+    closeBtn.setAttribute("aria-label", "Dismiss notification");
+    closeBtn.addEventListener("click", () => el.remove());
+    el.appendChild(closeBtn);
+    container.appendChild(el);
+
+    let hideTimer = setTimeout(() => {
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 300);
+    }, TOAST_DURATION_MS);
+
+    el.addEventListener("mouseenter", () => clearTimeout(hideTimer));
+    el.addEventListener("mouseleave", () => {
+      hideTimer = setTimeout(() => {
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 300);
+      }, TOAST_DURATION_MS);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // DOM CACHE SETUP
+  // ══════════════════════════════════════════════════════
+  function initDOMCache() {
+    const ids = [
+      "connDot", "connLabel",
+      "navTabs", "menuToggle", "themeToggle", "themeIcon", "shortcutsToggle",
+      "shortcutsModal", "shortcutsClose", "demoDataBtn",
+      "modName", "modURL", "modAction", "modExec", "modulesBody", "modulesTable",
+      "moduleCount", "moduleDetailsPanel", "moduleSearch", "moduleSearchClear",
+      "exportModulesBtn", "importModulesBtn", "importFileInput",
+      "modHealthTotal", "modHealthActive", "modHealthHealthy",
+      "refreshInterval", "refreshIndicator",
+      "serviceSelect", "svcInspect", "serviceInfoPanel",
+      "memRecord", "memStats", "memCleanup", "sampleCount", "exportMemBtn",
+      "memorySamplesPanel", "memoryStatsPanel",
+      "cfgModule", "cfgLoad", "cfgSave", "cfgReset", "cfgEditor", "cfgDownload",
+      "cfgCurrentPanel", "cfgLogPanel", "cfgLogCount",
+      "errShow", "errClear", "errCopy", "errCount", "errorsPanel",
+      "evtShow", "evtPause", "evtCopy", "evtCount", "eventsPanel",
+      "perfShow", "perfReset", "perfDetailPanel",
+      "pm-execTimes", "pm-initTimes", "pm-queueLen", "pm-workers", "pm-batching",
+      "sys-lastCmd", "sys-result", "sys-ts", "sys-notes",
+      "cmdHistoryPanel", "cmdHistoryCount", "cmdHistoryClear",
+      "toastContainer"
+    ];
+    ids.forEach(id => { dom[id] = document.getElementById(id); });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // TAB NAVIGATION
+  // ══════════════════════════════════════════════════════
+  function activateTab(tabEl) {
+    $$("#navTabs .nav-tab").forEach(t => {
+      t.classList.remove("active");
+      t.setAttribute("aria-selected", "false");
+    });
+    tabEl.classList.add("active");
+    tabEl.setAttribute("aria-selected", "true");
+    tabEl.focus();
+
+    $$(".section").forEach(s => {
+      s.classList.remove("active");
+      s.setAttribute("aria-hidden", "true");
+      s.style.display = "none";
+    });
+    const target = document.getElementById("sec-" + tabEl.dataset.tab);
+    if (target) {
+      target.classList.add("active");
+      target.setAttribute("aria-hidden", "false");
+      target.style.display = "";
+    }
+
+    // Close mobile menu
+    const nav = dom.navTabs;
+    if (nav) nav.classList.remove("nav-open");
+    const menuBtn = dom.menuToggle;
+    if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+  }
+
+  // ══════════════════════════════════════════════════════
+  // MODAL MANAGEMENT
+  // ══════════════════════════════════════════════════════
+  function openModal(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.add("open");
+    const closeBtn = modalEl.querySelector(".modal-close");
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeModal(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.remove("open");
+  }
+
+  function closeAllModals() {
+    $$(".modal-overlay.open").forEach(m => m.classList.remove("open"));
+  }
+
+  // ══════════════════════════════════════════════════════
+  // PANEL COLLAPSE
+  // ══════════════════════════════════════════════════════
+  function initCollapsiblePanels() {
+    $$(".panel-header").forEach(header => {
+      header.addEventListener("click", function() {
+        const isExpanded = this.getAttribute("aria-expanded") === "true";
+        this.setAttribute("aria-expanded", String(!isExpanded));
+        this.classList.toggle("collapsed");
+        const targetId = this.getAttribute("aria-controls");
+        const body = targetId ? document.getElementById(targetId) : this.nextElementSibling;
+        if (body) {
+          body.classList.toggle("collapsed");
+          body.style.display = isExpanded ? "none" : "";
+        }
+      });
+      header.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          this.click();
+        }
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 1 — MODULE REGISTRY
+  // ══════════════════════════════════════════════════════
+  function updateHealthSummary() {
+    const total = state.modules.length;
+    const active = state.modules.filter(m => m.status === "active").length;
+    const healthy = state.modules.filter(m => m.healthy === true).length;
+    if (dom.modHealthTotal) dom.modHealthTotal.textContent = String(total);
+    if (dom.modHealthActive) dom.modHealthActive.textContent = String(active);
+    if (dom.modHealthHealthy) dom.modHealthHealthy.textContent = String(healthy);
+
+    // Color code
+    if (dom.modHealthActive) dom.modHealthActive.className = "stat-value " + (active === total ? "green" : active > 0 ? "yellow" : "red");
+    if (dom.modHealthHealthy) dom.modHealthHealthy.className = "stat-value " + (healthy === total && total > 0 ? "green" : healthy > 0 ? "yellow" : "red");
+  }
+
+  function getFilteredModules() {
+    const q = state.moduleSearchQuery.toLowerCase().trim();
+    if (!q) return state.modules;
+    return state.modules.filter(m =>
+      (m.name && m.name.toLowerCase().includes(q)) ||
+      (m.version && m.version.toLowerCase().includes(q)) ||
+      (m.status && m.status.toLowerCase().includes(q))
+    );
+  }
+
+  function renderModulesTable() {
+    const tbody = dom.modulesBody;
+    if (!tbody) return;
+
+    const filtered = getFilteredModules();
+
+    if (!state.modules.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon" aria-hidden="true">📦</div>No modules loaded yet.<br>Use Refresh Registry to populate.</div></td></tr>`;
+      if (dom.moduleCount) dom.moduleCount.textContent = "0 modules";
+      updateHealthSummary();
+      return;
+    }
+    if (dom.moduleCount) dom.moduleCount.textContent = state.modules.length + " module" + (state.modules.length !== 1 ? "s" : "");
+    updateHealthSummary();
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon" aria-hidden="true">🔍</div>No modules match your search.</div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map((m, idx) => {
+      const statusClass = m.status === "active" ? "active" : m.status === "loading" ? "loading" : "inactive";
+      const healthyLabel = m.healthy ? "Healthy" : "Unhealthy";
+      const healthyHtml = m.healthy
+        ? '<span class="status-badge healthy" aria-label="Healthy">✔ Healthy</span>'
+        : '<span class="status-badge unhealthy" aria-label="Unhealthy">✘ Unhealthy</span>';
+
+      return `<tr tabindex="0" role="button" aria-label="Inspect module ${escHTML(m.name)}" data-mod="${escHTML(m.name)}" data-index="${idx}">
+        <td><strong>${escHTML(m.name)}</strong></td>
+        <td style="font-family:var(--font-mono);font-size:12px">${escHTML(m.version || "—")}</td>
+        <td><span class="status-badge ${statusClass}">${escHTML(m.status)}</span></td>
+        <td style="font-family:var(--font-mono);font-size:12px">${escHTML(m.loadTime || "—")}</td>
+        <td>${healthyHtml}</td>
+        <td><button class="copy-btn" data-copy-mod='${escHTML(JSON.stringify(m))}' aria-label="Copy module info">📋</button></td>
+      </tr>`;
+    }).join("");
+
+    // Row click handles
+    tbody.querySelectorAll("tr[data-mod]").forEach(function(row) {
+      const clickHandler = function() {
+        const name = row.dataset.mod;
+        state.selectedModule = name;
+        if (dom.modName) dom.modName.value = name;
+        if (dom.modAction) dom.modAction.value = "inspectModule";
+        emitHub({ type: "inspectModule", moduleName: name });
+      };
+      row.addEventListener("click", clickHandler);
+      row.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); clickHandler(); }
+      });
+    });
+
+    // Copy buttons
+    tbody.querySelectorAll("[data-copy-mod]").forEach(function(btn) {
+      btn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        const text = this.dataset.copyMod;
+        copyToClipboard(text);
+        this.classList.add("copied");
+        setTimeout(() => this.classList.remove("copied"), 1500);
+      });
+    });
+  }
+
+  function renderModuleDetails() {
+    const panel = dom.moduleDetailsPanel;
+    if (!panel) return;
+    const d = state.moduleDetails;
+    if (!d || !Object.keys(d).length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">🔍</div>Select a module and click Inspect to see details.</div>';
+      return;
+    }
+    const deps = Array.isArray(d.dependencies) ? d.dependencies.join(", ") : d.dependencies || "None";
+    const methods = Array.isArray(d.methods) ? d.methods.join(", ") : d.methods || "None";
+    const stateStr = typeof d.state === "object" ? JSON.stringify(d.state, null, 2) : String(d.state || "—");
+    const errorsHtml = d.errors && d.errors.length
+      ? d.errors.map(function(e) { return '<div style="color:var(--red)">' + escHTML(e) + '</div>'; }).join("")
+      : '<span style="color:var(--green)">None</span>';
+
+    const detailsStr = JSON.stringify(d, null, 2);
+    panel.innerHTML =
+      '<div class="kv-grid">' +
+        '<div class="kv-key">Dependencies</div><div class="kv-val">' + escHTML(deps) + '</div>' +
+        '<div class="kv-key">Methods</div><div class="kv-val" style="font-family:var(--font-mono);font-size:12px">' + escHTML(methods) + '</div>' +
+        '<div class="kv-key">State</div><div class="kv-val"><pre style="margin:0;white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);color:var(--text-primary)">' + escHTML(stateStr) + '</pre></div>' +
+        '<div class="kv-key">Errors</div><div class="kv-val">' + errorsHtml + '</div>' +
+        '<div class="kv-key"></div><div class="kv-val"><button class="copy-btn" id="copyModuleDetailsBtn" aria-label="Copy module details">📋 Copy Details</button></div>' +
+      '</div>';
+
+    const copyBtn = document.getElementById("copyModuleDetailsBtn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function() {
+        copyToClipboard(detailsStr);
+        this.classList.add("copied");
+        setTimeout(function() { copyBtn.classList.remove("copied"); }, 1500);
+      });
+    }
+  }
+
+  function handleModExec() {
+    const action = dom.modAction ? dom.modAction.value : "";
+    const moduleName = dom.modName ? dom.modName.value.trim() : "";
+    const moduleURL = dom.modURL ? dom.modURL.value.trim() : "";
+    const payload = { type: action, moduleName: moduleName, moduleURL: moduleURL };
+
+    if (["registerModule","reloadModule","unloadModule","inspectModule"].includes(action) && !moduleName) {
+      showToast("warn", "Module name is required for this action.");
+      if (dom.modExec) setButtonLoading(dom.modExec, false);
+      return;
+    }
+    if (action === "registerModule") {
+      if (!moduleURL) {
+        showToast("warn", "Module URL is required for registration.");
+        if (dom.modExec) setButtonLoading(dom.modExec, false);
+        return;
+      }
+      payload.moduleURL = sanitizeURL(moduleURL);
+      if (!payload.moduleURL) {
+        showToast("error", "Invalid URL format. Must be http:// or https://");
+        if (dom.modExec) setButtonLoading(dom.modExec, false);
+        return;
+      }
+    }
+    emitHub(payload);
+  }
+
+  // ── Module Export/Import ──
+  function exportModules() {
+    if (!state.modules.length) {
+      showToast("warn", "No modules to export.");
+      return;
+    }
+    const data = JSON.stringify({ exportedAt: isoDate(), modules: state.modules }, null, 2);
+    triggerFileDownload("hub-modules-" + Date.now() + ".json", data);
+    showToast("success", "Modules exported.");
+  }
+
+  function importModulesFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = safeJSONparse(e.target.result, {});
+        const modules = getSafeArray(data.modules || data);
+        if (!modules.length) {
+          showToast("warn", "No modules found in file.");
+          return;
+        }
+        state.modules = modules;
+        renderModulesTable();
+        showToast("success", "Imported " + modules.length + " modules.");
+
+        // Notify hub of imported modules
+        if (modules.length <= 10) {
+          modules.forEach(function(m) {
+            if (m.name) emitHub({ type: "registerModule", moduleName: m.name, moduleURL: m.url || "" });
+          });
+        } else {
+          emitHub({ type: "refreshRegistry" });
+        }
+      } catch (err) {
+        showToast("error", "Failed to import: invalid file.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ── Module Search ──
+  function filterModules(query) {
+    state.moduleSearchQuery = query;
+    const clearBtn = dom.moduleSearchClear;
+    if (clearBtn) clearBtn.classList.toggle("visible", query.length > 0);
+    renderModulesTable();
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 2 — SERVICE CONTAINER
+  // ══════════════════════════════════════════════════════
+  function renderServiceDropdown() {
+    const sel = dom.serviceSelect;
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Select a service —</option>';
+    state.services.forEach(function(s) {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      sel.appendChild(opt);
+    });
+    if (current && state.services.includes(current)) sel.value = current;
+  }
+
+  function renderServiceInfo() {
+    const panel = dom.serviceInfoPanel;
+    if (!panel) return;
+    const d = state.serviceDetails;
+    if (!d || !Object.keys(d).length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">🔌</div>Select a service and click Inspect.</div>';
+      return;
+    }
+    const statusClass = d.status === "initialized" ? "initialized" : d.status === "pending" ? "pending" : "failed";
+    const deps = Array.isArray(d.dependencies) ? d.dependencies.join(", ") : d.dependencies || "None";
+    const errorsHtml = d.errors && d.errors.length
+      ? d.errors.map(function(e) { return '<div style="color:var(--red)">' + escHTML(e) + '</div>'; }).join("")
+      : '<span style="color:var(--green)">None</span>';
+
+    const detailsStr = JSON.stringify(d, null, 2);
+    panel.innerHTML =
+      '<div class="kv-grid">' +
+        '<div class="kv-key">Status</div><div class="kv-val"><span class="status-badge ' + statusClass + '">' + escHTML(d.status) + '</span></div>' +
+        '<div class="kv-key">Init State</div><div class="kv-val">' + escHTML(d.initState || "—") + '</div>' +
+        '<div class="kv-key">Dependencies</div><div class="kv-val">' + escHTML(deps) + '</div>' +
+        '<div class="kv-key">Calls</div><div class="kv-val" style="font-family:var(--font-mono)">' + escHTML(d.metrics?.calls ?? "—") + '</div>' +
+        '<div class="kv-key">Total Time</div><div class="kv-val" style="font-family:var(--font-mono)">' + escHTML(d.metrics?.totalTime ? formatDuration(d.metrics.totalTime) : "—") + '</div>' +
+        '<div class="kv-key">Errors</div><div class="kv-val">' + errorsHtml + '</div>' +
+        '<div class="kv-key"></div><div class="kv-val"><button class="copy-btn" id="copySvcBtn" aria-label="Copy service details">📋 Copy Details</button></div>' +
+      '</div>';
+
+    const copyBtn = document.getElementById("copySvcBtn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function() {
+        copyToClipboard(detailsStr);
+        this.classList.add("copied");
+        setTimeout(function() { copyBtn.classList.remove("copied"); }, 1500);
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 3 — MEMORY MANAGER
+  // ══════════════════════════════════════════════════════
+  function renderMemorySamples() {
+    const panel = dom.memorySamplesPanel;
+    if (!panel) return;
+    if (!state.memorySamples.length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">📝</div>No memory samples recorded yet.</div>';
+      if (dom.sampleCount) dom.sampleCount.textContent = "0";
+      return;
+    }
+    if (dom.sampleCount) dom.sampleCount.textContent = String(state.memorySamples.length);
+    panel.innerHTML = '<table class="data-table" aria-label="Memory samples"><caption>Recorded memory usage samples</caption><thead><tr><th scope="col">Timestamp</th><th scope="col">Used Heap</th><th scope="col">Total Heap</th><th scope="col">Limit</th></tr></thead><tbody>' +
+      state.memorySamples.map(function(s) {
+        return '<tr><td style="font-family:var(--font-mono);font-size:12px">' + escHTML(s.timestamp) + '</td>' +
+          '<td style="font-family:var(--font-mono);font-size:12px">' + escHTML(s.usedHeap) + '</td>' +
+          '<td style="font-family:var(--font-mono);font-size:12px">' + escHTML(s.totalHeap) + '</td>' +
+          '<td style="font-family:var(--font-mono);font-size:12px">' + escHTML(s.limit) + '</td></tr>';
+      }).join("") +
+      '</tbody></table>';
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  function renderMemoryStats() {
+    const panel = dom.memoryStatsPanel;
+    if (!panel) return;
+    const s = state.memoryStats;
+    if (!s || !Object.keys(s).length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">📊</div>Click "Show Memory Stats" to load.</div>';
+      return;
+    }
+    panel.innerHTML =
+      '<div class="kv-grid">' +
+        '<div class="kv-key">Average Usage</div><div class="kv-val" style="font-family:var(--font-mono)">' + escHTML(s.averageUsage || "—") + '</div>' +
+        '<div class="kv-key">Peak Usage</div><div class="kv-val" style="font-family:var(--font-mono);color:var(--yellow)">' + escHTML(s.peakUsage || "—") + '</div>' +
+        '<div class="kv-key">Current Usage</div><div class="kv-val" style="font-family:var(--font-mono);color:var(--accent)">' + escHTML(s.currentUsage || "—") + '</div>' +
+        '<div class="kv-key">Threshold</div><div class="kv-val" style="font-family:var(--font-mono);color:var(--red)">' + escHTML(s.threshold || "—") + '</div>' +
+      '</div>';
+  }
+
+  function exportMemoryData() {
+    const data = {
+      exportedAt: isoDate(),
+      samples: state.memorySamples,
+      stats: state.memoryStats
+    };
+    triggerFileDownload("hub-memory-" + Date.now() + ".json", JSON.stringify(data, null, 2));
+    showToast("success", "Memory data exported.");
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 4 — CONFIG MANAGER
+  // ══════════════════════════════════════════════════════
+  function renderCurrentConfig() {
+    const panel = dom.cfgCurrentPanel;
+    if (!panel) return;
+    const d = state.configData;
+    if (!d || !Object.keys(d).length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">⚙️</div>Load a config to view it here.</div>';
+      return;
+    }
+    const configStr = JSON.stringify(d, null, 2);
+    panel.innerHTML = '<pre style="margin:0;white-space:pre-wrap;font-family:var(--font-mono);font-size:13px;color:var(--text-primary)">' + escHTML(configStr) + '</pre>' +
+      '<div style="margin-top:8px"><button class="copy-btn" id="copyConfigBtn" aria-label="Copy config">📋 Copy Config</button></div>';
+
+    const copyBtn = document.getElementById("copyConfigBtn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function() {
+        copyToClipboard(configStr);
+        this.classList.add("copied");
+        setTimeout(function() { copyBtn.classList.remove("copied"); }, 1500);
+      });
+    }
+  }
+
+  function renderConfigLog() {
+    const panel = dom.cfgLogPanel;
+    if (!panel) return;
+    if (!state.configLog.length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">📋</div>No config updates yet.</div>';
+      if (dom.cfgLogCount) dom.cfgLogCount.textContent = "0";
+      return;
+    }
+    if (dom.cfgLogCount) dom.cfgLogCount.textContent = String(state.configLog.length);
+    panel.innerHTML = state.configLog.map(function(entry) {
+      return '<div class="log-entry ' + (entry.type || "info") + '">' +
+        '<span class="log-time">' + escHTML(entry.timestamp) + '</span>' +
+        '<span class="log-msg">' + escHTML(entry.message) + '</span></div>';
+    }).join("");
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  function downloadConfig() {
+    if (!Object.keys(state.configData).length) {
+      showToast("warn", "No config loaded to download.");
+      return;
+    }
+    const data = JSON.stringify({ module: state.configModule, config: state.configData }, null, 2);
+    triggerFileDownload("hub-config-" + state.configModule + "-" + Date.now() + ".json", data);
+    showToast("success", "Config downloaded.");
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 5 — ERROR & EVENT MONITOR
+  // ══════════════════════════════════════════════════════
+  function renderErrors() {
+    const panel = dom.errorsPanel;
+    if (!panel) return;
+    const count = dom.errCount;
+    if (!state.errors.length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">✅</div>No errors captured.</div>';
+      if (count) count.textContent = "0";
+      return;
+    }
+    if (count) {
+      count.textContent = String(state.errors.length);
+      pulseBadge("errCount");
+    }
+    panel.innerHTML = state.errors.map(function(e, i) {
+      return '<div class="log-entry error" role="alert">' +
+        '<span class="log-time">' + escHTML(e.timestamp) + '</span>' +
+        '<span class="log-msg">' + escHTML(e.message) + '</span>' +
+        '<span class="log-actions"><button class="copy-btn" data-copy-err="' + i + '" aria-label="Copy error">📋</button></span></div>';
+    }).join("");
+    panel.scrollTop = panel.scrollHeight;
+
+    // Copy buttons
+    panel.querySelectorAll("[data-copy-err]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const idx = parseInt(this.dataset.copyErr);
+        const entry = state.errors[idx];
+        if (entry) copyToClipboard("[" + entry.timestamp + "] " + entry.message);
+        this.classList.add("copied");
+        setTimeout(function() { btn.classList.remove("copied"); }, 1500);
+      });
+    });
+  }
+
+  function renderEvents() {
+    const panel = dom.eventsPanel;
+    if (!panel) return;
+    const count = dom.evtCount;
+    if (!state.events.length) {
+      panel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">📡</div>No events captured yet.</div>';
+      if (count) count.textContent = "0";
+      return;
+    }
+    if (count) {
+      count.textContent = String(state.events.length);
+      pulseBadge("evtCount");
+    }
+    panel.innerHTML = state.events.map(function(e, i) {
+      return '<div class="log-entry ' + (e.level || "info") + '">' +
+        '<span class="log-time">' + escHTML(e.timestamp) + '</span>' +
+        '<span class="log-msg">' + escHTML(e.type ? "[" + e.type + "] " : "") + escHTML(e.message) + '</span>' +
+        '<span class="log-actions"><button class="copy-btn" data-copy-evt="' + i + '" aria-label="Copy event">📋</button></span></div>';
+    }).join("");
+    panel.scrollTop = panel.scrollHeight;
+
+    panel.querySelectorAll("[data-copy-evt]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const idx = parseInt(this.dataset.copyEvt);
+        const entry = state.events[idx];
+        if (entry) copyToClipboard("[" + entry.timestamp + "] " + (entry.type ? "[" + entry.type + "] " : "") + entry.message);
+        this.classList.add("copied");
+        setTimeout(function() { btn.classList.remove("copied"); }, 1500);
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 6 — PERFORMANCE DASHBOARD
+  // ══════════════════════════════════════════════════════
+  function renderPerformance() {
+    const p = state.performance;
+    if (!p || !Object.keys(p).length) return;
+
+    const perfMap = {
+      "pm-execTimes": p.moduleExecTimes,
+      "pm-initTimes": p.serviceInitTimes,
+      "pm-queueLen": p.queueLengths,
+      "pm-workers": p.workerThreads,
+      "pm-batching": p.requestBatching
+    };
+    Object.keys(perfMap).forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = perfMap[id] !== undefined && perfMap[id] !== null ? String(perfMap[id]) : "—";
+    });
+
+    const detail = dom.perfDetailPanel;
+    if (detail) {
+      const detailStr = JSON.stringify(p, null, 2);
+      detail.innerHTML = '<pre style="margin:0;white-space:pre-wrap;font-family:var(--font-mono);font-size:13px;color:var(--text-primary)">' + escHTML(detailStr) + '</pre>' +
+        '<div style="margin-top:8px"><button class="copy-btn" id="copyPerfBtn" aria-label="Copy performance data">📋 Copy Data</button></div>';
+      const copyBtn = document.getElementById("copyPerfBtn");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", function() {
+          copyToClipboard(detailStr);
+          this.classList.add("copied");
+          setTimeout(function() { copyBtn.classList.remove("copied"); }, 1500);
+        });
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════
+  // SECTION 7 — SYSTEM COMMANDS
+  // ══════════════════════════════════════════════════════
+  function renderSystemStatus() {
+    const s = state.systemStatus;
+    if (dom["sys-lastCmd"]) dom["sys-lastCmd"].textContent = s.lastCommand || "—";
+    if (dom["sys-result"]) {
+      dom["sys-result"].textContent = s.result || "—";
+      dom["sys-result"].style.color = "";
+      if (s.result === "success") dom["sys-result"].style.color = "var(--green)";
+      else if (s.result === "error" || s.result === "failed") dom["sys-result"].style.color = "var(--red)";
+    }
+    if (dom["sys-ts"]) dom["sys-ts"].textContent = s.timestamp || "—";
+    if (dom["sys-notes"]) dom["sys-notes"].textContent = s.notes || "—";
+  }
+
+  // ══════════════════════════════════════════════════════
+  // EVENT BINDING
+  // ══════════════════════════════════════════════════════
+  function initEventHandlers() {
+    // ── Tab navigation ──
+    $$("#navTabs .nav-tab").forEach(function(tab) {
+      tab.addEventListener("click", function() { activateTab(this); });
+      tab.addEventListener("keydown", function(e) {
+        const tabs = Array.from($$("#navTabs .nav-tab"));
+        const idx = tabs.indexOf(this);
+        let newIdx = -1;
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") newIdx = (idx + 1) % tabs.length;
+        else if (e.key === "ArrowLeft" || e.key === "ArrowUp") newIdx = (idx - 1 + tabs.length) % tabs.length;
+        if (newIdx >= 0) { e.preventDefault(); activateTab(tabs[newIdx]); }
+      });
+    });
+
+    // ── Mobile menu toggle ──
+    if (dom.menuToggle) {
+      dom.menuToggle.addEventListener("click", function() {
+        const nav = dom.navTabs;
+        if (!nav) return;
+        const isOpen = nav.classList.toggle("nav-open");
+        this.setAttribute("aria-expanded", String(isOpen));
+      });
+    }
+
+    // ── Theme toggle ──
+    if (dom.themeToggle) dom.themeToggle.addEventListener("click", toggleTheme);
+
+    // ── Keyboard shortcuts modal ──
+    if (dom.shortcutsToggle) {
+      dom.shortcutsToggle.addEventListener("click", function() { openModal(dom.shortcutsModal); });
+    }
+    if (dom.shortcutsClose) {
+      dom.shortcutsClose.addEventListener("click", function() { closeModal(dom.shortcutsModal); });
+    }
+
+    // ── Demo data button ──
+    if (dom.demoDataBtn) {
+      dom.demoDataBtn.addEventListener("click", loadDemoData);
+    }
+
+    // ── Module actions ──
+    if (dom.modExec) {
+      dom.modExec.addEventListener("click", function() {
+        setButtonLoading(this, true);
+        handleModExec();
+      });
+    }
+
+    // Enter key on module inputs
+    [dom.modName, dom.modURL].forEach(function(el) {
+      if (el) el.addEventListener("keydown", function(e) { if (e.key === "Enter" && dom.modExec) dom.modExec.click(); });
+    });
+
+    // ── Module search ──
+    if (dom.moduleSearch) {
+      dom.moduleSearch.addEventListener("input", function() { filterModules(this.value); });
+      dom.moduleSearch.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") { this.value = ""; filterModules(""); this.blur(); }
+      });
+    }
+    if (dom.moduleSearchClear) {
+      dom.moduleSearchClear.addEventListener("click", function() {
+        if (dom.moduleSearch) { dom.moduleSearch.value = ""; dom.moduleSearch.focus(); filterModules(""); }
+      });
+    }
+
+    // ── Module Export/Import ──
+    if (dom.exportModulesBtn) dom.exportModulesBtn.addEventListener("click", exportModules);
+    if (dom.importModulesBtn) {
+      dom.importModulesBtn.addEventListener("click", function() { if (dom.importFileInput) dom.importFileInput.click(); });
+    }
+    if (dom.importFileInput) {
+      dom.importFileInput.addEventListener("change", function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+          importModulesFromFile(e.target.files[0]);
+          e.target.value = "";
+        }
+      });
+    }
+
+    // ── Auto-refresh ──
+    if (dom.refreshInterval) {
+      dom.refreshInterval.addEventListener("change", function() {
+        const val = parseInt(this.value, 10);
+        writeStorage(STORAGE_KEYS.refreshInterval, String(val));
+        startAutoRefresh(val);
+        showToast("info", val > 0 ? "Auto-refresh every " + (val / 1000) + "s" : "Auto-refresh off");
+      });
+    }
+
+    // ── Service inspect ──
+    if (dom.svcInspect) {
+      dom.svcInspect.addEventListener("click", function() {
+        const name = dom.serviceSelect ? dom.serviceSelect.value : "";
+        if (!name) { showToast("warn", "Select a service first."); return; }
+        state.selectedService = name;
+        setButtonLoading(this, true);
+        emitHub({ type: "inspectService", serviceName: name });
+      });
+    }
+
+    // ── Memory buttons ──
+    if (dom.memRecord) dom.memRecord.addEventListener("click", function() { emitHub({ type: "memoryRecord" }); });
+    if (dom.memStats) dom.memStats.addEventListener("click", function() { emitHub({ type: "memoryStats" }); });
+    if (dom.memCleanup) dom.memCleanup.addEventListener("click", function() { emitHub({ type: "memoryCleanup" }); });
+    if (dom.exportMemBtn) dom.exportMemBtn.addEventListener("click", exportMemoryData);
+
+    // ── Config buttons ──
+    if (dom.cfgLoad) {
+      dom.cfgLoad.addEventListener("click", function() {
+        const mod = dom.cfgModule ? dom.cfgModule.value : "hub";
+        state.configModule = mod;
+        setButtonLoading(this, true);
+        emitHub({ type: "configLoad", module: mod });
+      });
+    }
+    if (dom.cfgSave) {
+      dom.cfgSave.addEventListener("click", function() {
+        const mod = dom.cfgModule ? dom.cfgModule.value : "hub";
+        const raw = dom.cfgEditor ? dom.cfgEditor.value : "{}";
+        const payload = safeJSONparse(raw);
+        if (Object.keys(payload).length === 0 && raw.trim() !== "{}") {
+          showToast("error", "Invalid JSON in Config Editor.");
+          return;
+        }
+        state.configModule = mod;
+        setButtonLoading(this, true);
+        emitHub({ type: "configSave", module: mod, payload: payload });
+      });
+    }
+    if (dom.cfgReset) {
+      dom.cfgReset.addEventListener("click", function() {
+        const mod = dom.cfgModule ? dom.cfgModule.value : "hub";
+        state.configModule = mod;
+        if (confirm('Are you sure you want to reset config for "' + mod + '" to defaults?')) {
+          setButtonLoading(this, true);
+          emitHub({ type: "configReset", module: mod });
+        }
+      });
+    }
+    if (dom.cfgDownload) dom.cfgDownload.addEventListener("click", downloadConfig);
+
+    // ── Error/Event buttons ──
+    if (dom.errShow) dom.errShow.addEventListener("click", function() { emitHub({ type: "showErrors" }); });
+    if (dom.errClear) {
+      dom.errClear.addEventListener("click", function() {
+        if (confirm("Clear all errors?")) {
+          state.errors = [];
+          renderErrors();
+          showToast("success", "Error log cleared.");
+        }
+      });
+    }
+    if (dom.errCopy) {
+      dom.errCopy.addEventListener("click", function() {
+        if (!state.errors.length) { showToast("warn", "No errors to copy."); return; }
+        const text = state.errors.map(function(e) { return "[" + e.timestamp + "] " + e.message; }).join("\n");
+        copyToClipboard(text);
+      });
+    }
+    if (dom.evtShow) dom.evtShow.addEventListener("click", function() { emitHub({ type: "showEvents" }); });
+    if (dom.evtPause) {
+      dom.evtPause.addEventListener("click", function() {
+        state.eventsPaused = !state.eventsPaused;
+        this.innerHTML = state.eventsPaused ? "▶ Resume Event Stream" : "⏸ Pause Event Stream";
+        this.setAttribute("aria-label", state.eventsPaused ? "Resume event stream" : "Pause event stream");
+        showToast("info", state.eventsPaused ? "Event stream paused." : "Event stream resumed.");
+      });
+    }
+    if (dom.evtCopy) {
+      dom.evtCopy.addEventListener("click", function() {
+        if (!state.events.length) { showToast("warn", "No events to copy."); return; }
+        const text = state.events.map(function(e) { return "[" + e.timestamp + "] " + (e.type ? "[" + e.type + "] " : "") + e.message; }).join("\n");
+        copyToClipboard(text);
+      });
+    }
+
+    // ── Performance buttons ──
+    if (dom.perfShow) {
+      dom.perfShow.addEventListener("click", function() {
+        setButtonLoading(this, true);
+        emitHub({ type: "performanceMetrics" });
+      });
+    }
+    if (dom.perfReset) {
+      dom.perfReset.addEventListener("click", function() {
+        if (confirm("Reset all performance metrics?")) {
+          state.performance = {};
+          ["pm-execTimes","pm-initTimes","pm-queueLen","pm-workers","pm-batching"].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = "—";
+          });
+          if (dom.perfDetailPanel) dom.perfDetailPanel.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">📊</div>Metrics have been reset.</div>';
+          showToast("success", "Performance metrics reset.");
+          emitHub({ type: "performanceReset" });
+        }
+      });
+    }
+
+    // ── System commands ──
+    $$(".sys-cmd").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const cmd = this.dataset.cmd;
+        if (["shutdown", "forceGC"].indexOf(cmd) >= 0) {
+          if (!confirm('Are you sure you want to execute "' + cmd + '"?')) return;
+        }
+        emitHub({ type: "systemCommand", command: cmd });
+      });
+    });
+
+    // ── Command history ──
+    if (dom.cmdHistoryClear) {
+      dom.cmdHistoryClear.addEventListener("click", function() {
+        if (confirm("Clear command history?")) {
+          state.commandHistory = [];
+          persistCommandHistory();
+          renderCommandHistory();
+          showToast("success", "Command history cleared.");
+        }
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════
+  // HUB EVENT LISTENERS
+  // ══════════════════════════════════════════════════════
+  function initHubListeners() {
+    window.addEventListener("HubResponse", function(e) {
+      const d = e.detail || {};
+      const commandId = d._commandId;
+      if (commandId) resolveCommand(commandId);
+      updateConnection(true);
+
+      var type = d.type;
+      switch (type) {
+        case "moduleList":
+        case "registryRefresh":
+          state.modules = getSafeArray(d.modules);
+          renderModulesTable();
+          if (dom.modExec) setButtonLoading(dom.modExec, false);
+          break;
+        case "moduleDetails":
+          state.moduleDetails = validateData(d.details);
+          state.selectedModule = d.moduleName || state.selectedModule;
+          renderModuleDetails();
+          break;
+        case "moduleRegistered":
+        case "moduleReloaded":
+        case "moduleUnloaded":
+          showToast("success", d.message || (type + " completed."));
+          if (d.modules) { state.modules = getSafeArray(d.modules); renderModulesTable(); }
+          if (dom.modExec) setButtonLoading(dom.modExec, false);
+          break;
+
+        case "serviceList":
+          state.services = getSafeArray(d.services);
+          renderServiceDropdown();
+          if (dom.svcInspect) setButtonLoading(dom.svcInspect, false);
+          break;
+        case "serviceDetails":
+          state.serviceDetails = validateData(d.details);
+          renderServiceInfo();
+          if (dom.svcInspect) setButtonLoading(dom.svcInspect, false);
+          break;
+
+        case "memorySample":
+          state.memorySamples.push(d.sample || { timestamp: ts(), usedHeap: "—", totalHeap: "—", limit: "—" });
+          renderMemorySamples();
+          break;
+        case "memoryStats":
+          state.memoryStats = validateData(d.stats);
+          renderMemoryStats();
+          break;
+        case "memoryCleanup":
+          showToast("success", d.message || "Memory cleanup triggered.");
+          break;
+
+        case "configData":
+          state.configData = validateData(d.config);
+          if (dom.cfgEditor) dom.cfgEditor.value = JSON.stringify(state.configData, null, 2);
+          renderCurrentConfig();
+          if (dom.cfgLoad) setButtonLoading(dom.cfgLoad, false);
+          break;
+        case "configSaved":
+          state.configLog.push({ timestamp: ts(), message: "Saved config for [" + (d.module || state.configModule) + "]", type: "success" });
+          renderConfigLog();
+          showToast("success", "Config saved.");
+          if (dom.cfgSave) setButtonLoading(dom.cfgSave, false);
+          break;
+        case "configReset":
+          state.configLog.push({ timestamp: ts(), message: "Reset config for [" + (d.module || state.configModule) + "] to defaults", type: "warn" });
+          if (d.config) {
+            state.configData = validateData(d.config);
+            if (dom.cfgEditor) dom.cfgEditor.value = JSON.stringify(d.config, null, 2);
+            renderCurrentConfig();
+          }
+          renderConfigLog();
+          showToast("success", "Config reset to defaults.");
+          if (dom.cfgReset) setButtonLoading(dom.cfgReset, false);
+          break;
+
+        case "errorList":
+          state.errors = (d.errors || []).map(function(err) {
+            return { timestamp: err.timestamp || ts(), message: getSafeString(err.message, String(err)) };
+          });
+          renderErrors();
+          if (dom.errShow) setButtonLoading(dom.errShow, false);
+          break;
+
+        case "eventList":
+          state.events = (d.events || []).map(function(evt) {
+            return {
+              timestamp: evt.timestamp || ts(),
+              type: evt.type || "",
+              message: getSafeString(evt.message, String(evt)),
+              level: evt.level || "info"
+            };
+          });
+          renderEvents();
+          if (dom.evtShow) setButtonLoading(dom.evtShow, false);
+          break;
+
+        case "performanceData":
+          state.performance = d.metrics || d;
+          renderPerformance();
+          if (dom.perfShow) setButtonLoading(dom.perfShow, false);
+          break;
+        case "performanceReset":
+          // Already handled in click handler
+          break;
+
+        default:
+          showToast("info", "Hub response: " + (type || "unknown"));
+      }
+    });
+
+    window.addEventListener("HubError", function(e) {
+      const d = e.detail || {};
+      pendingCommands.forEach(function(entry, cmdId) {
+        clearTimeout(entry.timeoutId);
+        pendingCommands.delete(cmdId);
+      });
+      $$(".btn.loading").forEach(function(btn) { setButtonLoading(btn, false); });
+      state.errors.push({ timestamp: ts(), message: getSafeString(d.message, JSON.stringify(d)) });
+      renderErrors();
+      showToast("error", "Error: " + (d.message || "Unknown error"));
+    });
+
+    window.addEventListener("HubEvent", function(e) {
+      if (state.eventsPaused) return;
+      const d = e.detail || {};
+      state.events.push({
+        timestamp: ts(),
+        type: d.type || "",
+        message: getSafeString(d.message, JSON.stringify(d)),
+        level: d.level || "info"
+      });
+      renderEvents();
+    });
+
+    window.addEventListener("HubSystem", function(e) {
+      const d = e.detail || {};
+      $$(".btn.loading").forEach(function(btn) { setButtonLoading(btn, false); });
+      state.systemStatus = {
+        lastCommand: getSafeString(d.command, state.systemStatus.lastCommand),
+        result: d.result || "—",
+        timestamp: d.timestamp || ts(),
+        notes: getSafeString(d.notes, "")
+      };
+      renderSystemStatus();
+      var toastType = d.result === "success" ? "success" : d.result === "error" ? "error" : "info";
+      showToast(toastType, "System: " + (d.command || "command") + " \u2192 " + (d.result || "done"));
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // CONNECTION STATUS
+  // ══════════════════════════════════════════════════════
+  let connectionTimeout;
+  let standaloneCheckTimer = null;
+  let hubEverConnected = false;
+
+  function updateConnection(alive) {
+    const dot = dom.connDot;
+    const label = dom.connLabel;
+    if (!dot || !label) return;
+    if (alive) {
+      hubEverConnected = true;
+      if (standaloneCheckTimer) { clearTimeout(standaloneCheckTimer); standaloneCheckTimer = null; }
+      dot.className = "status-dot connected";
+      label.textContent = "Hub Connected";
+      clearTimeout(connectionTimeout);
+      connectionTimeout = setTimeout(function() {
+        dot.className = "status-dot";
+        label.textContent = "Waiting for Hub\u2026";
+      }, CONNECTION_TIMEOUT_MS);
+    } else {
+      dot.className = "status-dot disconnected";
+      label.textContent = "Hub Disconnected";
+    }
+  }
+
+  // ══════════════════════════════════════════════════════
+  // STANDALONE MODE DETECTION
+  // ══════════════════════════════════════════════════════
+  function checkStandaloneMode() {
+    // If the Hub never responded after 5 seconds, switch to standalone mode
+    standaloneCheckTimer = setTimeout(function() {
+      if (!hubEverConnected) {
+        const dot = dom.connDot;
+        const label = dom.connLabel;
+        if (dot) dot.className = "status-dot";
+        if (label) label.textContent = "Standalone Mode";
+        showToast("info", "No Hub detected \u2014 running in standalone mode. Click \u201cDemo Data\u201d to populate.");
+      }
+    }, 5000);
+  }
+
+  // ══════════════════════════════════════════════════════
+  // DEMO DATA LOADER
+  // ══════════════════════════════════════════════════════
+  function loadDemoData() {
+    // Simulate Hub connection
+    updateConnection(true);
+
+    // Modules
+    state.modules = [
+      { name: "automation", version: "2.4.1", status: "active", loadTime: "142ms", healthy: true },
+      { name: "errorHandling", version: "1.8.0", status: "active", loadTime: "89ms", healthy: true },
+      { name: "ui", version: "3.2.0", status: "active", loadTime: "215ms", healthy: true },
+      { name: "promptSplitter", version: "1.1.3", status: "active", loadTime: "67ms", healthy: true },
+      { name: "codeShrinker", version: "0.9.2", status: "loading", loadTime: "\u2014", healthy: false },
+      { name: "memoryManager", version: "2.0.0", status: "inactive", loadTime: "\u2014", healthy: false }
+    ];
+    renderModulesTable();
+
+    // Module details for selected module
+    state.moduleDetails = {
+      name: "automation",
+      version: "2.4.1",
+      dependencies: ["errorHandling", "ui"],
+      methods: ["init", "run", "stop", "getStatus", "configure"],
+      state: { enabled: true, tasksRun: 42, lastRun: "2026-07-28T14:22:00Z" },
+      errors: []
+    };
+    renderModuleDetails();
+
+    // Services
+    state.services = ["authService", "dataService", "cacheService", "loggerService", "eventBus"];
+    renderServiceDropdown();
+
+    // Service details
+    state.serviceDetails = {
+      name: "authService",
+      status: "initialized",
+      initState: "ready",
+      dependencies: ["cacheService"],
+      metrics: { calls: 1284, totalTime: 45200 },
+      errors: []
+    };
+    renderServiceInfo();
+
+    // Memory samples
+    state.memorySamples = [
+      { timestamp: "14:20:01", usedHeap: "12.4 MB", totalHeap: "25.6 MB", limit: "512 MB" },
+      { timestamp: "14:21:01", usedHeap: "13.1 MB", totalHeap: "25.6 MB", limit: "512 MB" },
+      { timestamp: "14:22:01", usedHeap: "14.8 MB", totalHeap: "25.6 MB", limit: "512 MB" },
+      { timestamp: "14:23:01", usedHeap: "13.9 MB", totalHeap: "25.6 MB", limit: "512 MB" }
+    ];
+    renderMemorySamples();
+
+    // Memory stats
+    state.memoryStats = {
+      averageUsage: "13.5 MB",
+      peakUsage: "14.8 MB",
+      currentUsage: "13.9 MB",
+      threshold: "200 MB"
+    };
+    renderMemoryStats();
+
+    // Config data
+    state.configData = {
+      autoRefresh: true,
+      refreshInterval: 10000,
+      maxRetries: 3,
+      timeout: 5000,
+      features: { experimental: false, debug: true }
+    };
+    if (dom.cfgEditor) dom.cfgEditor.value = JSON.stringify(state.configData, null, 2);
+    renderCurrentConfig();
+
+    // Config log
+    state.configLog = [
+      { timestamp: "14:15:22", message: "Saved config for [hub]", type: "success" },
+      { timestamp: "14:10:05", message: "Reset config for [automation] to defaults", type: "warn" }
+    ];
+    renderConfigLog();
+
+    // Errors
+    state.errors = [
+      { timestamp: "14:18:33", message: "Module codeShrinker failed to load: Network timeout" },
+      { timestamp: "14:05:12", message: "Service cacheService: cache miss rate above threshold (85%)" }
+    ];
+    renderErrors();
+
+    // Events
+    state.events = [
+      { timestamp: "14:22:01", type: "module:loaded", message: "Module automation v2.4.1 loaded successfully", level: "success" },
+      { timestamp: "14:21:45", type: "service:initialized", message: "Service authService initialized", level: "info" },
+      { timestamp: "14:20:30", type: "config:updated", message: "Configuration updated for module hub", level: "info" },
+      { timestamp: "14:18:33", type: "module:error", message: "Module codeShrinker load failed", level: "error" },
+      { timestamp: "14:15:00", type: "system:startup", message: "Hub initialization complete", level: "success" }
+    ];
+    renderEvents();
+
+    // Performance
+    state.performance = {
+      moduleExecTimes: "47ms",
+      serviceInitTimes: "128ms",
+      queueLengths: 3,
+      workerThreads: "4 / 8",
+      requestBatching: "72%",
+      detailedMetrics: {
+        totalCommands: 1542,
+        avgResponseTime: "23ms",
+        cacheHitRate: "87%",
+        errorRate: "2.1%"
+      }
+    };
+    renderPerformance();
+
+    // System status
+    state.systemStatus = {
+      lastCommand: "reloadAll",
+      result: "success",
+      timestamp: ts(),
+      notes: "All modules reloaded successfully"
+    };
+    renderSystemStatus();
+
+    showToast("success", "Demo data loaded! All sections populated with sample data.");
+  }
+
+  // ══════════════════════════════════════════════════════
+  // GLOBAL KEYBOARD SHORTCUTS
+  // ══════════════════════════════════════════════════════
+  function initKeyboardShortcuts() {
+    document.addEventListener("keydown", function(e) {
+      // Don't trigger when typing in inputs/textareas
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        // But Ctrl+Enter still works in inputs
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          if (dom.modExec) { dom.modExec.click(); }
+          return;
+        }
+        // Escape blurs the input
+        if (e.key === "Escape") { e.target.blur(); return; }
+        // Forward slash focuses search when not already focused
+        return;
+      }
+
+      switch (e.key) {
+        case "?":
+          e.preventDefault();
+          openModal(dom.shortcutsModal);
+          break;
+        case "Escape":
+          closeAllModals();
+          break;
+        case "t":
+        case "T":
+          if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            toggleTheme();
+          }
+          break;
+        case "r":
+        case "R":
+          if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            emitHub({ type: "refreshRegistry" });
+          }
+          break;
+        case "/":
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            if (dom.moduleSearch) dom.moduleSearch.focus();
+          }
+          break;
+      }
+    });
+
+    // Close modal on overlay click
+    $$(".modal-overlay").forEach(function(modal) {
+      modal.addEventListener("click", function(e) {
+        if (e.target === this) closeModal(this);
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // INITIALIZATION
+  // ══════════════════════════════════════════════════════
+  function init() {
+    initDOMCache();
+
+    // Restore theme
+    var savedTheme = readStorage(STORAGE_KEYS.theme, "dark");
+    setTheme(savedTheme === "light" ? "light" : "dark");
+
+    // Load command history
+    loadCommandHistory();
+    renderCommandHistory();
+
+    // Restore auto-refresh interval
+    var savedInterval = parseInt(readStorage(STORAGE_KEYS.refreshInterval, "0"), 10);
+    if (dom.refreshInterval) {
+      dom.refreshInterval.value = String(savedInterval);
+    }
+    startAutoRefresh(savedInterval);
+
+    // Hide sections
+    $$(".section").forEach(function(s) {
+      if (s.getAttribute("aria-hidden") === "true") s.style.display = "none";
+    });
+
+    initCollapsiblePanels();
+    initEventHandlers();
+    initHubListeners();
+    initKeyboardShortcuts();
+
+    // Request initial data
+    setTimeout(function() {
+      emitHub({ type: "refreshRegistry" });
+      emitHub({ type: "serviceList" });
+    }, 500);
+
+    // Check for standalone mode after 5 seconds
+    checkStandaloneMode();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>

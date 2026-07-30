@@ -1,0 +1,43 @@
+// ==UserScript==
+// @name         3/* AI Remove Disclaimer Text
+// @namespace    http://tampermonkey.net/
+// @version      1.7
+// @description  Continuously hides the disclaimer text from chatgpt.com.
+// @author       Eric
+// @match        https://chatgpt.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    function removeDisclaimer() {
+        // Use the updated selector path based on the provided structure
+        const disclaimer = document.querySelector('div.relative.w-full.px-2.py-2.text-center.text-xs.text-token-text-secondary > span');
+
+        if (disclaimer) {
+            console.log('Disclaimer found:', disclaimer);
+            disclaimer.parentElement.remove();
+        } else {
+            console.log('Disclaimer not found');
+        }
+    }
+
+    window.addEventListener('load', () => {
+        removeDisclaimer();
+        
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.addedNodes.length || mutation.removedNodes.length) {
+                    removeDisclaimer();
+                }
+            });
+        });
+
+        // Observe with all possible mutation options
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+
+        // Additional periodic check
+        setInterval(removeDisclaimer, 1000);
+    });
+})();

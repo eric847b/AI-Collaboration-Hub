@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../AI Chat Userscript Studio"
+    }
+  ],
+  "settings": {
+    "cody.autocomplete.formatOnAccept": true,
+    "chat.agent.maxRequests": 35
+  }
+}

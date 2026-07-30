@@ -1,0 +1,73 @@
+{
+  "mcpServers": {
+    "github.com/makenotion/notion-mcp-server": {
+      "autoApprove": [
+        "API-get-self",
+        "API-get-user",
+        "API-get-users",
+        "API-retrieve-a-block",
+        "API-retrieve-a-page",
+        "API-retrieve-a-page-property",
+        "API-retrieve-a-database",
+        "API-retrieve-a-data-source",
+        "API-get-block-children",
+        "API-retrieve-page-markdown",
+        "API-retrieve-a-comment",
+        "API-list-data-source-templates",
+        "API-query-data-source",
+        "API-post-search"
+      ],
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@notionhq/notion-mcp-server"
+      ],
+      "env": {
+        "NOTION_TOKEN": ""
+      },
+      "description": "Notion MCP Server - Set NOTION_TOKEN env var to your Notion integration token. Get one at: https://www.notion.so/my-integrations"
+    },
+    "github.com/eric847b/userscripts-mcp-server": {
+      "autoApprove": [
+        "validate-project",
+        "run-tests",
+        "run-security-audit",
+        "check-git-status",
+        "consolidate-duplicates"
+      ],
+      "disabled": false,
+      "timeout": 120,
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "mcp-servers/userscripts-server.mjs"
+      ],
+      "description": "Local MCP server for Userscripts project automation tools"
+    },
+    "github.com/graphlit/graphlit-mcp-server": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "graphlit-mcp-server"
+      ],
+      "env": {
+        "GRAPHLIT_ORGANIZATION_ID": "YOUR_ORGANIZATION_ID",
+        "GRAPHLIT_ENVIRONMENT_ID": "YOUR_ENVIRONMENT_ID",
+        "GRAPHLIT_JWT_SECRET": "YOUR_JWT_SECRET"
+      },
+      "description": "Graphlit MCP Server - Set credentials from https://portal.graphlit.dev API settings"
+    }
+  }
+}
+}

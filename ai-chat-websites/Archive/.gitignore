@@ -1,0 +1,14 @@
+# Node dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+
+# Test and cache artifacts
+**/coverage/
+**/.cache/
+**/*.log
+
+# Local editor/system files
+.DS_Store
+Thumbs.db

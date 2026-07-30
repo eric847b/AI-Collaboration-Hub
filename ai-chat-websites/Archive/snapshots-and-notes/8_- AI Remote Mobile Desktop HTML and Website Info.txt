@@ -1,0 +1,39 @@
+// ==UserScript==
+// @name         8/* AI Remote Mobile Desktop HTML and Website Info
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  HTML and website info module for AI-powered remote desktop control
+// @include      http://*/*
+// @include      https://*/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Function to fetch HTML content of a webpage
+    function fetchHTML(url) {
+        return fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                console.log("HTML content fetched:", html);
+                return html;
+            })
+            .catch(error => console.error("Error fetching HTML:", error));
+    }
+
+    // Function to parse HTML content and extract specific information
+    function parseHTML(html) {
+        let parser = new DOMParser();
+        let doc = parser.parseFromString(html, 'text/html');
+        // Example: Extract the title of the webpage
+        let title = doc.querySelector('title').innerText;
+        console.log("Page title:", title);
+        return title;
+    }
+
+    // Export functions
+    window.fetchHTML = fetchHTML;
+    window.parseHTML = parseHTML;
+})();
+

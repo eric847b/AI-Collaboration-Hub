@@ -1,0 +1,127 @@
+{
+    "generated_at": "2026-03-30T13:46:50.1994059-05:00",
+    "archiveRoot": "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29",
+    "archiveContents": [
+        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\dist\\ai-chat-userscript-suite.bundle.merged.user.js",
+        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\Modules\\01-automation.module.user.js",
+        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Experimental\\AI-Script-Generator.user.js",
+        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Security\\Advanced Security Suite.user.js",
+        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Utilities\\ComprehensiveUserscript.user.js"
+    ],
+    "clusters": [
+        {
+            "id": "chatgpt-hub-modules",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/00-hub.user.js",
+            "duplicates": [
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/01-automation.module.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\AI Chat Userscript Studio\\Userscript Suite\\Modules\\01-automation.module.user.js",
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\Modules\\01-automation.module.user.js"
+                    ],
+                    "status": "mixed"
+                },
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\dist\\ai-chat-userscript-suite.bundle.merged.user.js"
+                    ],
+                    "status": "moved"
+                },
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/_archive/0. Hub .H.user 2024-10-15.downloads.js",
+                    "foundPaths": [],
+                    "status": "missing"
+                },
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/_archive/0. Hub .H.user 2024-10-15.1.js",
+                    "foundPaths": [],
+                    "status": "missing"
+                }
+            ]
+        },
+        {
+            "id": "global-wildcards",
+            "canonical": "AI Chat Websites/Userscripts/Advanced Features/AI-Powered Universal Automation Suite.user.js",
+            "duplicates": [
+                {
+                    "requested": "AI Chat Websites/Userscripts/Security/Advanced Security Suite.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\Security\\Advanced Security Suite.user.js",
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Security\\Advanced Security Suite.user.js"
+                    ],
+                    "status": "mixed"
+                },
+                {
+                    "requested": "AI Chat Websites/Userscripts/Experimental/AI-Script-Generator.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\Experimental\\AI-Script-Generator.user.js",
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Experimental\\AI-Script-Generator.user.js"
+                    ],
+                    "status": "mixed"
+                },
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\dist\\ai-chat-userscript-suite.bundle.merged.user.js"
+                    ],
+                    "status": "moved"
+                }
+            ]
+        },
+        {
+            "id": "copilot",
+            "canonical": "AI Chat Websites/Userscripts/Copilot Scripts/Copilot Automation - Guardian + ROI v16.0.user.js",
+            "duplicates": [
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/01-automation.module.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\AI Chat Userscript Studio\\Userscript Suite\\Modules\\01-automation.module.user.js",
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\Modules\\01-automation.module.user.js"
+                    ],
+                    "status": "mixed"
+                },
+                {
+                    "requested": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\AI Chat Userscript Studio\\Userscript Suite\\dist\\ai-chat-userscript-suite.bundle.merged.user.js"
+                    ],
+                    "status": "moved"
+                }
+            ]
+        },
+        {
+            "id": "utilities",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/00-utilities.module.user.js",
+            "duplicates": [
+                {
+                    "requested": "AI Chat Websites/Userscripts/Utilities/ComprehensiveUserscript.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\Utilities\\ComprehensiveUserscript.user.js",
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Utilities\\ComprehensiveUserscript.user.js"
+                    ],
+                    "status": "mixed"
+                }
+            ]
+        },
+        {
+            "id": "generator",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/06-userscript-generator.module.user.js",
+            "duplicates": [
+                {
+                    "requested": "AI Chat Websites/Userscripts/Experimental/AI-Script-Generator.user.js",
+                    "foundPaths": [
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\Experimental\\AI-Script-Generator.user.js",
+                        "C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\AI Chat Websites\\Userscripts\\_auto_archive_2026-03-29\\Experimental\\AI-Script-Generator.user.js"
+                    ],
+                    "status": "mixed"
+                }
+            ]
+        },
+        {
+            "id": "dist-release",
+            "canonical": "AI Chat Websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js",
+            "duplicates": []
+        }
+    ]
+}

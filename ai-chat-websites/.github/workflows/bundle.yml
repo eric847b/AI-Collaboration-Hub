@@ -1,0 +1,36 @@
+name: Bundle Userscript Suite
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: userscript-suite-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'Userscripts/AI Chat Userscript Studio/Userscript Suite'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'Userscripts/AI Chat Userscript Studio/Userscript Suite/package-lock.json'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run verification suite
+        run: npm run verify
+      - name: Run merge bundler
+        run: npm run bundle:merge
+      - name: Check bundle exists
+        run: test -f 'Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js' || (echo "Bundle file not found" && exit 1)
+      - name: Upload merged bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-chat-userscript-suite.bundle.merged.user.js
+          path: 'Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/ai-chat-userscript-suite.bundle.merged.user.js'

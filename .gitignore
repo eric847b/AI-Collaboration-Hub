@@ -51,4 +51,4 @@ Thumbs.db
 
 # Temp
 tmp/
-temp/
+temp/.git_disabled/ 

@@ -1,0 +1,227 @@
+// ==UserScript==
+// @name         ChatGPT Central Control Hub - AI RMD
+// @description  Hub to dynamically load AI modules, script execution, and configuration management.
+// @version      0.0011
+// @license      MIT
+// @match        *://chat.openai.com/*
+// @match        *://chatgpt.com/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
+// @grant        GM_notification
+// @grant        GM_download
+// @grant        GM_info
+// @grant        GM_openInTab
+// @grant        GM_setClipboard
+// @require      https://cdn.jsdelivr.net/npm/@kudoai/chatgpt.js@3.3.1/dist/chatgpt.min.js
+// @noframes
+// ==/UserScript==
+
+(async () => {
+    // CONFIGURATION
+    const config = {
+        prefix: 'chatgptHub',        // Prefix for GM storage
+        infinityMode: false,
+        autoScroll: false,
+        darkMode: false,
+        characterLimit: 4000,
+        retryDelay: 1000,
+        maxRetries: 3,
+    };
+
+    const SEQUENCE_LABEL_LENGTH = 10;
+    let retryCount = 0;
+
+    // HELPER FUNCTIONS
+    function log(message, type = 'log') {
+        console[type](`[ChatGPT Hub]: ${message}`);
+    }
+
+    function loadSetting(...keys) {
+        keys.forEach(key => {
+            config[key] = GM_getValue(config.prefix + '_' + key, config[key]);
+        });
+    }
+
+    function saveSetting(key, value) {
+        GM_setValue(config.prefix + '_' + key, value);
+        config[key] = value;
+    }
+
+    // DYNAMIC MODULE LOADING FUNCTION
+    async function manageModules() {
+        log('Loading modules...');
+        const modules = {
+            automation: await loadAutomationModule(),
+            feedback: await loadFeedbackModule(),
+            promptSplitter: await loadPromptSplitterModule(),
+            executor: await loadExecutorModule(),
+            errorHandling: await loadErrorHandlingModule()  // Added error handling module
+        };
+        return modules;
+    }
+
+    // LOAD AUTOMATION MODULE (Delegated to its own module)
+    async function loadAutomationModule() {
+        log('Loading Automation Module...');
+        return {
+            runAutomationTask: () => log('Running automation task...')
+        };
+    }
+
+    // LOAD FEEDBACK MODULE
+    async function loadFeedbackModule() {
+        log('Loading Feedback Module...');
+        return {
+            analyzeResponse: (response) => `Feedback: Your response could be improved.`
+        };
+    }
+
+    // LOAD PROMPT SPLITTER MODULE
+    async function loadPromptSplitterModule() {
+        log('Loading Prompt Splitter Module...');
+        return {
+            splitPrompt: (prompt, maxLength) => {
+                const parts = [];
+                while (prompt.length > maxLength) {
+                    let splitIndex = prompt.lastIndexOf(' ', maxLength);
+                    if (splitIndex === -1) splitIndex = maxLength;
+                    parts.push(prompt.slice(0, splitIndex));
+                    prompt = prompt.slice(splitIndex).trim();
+                }
+                if (prompt.length) parts.push(prompt);
+                return parts;
+            }
+        };
+    }
+
+    // LOAD JAVASCRIPT EXECUTOR MODULE
+    async function loadExecutorModule() {
+        log('Loading JavaScript Executor Module...');
+        return {
+            async executeCode(code) {
+                try {
+                    let code_output; // Ensure this is defined before eval
+                    eval(code); // Execute code
+                    log('Execution result:', 'info');
+                    return `RESULT: ${code_output}`;
+                } catch (error) {
+                    log(`Execution error: ${error}`, 'error');
+                    return `ERROR: ${error.stack}`;
+                }
+            }
+        };
+    }
+
+    // LOAD ERROR HANDLING MODULE (Delegated to its own module)
+    async function loadErrorHandlingModule() {
+        log('Loading Error Handling Module...');
+        return {
+            handleError: async (error, retryFunction) => {
+                log(`Error occurred: ${error.message}`, 'error');
+                retryCount += 1;
+
+                if (retryCount <= config.maxRetries) {
+                    log(`Retrying... (${retryCount}/${config.maxRetries})`, 'warn');
+                    await new Promise((resolve) => setTimeout(resolve, config.retryDelay));
+                    await retryFunction();
+                } else {
+                    log('Max retries reached. Notifying user.', 'error');
+                    GM_notification({
+                        text: `Failed after multiple retries: ${error.message}`,
+                        title: 'Error Notification',
+                        timeout: 5000,
+                        onclick: () => window.focus()
+                    });
+                    retryCount = 0; // Reset retry count
+                }
+            }
+        };
+    }
+
+    // MENU SYSTEM
+    const menu = {
+        ids: [],
+        state: {
+            symbol: ['❌', '✔️'],
+            word: ['OFF', 'ON'],
+            separator: ' — '
+        },
+
+        registerCommand(label, callback) {
+            try {
+                const id = GM_registerMenuCommand(label, callback);
+                this.ids.push(id);
+            } catch (error) {
+                log(`Failed to register menu command: ${label}`, 'error');
+            }
+        },
+
+        register() {
+            this.ids = [];
+            this.registerToggleCommand('Infinity Mode', config.infinityMode, 'infinity-toggle-label', () => {
+                config.infinityMode = !config.infinityMode; // Toggle the state
+                saveSetting('infinityMode', config.infinityMode);
+                log(`Infinity Mode toggled to ${config.infinityMode ? 'ON' : 'OFF'}`, 'info');
+                this.refresh();
+            });
+            this.registerToggleCommand('Auto Scroll', config.autoScroll, null, () => {
+                config.autoScroll = !config.autoScroll; // Toggle the state
+                saveSetting('autoScroll', config.autoScroll);
+                log(`Auto Scroll toggled to ${config.autoScroll ? 'ON' : 'OFF'}`, 'info');
+                this.refresh();
+            });
+            this.registerToggleCommand('Dark Mode', config.darkMode, null, () => {
+                config.darkMode = !config.darkMode; // Toggle the state
+                updateDarkMode(); // Update UI
+                saveSetting('darkMode', config.darkMode);
+                log(`Dark Mode toggled to ${config.darkMode ? 'ON' : 'OFF'}`, 'info');
+                this.refresh();
+            });
+        },
+
+        registerToggleCommand(name, currentState, toggleId, extraCallback) {
+            const label = `${this.state.symbol[+currentState]} ${name} ${this.state.separator} ${this.state.word[+currentState]}`;
+            this.registerCommand(label, () => {
+                if (toggleId) {
+                    const toggle = document.getElementById(toggleId);
+                    if (toggle) toggle.click();
+                }
+                if (extraCallback) extraCallback();
+            });
+        },
+
+        refresh() {
+            this.unregisterAll();
+            this.register();
+        },
+
+        unregisterAll() {
+            for (const id of this.ids) {
+                GM_unregisterMenuCommand(id);
+            }
+            this.ids = [];
+        }
+    };
+
+    // MENU INITIALIZATION
+    menu.register();
+
+    // TEST MODULE LOADING & FEATURES
+    log('ChatGPT Central Control Hub is active!', 'info');
+
+    const modules = await manageModules();
+
+    // TEST CHARACTER LIMIT MONITORING
+    log('--- Testing Character Limit Monitoring ---');
+    const longPrompt = 'This is a long prompt ' + 'x'.repeat(6000);
+    const parts = modules.promptSplitter.splitPrompt(longPrompt, config.characterLimit - SEQUENCE_LABEL_LENGTH);
+    parts.forEach((part, index) => {
+        log(`Part ${index + 1}: ${part}`);
+    });
+
+    log('--- TESTING COMPLETE ---');
+})();

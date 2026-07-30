@@ -1,0 +1,49 @@
+#!/bin/sh
+# Pre-commit hook for Unified AI Assistant Suite
+# Runs validation checks before allowing commits
+#
+# Installation: copy or symlink to .git/hooks/pre-commit
+#   cp .githooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# To bypass: git commit --no-verify
+
+echo "🔍 Running pre-commit checks..."
+
+# Check for debugging artifacts
+if git diff --cached --name-only | grep -qE '\.(js|cjs|mjs)$'; then
+    if git diff --cached | grep -E '^\+\s*(console\.(log|debug|trace)|debugger|TODO|FIXME|HACK)' > /dev/null 2>&1; then
+        echo "⚠ WARNING: Found debugging artifacts in staged changes:"
+        git diff --cached | grep -E '^\+\s*(console\.(log|debug|trace)|debugger|TODO|FIXME|HACK)' | head -10
+        echo ""
+        echo "Please remove these before committing."
+        echo "To bypass: git commit --no-verify"
+        exit 1
+    fi
+fi
+
+# Check for large files (>1MB)
+if git diff --cached --name-only -z | xargs -0 ls -l 2>/dev/null | awk '{if($5 > 1048576) print $9}' | grep -q .; then
+    echo "⚠ WARNING: Large files detected in staged changes:"
+    git diff --cached --name-only -z | xargs -0 ls -l 2>/dev/null | awk '{if($5 > 1048576) print $9, "("int($5/1048576)"MB)"}'
+    echo ""
+    echo "Please remove large files from the commit."
+    echo "To bypass: git commit --no-verify"
+    exit 1
+fi
+
+# Run quick validation if node is available
+if command -v node > /dev/null 2>&1; then
+    if [ -f "package.json" ]; then
+        echo "✔ Running quick validation..."
+        node scripts/validate.cjs
+        if [ $? -ne 0 ]; then
+            echo "✖ Validation failed. Please fix errors before committing."
+            echo "To bypass: git commit --no-verify"
+            exit 1
+        fi
+    fi
+fi
+
+echo "✔ Pre-commit checks passed."
+exit 0

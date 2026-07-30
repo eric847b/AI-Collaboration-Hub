@@ -1,0 +1,112 @@
+// ==UserScript==
+// @name                ChatGPT Prompt Splitter Module - AI RMD
+// @namespace           http://tampermonkey.net/
+// @version             2024.10.05
+// @grant               GM_setValue
+// @grant               GM_getValue
+// @require             https://cdn.jsdelivr.net/npm/@kudoai/chatgpt.js@3.3.4/dist/chatgpt.min.js
+// ==/UserScript==
+
+(async () => {
+    const SEQUENCE_LABEL_LENGTH = 15;  // Adjust label length for parts
+    const config = {
+        characterLimit: 6000,          // Max characters per message
+        batchSending: false,           // Toggle batch sending (if needed in future updates)
+    };
+
+    // Function to split the prompt into smaller chunks
+    function splitPrompt(prompt, maxLength) {
+        const words = prompt.split(/(\s+)/);
+        const parts = [];
+        let currentPart = '';
+
+        words.forEach(chunk => {
+            if ((currentPart + chunk).length <= maxLength) {
+                currentPart += chunk;
+            } else {
+                parts.push(currentPart.trim());
+                currentPart = chunk.trim();
+            }
+        });
+
+        if (currentPart) parts.push(currentPart.trim());
+        return parts;
+    }
+
+    // Send a single part of the prompt, labeled with the current sequence
+    async function sendCommand(command, partNumber, totalParts) {
+        try {
+            await errorHandling.log(`Sending part ${partNumber} of ${totalParts}: ${command}`);
+            const response = await chatgpt.sendMessage(command);  // Sending the prompt via ChatGPT
+            if (response.error) {
+                throw new Error(response.error);
+            }
+            await errorHandling.log('Command sent successfully');
+        } catch (error) {
+            await errorHandling.handleError(error, sendCommand.bind(null, command, partNumber, totalParts));
+        }
+    }
+
+    // Split and send the entire prompt, part by part
+    async function sendPromptParts(prompt) {
+        const maxLength = config.characterLimit - SEQUENCE_LABEL_LENGTH;
+        let parts = splitPrompt(prompt, maxLength);
+
+        for (const [index, part] of parts.entries()) {
+            const labeledPart = `(${index + 1} of ${parts.length}) ${part}`;
+            await sendCommand(labeledPart, index + 1, parts.length);
+        }
+    }
+
+    // Read and process a text file to send its content in parts
+    async function readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsText(file);
+        });
+    }
+
+    // Process the file upload and split its content into parts
+    async function processFile(file) {
+        try {
+            const fileContent = await readFileContent(file);
+            await sendPromptParts(fileContent);
+        } catch (error) {
+            await errorHandling.handleError(error);
+        }
+    }
+
+    // Create and append a file input element for users to upload a file
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt';
+    fileInput.style.display = 'none';  // Keep it hidden, triggered via menu
+    fileInput.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            processFile(file);
+        }
+    };
+    document.body.appendChild(fileInput);
+
+    // Cool feature: menu to trigger file upload
+    const menu = {
+        triggerFileUpload: () => {
+            fileInput.click();  // Trigger the file input click event
+        },
+
+        registerMenuCommands() {
+            GM_registerMenuCommand('Upload and Split File', () => {
+                errorHandling.log('File upload and split initiated.');
+                this.triggerFileUpload();
+            });
+        }
+    };
+
+    // Registering menu command
+    menu.registerMenuCommands();
+
+    errorHandling.log('ChatGPT Prompt Splitter Module is ready.');
+})();

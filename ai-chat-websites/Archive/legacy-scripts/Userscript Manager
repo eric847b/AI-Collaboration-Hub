@@ -1,0 +1,236 @@
+// ==UserScript==
+// @name         UserScript Manager
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Scrape, manage, and interact with userscripts and AI chat websites
+// @match        *://*/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_deleteValue
+// @grant        GM_listValues
+// @grant        GM_xmlhttpRequest
+// @grant        GM_setClipboard
+// @grant        GM_notification
+// @grant        GM_openInTab
+// @grant        unsafeWindow
+// @require      https://code.jquery.com/jquery-3.6.0.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Configuration
+    const config = {
+        aiChatSites: ['chat.openai.com', 'bard.google.com', 'bing.com/chat'],
+        userscriptDir: 'C:\\Users\\Eric\\OneDrive\\Documents\\Userscripts\\MyScript.user.js',
+        logCollectionInterval: 5000, // 5 seconds
+    };
+
+    // Utility functions
+    const utils = {
+        log: function(message) {
+            console.log(`[UserScript Manager] ${message}`);
+        },
+        error: function(message) {
+            console.error(`[UserScript Manager] ${message}`);
+        },
+        notification: function(message) {
+            GM_notification({
+                text: message,
+                title: 'UserScript Manager',
+                timeout: 5000
+            });
+        }
+    };
+
+    // UserScript scraper
+    const scraper = {
+        findUserScripts: function() {
+            const scripts = document.getElementsByTagName('script');
+            const userScripts = [];
+
+            for (let script of scripts) {
+                const content = script.textContent;
+                if (content.includes('// ==UserScript==') && content.includes('// ==/UserScript==')) {
+                    userScripts.push(content);
+                }
+            }
+
+            return userScripts;
+        },
+        extractMetadata: function(script) {
+            const metadataRegex = /\/\/ ==UserScript==\n([\s\S]*?)\n\/\/ ==\/UserScript==/;
+            const match = script.match(metadataRegex);
+            if (match) {
+                const metadata = {};
+                const lines = match[1].split('\n');
+                for (let line of lines) {
+                    const [key, value] = line.trim().split(/\s+/);
+                    if (key && value) {
+                        metadata[key.slice(2)] = value;
+                    }
+                }
+                return metadata;
+            }
+            return null;
+        }
+    };
+
+    // UserScript manager
+    const manager = {
+        saveUserScript: function(script) {
+            const metadata = scraper.extractMetadata(script);
+            if (metadata && metadata.name) {
+                const fileName = `${metadata.name.replace(/\s+/g, '_')}.user.js`;
+                const filePath = config.userscriptDir + fileName;
+                
+                // Simulating file save (as GM_setValue doesn't actually save to filesystem)
+                GM_setValue(filePath, script);
+                utils.log(`Saved userscript: ${filePath}`);
+                utils.notification(`Saved userscript: ${metadata.name}`);
+            } else {
+                utils.error('Failed to save userscript: Invalid metadata');
+            }
+        },
+        listSavedUserScripts: function() {
+            const values = GM_listValues();
+            return values.filter(value => value.endsWith('.user.js'));
+        },
+        deleteUserScript: function(fileName) {
+            GM_deleteValue(fileName);
+            utils.log(`Deleted userscript: ${fileName}`);
+            utils.notification(`Deleted userscript: ${fileName}`);
+        }
+    };
+
+    // Log collector
+    const logCollector = {
+        logs: [],
+        originalConsoleLog: console.log,
+        originalConsoleError: console.error,
+        originalConsoleWarn: console.warn,
+        originalAlert: window.alert,
+
+        init: function() {
+            console.log = (...args) => {
+                this.logs.push({type: 'log', message: args.join(' ')});
+                this.originalConsoleLog.apply(console, args);
+            };
+            console.error = (...args) => {
+                this.logs.push({type: 'error', message: args.join(' ')});
+                this.originalConsoleError.apply(console, args);
+            };
+            console.warn = (...args) => {
+                this.logs.push({type: 'warn', message: args.join(' ')});
+                this.originalConsoleWarn.apply(console, args);
+            };
+            window.alert = (message) => {
+                this.logs.push({type: 'alert', message: message});
+                this.originalAlert.call(window, message);
+            };
+        },
+        getLogs: function() {
+            return this.logs;
+        },
+        clearLogs: function() {
+            this.logs = [];
+        }
+    };
+
+    // AI Chat Interaction
+    const aiChatInteraction = {
+        isAIChatSite: function() {
+            return config.aiChatSites.some(site => window.location.href.includes(site));
+        },
+        sendLogsToChat: function() {
+            if (this.isAIChatSite()) {
+                const logs = logCollector.getLogs();
+                if (logs.length > 0) {
+                    const formattedLogs = logs.map(log => `[${log.type}] ${log.message}`).join('\n');
+                    const textarea = document.querySelector('textarea');
+                    if (textarea) {
+                        textarea.value = formattedLogs;
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        utils.log('Logs sent to AI chat input');
+                    } else {
+                        utils.error('Could not find chat input textarea');
+                    }
+                }
+            }
+        }
+    };
+
+    // Main function
+    function main() {
+        utils.log('UserScript Manager initialized');
+        logCollector.init();
+
+        // Scrape and save userscripts
+        const userScripts = scraper.findUserScripts();
+        for (let script of userScripts) {
+            manager.saveUserScript(script);
+        }
+
+        // Set up interval to send logs to AI chat
+        setInterval(() => {
+            if (aiChatInteraction.isAIChatSite()) {
+                aiChatInteraction.sendLogsToChat();
+                logCollector.clearLogs();
+            }
+        }, config.logCollectionInterval);
+
+        // Create UI
+        createUI();
+    }
+
+    // Create user interface
+    function createUI() {
+        const uiHtml = `
+            <div id="userscript-manager" style="position: fixed; top: 10px; right: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px; z-index: 9999;">
+                <h3>UserScript Manager</h3>
+                <button id="list-scripts">List Scripts</button>
+                <button id="export-scripts">Export Scripts</button>
+                <div id="script-list" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+        `;
+
+        $('body').append(uiHtml);
+
+        $('#list-scripts').click(() => {
+            const scripts = manager.listSavedUserScripts();
+            const listHtml = scripts.map(script => `
+                <div>
+                    ${script}
+                    <button class="delete-script" data-script="${script}">Delete</button>
+                </div>
+            `).join('');
+            $('#script-list').html(listHtml);
+
+            $('.delete-script').click(function() {
+                const scriptName = $(this).data('script');
+                manager.deleteUserScript(scriptName);
+                $(this).parent().remove();
+            });
+        });
+
+        $('#export-scripts').click(() => {
+            const zip = new JSZip();
+            const scripts = manager.listSavedUserScripts();
+
+            scripts.forEach(script => {
+                const content = GM_getValue(script);
+                zip.file(script, content);
+            });
+
+            zip.generateAsync({type: "blob"})
+            .then(function(content) {
+                const url = URL.createObjectURL(content);
+                GM_openInTab(url);
+            });
+        });
+    }
+
+    // Run main function
+    main();
+})();

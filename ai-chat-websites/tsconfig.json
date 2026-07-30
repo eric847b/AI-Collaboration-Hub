@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noEmit": true,
+    "declaration": false,
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "scripts/**/*.js",
+    "scripts/*.js",
+    "_check_state.js",
+    "tailwind-config.js",
+    "package.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/dist",
+    "**/dist/**",
+    "Archive",
+    "Archive/**",
+    "Userscripts/archive",
+    "Userscripts/AI Chat Userscript Studio/Userscript Suite/dist",
+    "**/__pycache__"
+  ]
+}

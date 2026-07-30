@@ -1,0 +1,120 @@
+// ==UserScript==
+// @name         ChatGPT Automation Module - AI RMD
+// @description  Automates code refinement, improvement, and task execution in ChatGPT.
+// @version      1.1
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @require      https://cdn.jsdelivr.net/npm/@kudoai/chatgpt.js@3.3.4/dist/chatgpt.min.js
+// ==/UserScript==
+
+(async () => {
+    const config = {
+        infinityMode: GM_getValue('infinityMode', false), // Use GM storage for Infinity Mode
+        autoPromptEnabled: true,
+        autoPromptInterval: 300000, // 5 minutes
+        retryDelay: 1000,
+        maxRetries: 3,
+    };
+
+    const automation = {
+        // Activate the automation module
+        async activate() {
+            console.log('Activating Automation Module...');
+            const activatePrompt = "Start making improvements with each cycle.";
+            await chatgpt.sendMessage(activatePrompt); // Send initial activation message
+
+            while (config.infinityMode) { // Loop until Infinity Mode is deactivated
+                await this.iterateImprovement();
+                await new Promise(resolve => setTimeout(resolve, config.retryDelay)); // Avoid flooding API
+            }
+        },
+
+        // Iterate over improvements in response to ChatGPT outputs
+        async iterateImprovement() {
+            const lastReply = await chatgpt.getLastReply();
+            const newPrompt = this.dynamicPrompt(lastReply);
+            console.log(`Sending improvement prompt: ${newPrompt}`);
+            await chatgpt.sendMessage(newPrompt);
+        },
+
+        // Generate a new prompt dynamically based on the last ChatGPT response
+        dynamicPrompt(lastReply) {
+            if (lastReply.includes('error')) {
+                return "Let's fix this error.";
+            } else if (lastReply.length < 150) {
+                return "Expand on this point further.";
+            } else {
+                return "Summarize this concisely.";
+            }
+        },
+
+        // Auto-Prompting System
+        autoPrompt: {
+            intervalId: null,
+
+            startAutoPrompting(interval = config.autoPromptInterval) {
+                if (this.intervalId) clearInterval(this.intervalId);
+
+                this.intervalId = setInterval(async () => {
+                    const lastResponse = await chatgpt.getLastResponse();
+                    if (lastResponse) {
+                        const newPrompt = this.generatePrompt(lastResponse);
+                        await chatgpt.send(newPrompt);
+                    }
+                }, interval);
+
+                console.log('Auto-prompting started.', 'info');
+            },
+
+            stopAutoPrompting() {
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                    console.log('Auto-prompting stopped.', 'info');
+                }
+            },
+
+            generatePrompt(lastResponse) {
+                const promptTypes = [
+                    `Improve the following response: ${lastResponse}`,
+                    `Simplify this response: ${lastResponse}`,
+                    `Provide more detail on this response: ${lastResponse}`,
+                    `Can you enhance this response?`
+                ];
+
+                return promptTypes[Math.floor(Math.random() * promptTypes.length)];
+            }
+        }
+    };
+
+    // Auto-Prompting Enabled on Start
+    if (config.autoPromptEnabled) {
+        automation.autoPrompt.startAutoPrompting();
+    }
+
+    // Use the config from the central hub to trigger automation
+    if (config.infinityMode) {
+        automation.activate();
+    }
+
+    console.log('Automation Module is ready.');
+
+    // Menu System for toggling Infinity Mode
+    const menu = {
+        toggleInfinityMode() {
+            config.infinityMode = !config.infinityMode;
+            GM_setValue('infinityMode', config.infinityMode); // Store the state change
+            console.log(`Infinity Mode toggled to: ${config.infinityMode ? 'ON' : 'OFF'}`);
+        },
+
+        registerToggleCommand() {
+            GM_registerMenuCommand(
+                `Toggle Infinity Mode (Currently: ${config.infinityMode ? 'ON' : 'OFF'})`,
+                () => this.toggleInfinityMode()
+            );
+        }
+    };
+
+    // Register menu option to toggle Infinity Mode
+    menu.registerToggleCommand();
+})();

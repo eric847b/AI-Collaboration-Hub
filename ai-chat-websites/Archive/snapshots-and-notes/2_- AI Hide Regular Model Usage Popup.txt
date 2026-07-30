@@ -1,0 +1,21 @@
+// ==UserScript==
+// @name         2/* AI Hide Regular Model Usage Popup
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Hides the popup about regular model usage on chatgpt.com.
+// @author       Eric
+// @match        https://chatgpt.com/*
+// @grant        GM_addStyle
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // CSS to hide the popup
+    GM_addStyle(`
+        div.flex.w-full.items-start.gap-4.rounded-2xl.border.border-token-border-light.bg-token-main-surface-primary.py-4.pl-5.pr-3.text-sm.text-token-text-primary {
+            display: none !important;
+        }
+    `);
+
+})();

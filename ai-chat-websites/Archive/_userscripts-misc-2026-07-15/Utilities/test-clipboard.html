@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipboard Utility Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-area {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .test-area h3 {
+            margin-top: 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e9f7ef;
+            border-left: 4px solid #28a745;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clipboard Utility Test</h1>
+    
+    <div class="test-area">
+        <h3>Test Content</h3>
+        <p>This is some sample text to test the clipboard functionality. It includes <strong>bold</strong>, <em>italic</em>, and `code` elements.</p>
+        <p>Line 2 with more text for testing.</p>
+    </div>
+
+    <div class="test-area">
+        <h3>Manual Testing</h3>
+        <p>Select some text above and try the following:</p>
+        <button onclick="testCopyAsMarkdown()">Copy as Markdown</button>
+        <button onclick="testCopyAsPlainText()">Copy as Plain Text</button>
+        <button onclick="testCopyWithTimestamp()">Copy with Timestamp</button>
+        <button onclick="testCopyToNewTab()">Copy to New Tab</button>
+    </div>
+
+    <div class="test-area">
+        <h3>Result</h3>
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        function testCopyAsMarkdown() {
+            const selection = window.getSelection().toString();
+            if (selection) {
+                const markdown = convertToMarkdown(selection);
+                navigator.clipboard.writeText(markdown).then(() => {
+                    document.getElementById('result').textContent = 'Copied as Markdown: ' + markdown;
+                });
+            }
+        }
+
+        function testCopyAsPlainText() {
+            const selection = window.getSelection().toString();
+            if (selection) {
+                navigator.clipboard.writeText(selection).then(() => {
+                    document.getElementById('result').textContent = 'Copied as Plain Text: ' + selection;
+                });
+            }
+        }
+
+        function testCopyWithTimestamp() {
+            const selection = window.getSelection().toString();
+            if (selection) {
+                const timestamp = new Date().toISOString();
+                const text = timestamp + '\n\n' + selection;
+                navigator.clipboard.writeText(text).then(() => {
+                    document.getElementById('result').textContent = 'Copied with Timestamp: ' + text;
+                });
+            }
+        }
+
+        function testCopyToNewTab() {
+            const selection = window.getSelection().toString();
+            if (selection) {
+                const encoded = encodeURIComponent(selection);
+                const url = 'data:text/plain;charset=UTF-8,' + encoded;
+                window.open(url, '_blank');
+                document.getElementById('result').textContent = 'Opened in New Tab';
+            }
+        }
+
+        function convertToMarkdown(text) {
+            return text
+                .replace(/^#+\s+(.*)$/gm, '## $1')
+                .replace(/`([^`]+)`/g, '**`$1`**')
+                .replace(/\*([^\*]+)\*/g, '**$1**')
+                .replace(/_([^_]+)_/g, '*$1*')
+                .replace(/~~([^~]+)~~/g, '~~$1~~');
+        }
+    </script>
+</body>
+</html>

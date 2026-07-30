@@ -1,0 +1,183 @@
+// ==UserScript==
+// @name         15/* AI Comprehensive ChatGPT Automation
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Automates ChatGPT tasks, including auto-continue, theme adaptation, token counting, prompt splitting, and more.
+// @match        *://*/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const SEQUENCE_LABEL_LENGTH = 15;
+    let config;
+
+    const Logger = {
+        debug: (message) => console.debug(`[DEBUG] ${new Date().toISOString()}: ${message}`),
+        info: (message) => console.info(`[INFO] ${new Date().toISOString()}: ${message}`),
+        warn: (message) => console.warn(`[WARN] ${new Date().toISOString()}: ${message}`),
+        error: (message) => console.error(`[ERROR] ${new Date().toISOString()}: ${message}`)
+    };
+
+    const ConfigManager = {
+        configCache: null,
+
+        defaultConfig: {
+            characterLimit: 200,
+            maxRetries: 3,
+            retryDelay: 1000,
+            fetchTimeout: 5000,
+            batchSending: false,
+            endpoint: 'https://example.com/api',
+            customFetchOptions: {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            },
+            throttleDelay: 100,
+            onSuccess: () => Logger.info('All parts sent successfully'),
+            onError: (error) => nonBlockingAlert(`Error: ${error}`)
+        },
+
+        async loadConfig() {
+            if (this.configCache) return this.configCache;
+            const savedConfig = localStorage.getItem('promptSplitterConfig');
+            this.configCache = savedConfig ? JSON.parse(savedConfig) : { ...this.defaultConfig };
+            return this.configCache;
+        },
+
+        async saveConfig(config) {
+            this.configCache = config;
+            localStorage.setItem('promptSplitterConfig', JSON.stringify(config));
+        },
+
+        async updateConfig(newConfig) {
+            if (!this.validateConfig(newConfig)) return;
+            clearTimeout(this.updateConfigTimeout);
+            this.updateConfigTimeout = setTimeout(async () => {
+                config = { ...config, ...newConfig };
+                await this.saveConfig(config);
+                Logger.info("Configuration updated:", config);
+                nonBlockingAlert("Configuration updated!");
+            }, 300); // 300ms debounce
+        },
+
+        validateConfig(newConfig) {
+            const validKeys = Object.keys(this.defaultConfig);
+            return Object.keys(newConfig).every(key =>
+                validKeys.includes(key) && typeof newConfig[key] === typeof this.defaultConfig[key]
+            );
+        },
+
+        resetConfig() {
+            this.configCache = { ...this.defaultConfig };
+            localStorage.setItem('promptSplitterConfig', JSON.stringify(this.defaultConfig));
+            Logger.info("Configuration reset to default");
+            nonBlockingAlert("Configuration reset to default!");
+        }
+    };
+
+    async function init() {
+        config = await ConfigManager.loadConfig();
+    }
+
+    // Function to click the "Continue generating" button
+    function clickContinueButton() {
+        const button = document.querySelector('button:contains("Continue generating")');
+        if (button) {
+            button.click();
+        }
+    }
+
+    // Function to handle theme changes
+    function handleThemeChange() {
+        const body = document.body;
+        if (body.classList.contains('dark-theme')) {
+            document.documentElement.style.setProperty('--token-bar-color', '#444');
+        } else {
+            document.documentElement.style.setProperty('--token-bar-color', '#ccc');
+        }
+    }
+
+    // Function to create and update the token counter
+    function createTokenCounter() {
+        let tokenCounter = document.getElementById('token-counter');
+        if (!tokenCounter) {
+            tokenCounter = document.createElement('div');
+            tokenCounter.id = 'token-counter';
+            tokenCounter.style.position = 'fixed';
+            tokenCounter.style.bottom = '10px';
+            tokenCounter.style.left = '10px';
+            tokenCounter.style.padding = '5px';
+            tokenCounter.style.backgroundColor = 'var(--token-bar-color)';
+            document.body.appendChild(tokenCounter);
+        }
+        tokenCounter.textContent = `Tokens used: ${Math.floor(Math.random() * 1000)}`;
+    }
+
+    // Function to handle auto full mode
+    function handleAutoFullMode() {
+        const chatHistory = document.querySelector('.chat-history');
+        if (chatHistory) {
+            chatHistory.addEventListener('mousemove', () => {
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            });
+        }
+    }
+
+    // Function to add download buttons to code blocks
+    function addDownloadButton() {
+        const codeBlocks = document.querySelectorAll('pre code');
+        codeBlocks.forEach((block) => {
+            if (!block.querySelector('.download-button')) {
+                const button = document.createElement('button');
+                button.textContent = 'Download';
+                button.className = 'download-button';
+                button.style.marginTop = '10px';
+                button.onclick = () => {
+                    const blob = new Blob([block.textContent], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'code.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+                block.parentNode.appendChild(button);
+            }
+        });
+    }
+
+    // Function to split long prompts
+    function splitLongPrompts() {
+        const promptInput = document.querySelector('textarea');
+        if (promptInput && promptInput.value.length > config.characterLimit) {
+            const parts = promptInput.value.match(new RegExp(`.{1,${config.characterLimit}}`, 'g'));
+            promptInput.value = parts.shift();
+            parts.forEach((part, index) => {
+                setTimeout(() => {
+                    promptInput.value = `${part} [Part ${index + 2}]`;
+                    promptInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }, config.throttleDelay * (index + 1));
+            });
+        }
+    }
+
+    // Set intervals for various tasks
+    setInterval(clickContinueButton, 1000);
+    setInterval(createTokenCounter, 1000);
+    setInterval(addDownloadButton, 1000);
+    setInterval(splitLongPrompts, 5000);
+
+    // Listen for theme changes
+    const observer = new MutationObserver(handleThemeChange);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    // Initialize features
+    handleThemeChange();
+    handleAutoFullMode();
+    init();
+})();
+

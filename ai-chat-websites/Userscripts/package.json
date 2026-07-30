@@ -1,0 +1,58 @@
+{
+  "name": "ai-chat-userscripts-workspace",
+  "version": "2026.04.13.0",
+  "private": true,
+  "description": "Thin orchestration layer for the AI Chat Websites Userscript Suite workspace",
+  "main": "Unified-AI-Assistant-Suite.user.js",
+  "scripts": {
+    "install:suite": "node ./tools/run-suite.cjs ci",
+    "validate": "node ./tools/run-suite.cjs validate",
+    "verify": "node ./tools/run-suite.cjs verify",
+    "verify:ci": "node ./tools/run-suite.cjs verify:ci",
+    "build": "node ./tools/run-suite.cjs build",
+    "build:merge": "node ./tools/run-suite.cjs build:merge",
+    "build:production": "node ./tools/run-suite.cjs build:production",
+    "bundle": "node ./tools/run-suite.cjs bundle",
+    "bundle:merge": "node ./tools/run-suite.cjs bundle:merge",
+    "bundle:minify": "node ./tools/run-suite.cjs bundle:minify",
+    "bundle:analyze": "node ./tools/run-suite.cjs bundle:analyze",
+    "test": "node ./tools/run-suite.cjs test",
+    "test:quick": "node ./tools/run-suite.cjs test:quick",
+    "test:coverage": "node ./tools/run-suite.cjs test:coverage",
+    "lint": "node ./tools/run-suite.cjs lint",
+    "lint:md": "node ./tools/run-suite.cjs lint:md",
+    "format": "node ./tools/run-suite.cjs format",
+    "clean": "node ./tools/run-suite.cjs clean",
+    "docs": "node ./tools/run-suite.cjs docs",
+    "dev": "node ./tools/run-suite.cjs dev",
+    "ai-assist": "node ./tools/run-suite.cjs ai-assist",
+    "security:audit": "node ./tools/run-suite.cjs security:audit",
+    "security:fix": "node ./tools/run-suite.cjs security:fix",
+    "release:dry": "node ./tools/run-suite.cjs release:dry",
+    "ci": "node ./tools/run-suite.cjs verify:ci"
+  },
+  "keywords": [
+    "userscript",
+    "tampermonkey",
+    "violentmonkey",
+    "greasemonkey",
+    "ai",
+    "automation",
+    "chat",
+    "assistant"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eric847b/ai-chat-websites.git",
+    "directory": "Userscripts"
+  },
+  "bugs": {
+    "url": "https://github.com/eric847b/ai-chat-websites/issues"
+  },
+  "homepage": "https://github.com/eric847b/ai-chat-websites#readme",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

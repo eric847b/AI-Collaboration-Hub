@@ -1,0 +1,288 @@
+// ==UserScript==
+// @name         16/* Prompt Splitter, AI RMD
+// @namespace    http://tampermonkey.net/
+// @version      3.3
+// @description  Splits large prompts into smaller parts, optionally batches them, and sends each part with a sequence label. Converts long text to images if necessary.
+// @match        http://*/*
+// @match        https://*/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const SEQUENCE_LABEL_LENGTH = 15;
+    let config;
+
+    const Logger = {
+        debug: (message) => console.debug(`[DEBUG] ${new Date().toISOString()}: ${message}`),
+        info: (message) => console.info(`[INFO] ${new Date().toISOString()}: ${message}`),
+        warn: (message) => console.warn(`[WARN] ${new Date().toISOString()}: ${message}`),
+        error: (message) => console.error(`[ERROR] ${new Date().toISOString()}: ${message}`)
+    };
+
+    const ConfigManager = {
+        configCache: null,
+
+        defaultConfig: {
+            characterLimit: 200,
+            maxRetries: 3,
+            retryDelay: 1000,
+            fetchTimeout: 5000,
+            batchSending: false,
+            endpoint: 'https://example.com/api',
+            customFetchOptions: {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            },
+            throttleDelay: 100,
+            onSuccess: () => Logger.info('All parts sent successfully'),
+            onError: (error) => nonBlockingAlert(`Error: ${error}`)
+        },
+
+        async loadConfig() {
+            if (this.configCache) return this.configCache;
+            const savedConfig = localStorage.getItem('promptSplitterConfig');
+            this.configCache = savedConfig ? JSON.parse(savedConfig) : { ...this.defaultConfig };
+            return this.configCache;
+        },
+
+        async saveConfig(config) {
+            this.configCache = config;
+            localStorage.setItem('promptSplitterConfig', JSON.stringify(config));
+        },
+
+        async updateConfig(newConfig) {
+            if (!this.validateConfig(newConfig)) return;
+            clearTimeout(this.updateConfigTimeout);
+            this.updateConfigTimeout = setTimeout(async () => {
+                config = { ...config, ...newConfig };
+                await this.saveConfig(config);
+                Logger.info("Configuration updated:", config);
+                nonBlockingAlert("Configuration updated!");
+            }, 300); // 300ms debounce
+        },
+
+        validateConfig(newConfig) {
+            const validKeys = Object.keys(this.defaultConfig);
+            return Object.keys(newConfig).every(key =>
+                validKeys.includes(key) && typeof newConfig[key] === typeof this.defaultConfig[key]
+            );
+        },
+
+        resetConfig() {
+            this.configCache = { ...this.defaultConfig };
+            localStorage.setItem('promptSplitterConfig', JSON.stringify(this.defaultConfig));
+            Logger.info("Configuration reset to default");
+            nonBlockingAlert("Configuration reset to default!");
+        }
+    };
+
+    function nonBlockingAlert(message) {
+        const toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.cssText = `
+            position:fixed;
+            bottom:10px;
+            right:10px;
+            background:rgba(0,0,0,0.8);
+            color:white;
+            padding:10px;
+            border-radius:5px;
+            z-index:10000;
+            transition: opacity 0.5s ease-in-out;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast remove(), 500);
+        }, 3000);
+    }
+
+    function splitPrompt(prompt, maxLength) {
+        const words = prompt.split(/(\s+)/);
+        const parts = [];
+        let currentPart = '';
+
+        words.forEach(chunk => {
+            if ((currentPart + chunk).length <= maxLength) {
+                currentPart += chunk;
+            } else {
+                parts.push(currentPart.trim());
+                currentPart = chunk.trim();
+            }
+        });
+
+        if (currentPart) parts.push(currentPart.trim());
+        return parts;
+    }
+
+    function batchParts(parts) {
+        if (!config.batchSending) return parts;
+
+        const batchedParts = [];
+        let currentBatch = '';
+
+        parts.forEach(part => {
+            if ((currentBatch + part).length <= config.characterLimit) {
+                currentBatch += (currentBatch ? ' ' : '') + part;
+            } else {
+                batchedParts.push(currentBatch.trim());
+                currentBatch = part;
+            }
+        });
+
+        if (currentBatch) batchedParts.push(currentBatch.trim());
+        return batchedParts;
+    }
+
+    async function sendCommand(command, partNumber, totalParts) {
+        try {
+            Logger.info(`Sending command (${partNumber} of ${totalParts}): ${command}`);
+            const response = await fetchWithRetry(config.endpoint, {
+                ...config.customFetchOptions,
+                body: JSON.stringify({ command })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
+            }
+
+            Logger.info('Command sent successfully');
+            if (partNumber === totalParts) config.onSuccess();
+        } catch (error) {
+            Logger.error(`Failed to send command: ${error.message}`);
+            config.onError(error.message);
+        }
+    }
+
+    async function fetchWithRetry(url, options) {
+        let retries = config.maxRetries;
+        while (retries > 0) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), config.fetchTimeout);
+
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                retries--;
+                if (retries <= 0) throw error;
+                Logger.warn(`Retrying (${retries} left): ${error.message}`);
+                await delay(config.retryDelay);
+            }
+        }
+    }
+
+    function textToImage(text, callback) {
+        // Create canvas element if it doesn't exist
+        let canvas = document.getElementById('textCanvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'textCanvas';
+            canvas.style.display = 'none';
+            document.body.appendChild(canvas);
+        }
+
+        const context = canvas.getContext('2d');
+        const maxWidth = 800; // Set your desired width
+        const lineHeight = 25;
+        const x = 10;
+        let y = 30;
+
+        context.font = '20px Arial';
+        context.fillStyle = 'black';
+
+        const words = text.split(' ');
+        let line = '';
+
+        words.forEach(word => {
+            const testLine = line + word + ' ';
+            const metrics = context.measureText(testLine);
+            const testWidth = metrics.width;
+
+            if (testWidth > maxWidth && line.length > 0) {
+                context.fillText(line, x, y);
+                line = word + ' ';
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        });
+
+        context.fillText(line, x, y);
+
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            callback(url);
+        });
+    }
+
+    function sendImage(imageUrl) {
+        try {
+            // Logic to send the image URL to the chat input box
+            console.log('Image URL:', imageUrl);
+            // Example: document.querySelector('#chatInput').value = imageUrl;
+        } catch (error) {
+            Logger.error(`Failed to send image: ${error.message}`);
+            config.onError(error.message);
+        }
+    }
+
+    function handleLongTextInput(text) {
+        if (text.length > config.characterLimit) {
+            textToImage(text, sendImage);
+        } else {
+            // Handle text normally
+        }
+    }
+
+    async function sendPromptParts(prompt) {
+        const maxLength = config.characterLimit - SEQUENCE_LABEL_LENGTH;
+        let parts = splitPrompt(prompt, maxLength);
+        parts = batchParts(parts);
+
+        for (const [index, part] of parts.entries()) {
+            const labeledPart = `(${index + 1} of ${parts.length}) ${part}`;
+            if (labeledPart.length > config.characterLimit) {
+                handleLongTextInput(labeledPart);
+            } else {
+                await sendCommand(labeledPart, index + 1, parts.length);
+                await delay(config.throttleDelay);
+            }
+        }
+    }
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function validatePrompt(prompt) {
+        return prompt && typeof prompt === 'string' && prompt.trim() !== '';
+    }
+
+    async function init() {
+        config = await ConfigManager.loadConfig();
+        const largePrompt = "Your large prompt goes here...";
+        if (validatePrompt(largePrompt)) {
+            await sendPromptParts(largePrompt);
+        }
+    }
+
+    // Example for updating configuration dynamically
+    ConfigManager.updateConfig({
+        characterLimit: 250,
+        batchSending: true,
+        endpoint: 'https://new-api.example.com/process',
+        onSuccess: () => Logger.info('All parts have been successfully sent and processed.')
+    });
+
+    // Example for resetting configuration to default
+    ConfigManager.resetConfig();
+
+    init();
+})();
+

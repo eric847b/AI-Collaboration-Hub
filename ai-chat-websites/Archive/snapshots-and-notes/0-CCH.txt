@@ -1,0 +1,87 @@
+// ==UserScript==
+// @name         0.CC.H
+// @description  ChatGPT - Central Control - Hub - Dynamiclly loaa AI modules, script execution, and configuration management.
+// @version      10-27-2024.1
+// @author       AI RMD
+// @license      MIT
+// @match        *://chat.openai.com/*
+// @match        *://chatgpt.com/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
+// @grant        GM_notification
+// @grant        GM_download
+// @grant        GM_info
+// @grant        GM_openInTab
+// @grant        GM_setClipboard
+// @require      https://cdn.jsdelivr.net/npm/@kudoai/chatgpt.js@3.3.5/dist/chatgpt.min.js
+// @noframes
+// @downloadURL https://1drv.ms/u/s!AuiEJyIMJ7hBg8oymI6oLWfuEuAduw?download=1
+// @updateURL   https://1drv.ms/u/s!AuiEJyIMJ7hBg8oymI6oLWfuEuAduw?download=1
+// ==/UserScript==
+
+(async () => {
+    const config = {
+        prefix: 'chatgptHub',
+        infinityMode: false,
+        autoScroll: false,
+        darkMode: false,
+        characterLimit: 4000,
+        retryDelay: 1000,
+        maxRetries: 3,
+    };
+
+    let retryCount = 0;
+
+    function log(message, type = 'log') {
+        if (type === 'error') console.error(message);
+        else if (type === 'warn') console.warn(message);
+        else console.log(message);
+    }
+
+    function loadSetting(...keys) {
+        keys.forEach(key => {
+            config[key] = GM_getValue(config.prefix + '_' + key, config[key]);
+        });
+    }
+
+    function saveSetting(key, value) {
+        GM_setValue(config.prefix + '_' + key, value);
+        config[key] = value;
+    }
+
+    loadSetting('infinityMode', 'autoScroll', 'darkMode', 'characterLimit', 'retryDelay', 'maxRetries');
+
+    async function loadModules() {
+        log("Loading modules...");
+        const modules = {};
+        const moduleNames = ['automation', 'feedback', 'promptSplitter', 'executor', 'errorHandling', 'ui'];
+
+        for (const name of moduleNames) {
+            try {
+                modules[name] = await import(`./modules/${name}.js`);
+                log(`${name} module loaded.`);
+            } catch (error) {
+                log(`Failed to load ${name} module: ${error}`, 'error');
+            }
+        }
+        return modules;
+    }
+
+    const modules = await loadModules();
+
+    if (modules.automation) {
+        log("Running automation...");
+    }
+
+    if (config.autoScroll) {
+        const observer = new MutationObserver(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+})();
+

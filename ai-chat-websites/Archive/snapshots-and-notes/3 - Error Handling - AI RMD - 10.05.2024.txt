@@ -1,0 +1,40 @@
+// ==UserScript==
+// @name                ChatGPT Error Handling Module - AI RMD
+// @description         Handles errors, retries, and logging
+// @version             2024.10.05
+// @require             https://cdn.jsdelivr.net/npm/@kudoai/chatgpt.js@3.3.4/dist/chatgpt.min.js
+// ==/UserScript==
+
+(async () => {
+    const errorHandling = {
+        retryCount: 0,
+        maxRetries: 3,
+        retryDelay: 1000,
+
+        // Logger utility to handle different types of logs
+        async log(message, type = 'log') {
+            console[type](`[ErrorHandling]: ${message}`);
+        },
+
+        // Error handler that retries the last command on failure
+        async handleError(error, retryFunction) {
+            this.retryCount++;
+            await this.log(`Error detected: ${error.message}. Retrying... (Attempt ${this.retryCount})`, 'warn');
+            
+            if (this.retryCount <= this.maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+                await retryFunction();  // Retry the failed function
+            } else {
+                await this.log(`Max retries (${this.maxRetries}) reached. Stopping further attempts.`, 'error');
+                this.retryCount = 0;  // Reset retry count after max retries
+            }
+        }
+    };
+
+    // Listen for errors and trigger the error handling mechanism
+    chatgpt.onError((error) => {
+        errorHandling.handleError(error, () => chatgpt.sendMessage(chatgpt.getLastPrompt()));
+    });
+
+    await errorHandling.log('ChatGPT Error Handling Module is active.');
+})();

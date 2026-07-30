@@ -1,0 +1,40 @@
+{
+  "name": "ai-chat-userscripts-workspace",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Forwarding wrapper for the canonical Userscript Suite package",
+  "main": "Unified-AI-Assistant-Suite.user.js",
+  "scripts": {
+    "validate": "node ./tools/run-suite.cjs validate",
+    "verify": "node ./tools/run-suite.cjs verify",
+    "verify:ci": "node ./tools/run-suite.cjs verify:ci",
+    "test": "node ./tools/run-suite.cjs test",
+    "lint": "node ./tools/run-suite.cjs lint",
+    "lint:md": "node ./tools/run-suite.cjs lint:md",
+    "prepare": "node ./tools/run-suite.cjs prepare"
+  },
+  "keywords": [
+    "userscript",
+    "tampermonkey",
+    "violentmonkey",
+    "greasemonkey",
+    "ai",
+    "automation",
+    "chat",
+    "assistant"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eric847b/ai-chat-websites.git",
+    "directory": "Userscripts"
+  },
+  "bugs": {
+    "url": "https://github.com/eric847b/ai-chat-websites/issues"
+  },
+  "homepage": "https://github.com/eric847b/ai-chat-websites#readme",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
