@@ -200,7 +200,8 @@
     "testMatch": [
       "**/__tests__/**/*.js",
       "**/*.test.js",
-      "**/*.spec.js"
+      "**/*.spec.js",
+      "<rootDir>/../../../tests/**/*.test.js"
     ],
     "verbose": true,
     "bail": false,

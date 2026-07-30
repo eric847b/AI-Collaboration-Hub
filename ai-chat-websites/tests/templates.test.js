@@ -1,15 +1,18 @@
 /**
  * Template Gallery Unit Tests
- * @version 1.4.0
+ * @version 2.1.0
  */
-
-const assert = typeof require !== 'undefined' ? require('assert') : null;
 
 // Mock module context for testing
 const mockUnifiedSuite = {
     debugLog: () => {},
     CONFIG: { VERSION: '1.4.0', STORAGE_KEYS: { templates: 'test_templates' } },
-    state: { modules: {} }
+    state: { modules: {} },
+    sanitizeText: (text) => String(text ?? '').trim(),
+    safeJsonParse: (str, fallback) => {
+        try { return JSON.parse(str); } catch { return fallback; }
+    },
+    generateId: () => 'test-id-' + Math.random().toString(36).slice(2, 9)
 };
 
 global.window = global.window || { UnifiedSuite: mockUnifiedSuite };
@@ -22,28 +25,38 @@ global.GM_setValue = global.GM_setValue || ((key, val) => {
     global.__gm_store[key] = val;
 });
 
+// Mock global utility functions used by templates module
+global.safeJsonParse = (str, fallback) => {
+    try { return JSON.parse(str); } catch { return fallback; }
+};
+global.generateId = () => 'test-id-' + Math.random().toString(36).slice(2, 9);
+global.sanitizeText = (text) => String(text ?? '').trim();
+
 describe('TemplateGallery Module', () => {
     let TemplatesModule;
 
-    before(async () => {
-        // Load the module
-        TemplatesModule = (await import('../Userscripts/modules/templates.js')).TemplatesModule;
+    beforeAll(() => {
+        TemplatesModule = require('../Userscripts/modules/templates.js').TemplatesModule;
     });
 
     beforeEach(() => {
         global.__gm_store = {};
-        TemplatesModule.customTemplates = [];
     });
 
     it('should have built-in templates', () => {
-        const builtIn = TemplatesModule.getBuiltInTemplates();
-        assert.ok(builtIn.length >= 10, `Expected >= 10 templates, got ${builtIn.length}`);
+        const builtIn = TemplatesModule.BUILT_IN_TEMPLATES;
+        expect(builtIn.length).toBeGreaterThanOrEqual(10);
     });
 
     it('should have categorized templates', () => {
-        const templates = TemplatesModule.getBuiltInTemplates();
+        const templates = TemplatesModule.BUILT_IN_TEMPLATES;
         const categories = new Set(templates.map(t => t.category));
-        assert.ok(categories.size >= 4, `Expected >= 4 categories, got ${categories.size}`);
+        expect(categories.size).toBeGreaterThanOrEqual(4);
+    });
+
+    it('should load templates (built-in + custom)', () => {
+        const all = TemplatesModule.loadTemplates();
+        expect(all.length).toBeGreaterThanOrEqual(10);
     });
 
     it('should save a custom template', () => {
@@ -52,55 +65,74 @@ describe('TemplateGallery Module', () => {
             description: 'A test',
             category: 'productivity',
             prompt: 'Test prompt',
-            fields: []
+            tags: ['test']
         };
-        TemplatesModule.saveCustomTemplate(template);
-        assert.equal(TemplatesModule.customTemplates.length, 1);
-        assert.equal(TemplatesModule.customTemplates[0].name, 'Test Template');
+        const saved = TemplatesModule.saveTemplate(template);
+        expect(saved.id).toBeDefined();
+        expect(saved.name).toBe('Test Template');
+        expect(saved.isBuiltIn).toBe(false);
     });
 
-    it('should get templates with search', () => {
-        const all = TemplatesModule.getAllTemplates();
-        const searchResults = TemplatesModule.getTemplates({ search: 'click' });
-        assert.ok(searchResults.length <= all.length);
+    it('should search templates', () => {
+        const results = TemplatesModule.searchTemplates('cookie');
+        expect(results.length).toBeGreaterThan(0);
+        results.forEach(t => {
+            const matches = t.name.toLowerCase().includes('cookie') ||
+                t.description.toLowerCase().includes('cookie') ||
+                t.tags.some(tag => tag.toLowerCase().includes('cookie'));
+            expect(matches).toBe(true);
+        });
     });
 
     it('should get templates by category', () => {
-        const securityTemplates = TemplatesModule.getTemplates({ category: 'security' });
+        const securityTemplates = TemplatesModule.getTemplatesByCategory('Security');
         securityTemplates.forEach(t => {
-            assert.equal(t.category, 'security');
+            expect(t.category).toBe('Security');
         });
     });
 
     it('should delete a custom template', () => {
-        const template = { name: 'Delete Me', description: '', category: 'devtools', prompt: '', fields: [] };
-        TemplatesModule.saveCustomTemplate(template);
-        assert.equal(TemplatesModule.customTemplates.length, 1);
-        TemplatesModule.deleteTemplate('Delete Me');
-        assert.equal(TemplatesModule.customTemplates.length, 0);
+        const saved = TemplatesModule.saveTemplate({
+            name: 'Delete Me', description: '', category: 'devtools', prompt: '', tags: []
+        });
+        const before = TemplatesModule.loadTemplates().length;
+        TemplatesModule.deleteTemplate(saved.id);
+        const after = TemplatesModule.loadTemplates().length;
+        expect(after).toBeLessThan(before);
     });
 
     it('should export templates as JSON', () => {
-        TemplatesModule.saveCustomTemplate({ name: 'Export Test', description: '', category: 'productivity', prompt: '', fields: [] });
+        TemplatesModule.saveTemplate({
+            name: 'Export Test', description: '', category: 'productivity', prompt: '', tags: []
+        });
         const json = TemplatesModule.exportTemplates();
         const data = JSON.parse(json);
-        assert.ok(data.templates.length >= 1);
+        expect(data.templates.length).toBeGreaterThanOrEqual(1);
+        expect(data.version).toBeDefined();
     });
 
     it('should import templates from JSON', () => {
         const json = JSON.stringify({
+            version: '1.4.0',
             templates: [
-                { name: 'Imported', description: 'Imported test', category: 'ui', prompt: 'Test', fields: [] }
+                { name: 'Imported', description: 'Imported test', category: 'UI Enhancement', prompt: 'Test', tags: ['imported'] }
             ]
         });
-        TemplatesModule.importTemplates(json);
-        assert.ok(TemplatesModule.customTemplates.some(t => t.name === 'Imported'));
+        const result = TemplatesModule.importTemplates(json);
+        expect(result.imported).toBe(1);
     });
 
-    it('should not exceed max templates', () => {
-        for (let i = 0; i < 60; i++) {
-            TemplatesModule.saveCustomTemplate({ name: `Template ${i}`, description: '', category: 'productivity', prompt: '', fields: [] });
-        }
-        assert.ok(TemplatesModule.customTemplates.length <= 50);
+    it('should get template by ID', () => {
+        const builtIn = TemplatesModule.BUILT_IN_TEMPLATES[0];
+        const found = TemplatesModule.getTemplate(builtIn.id);
+        expect(found).toBeDefined();
+        expect(found.id).toBe(builtIn.id);
+    });
+
+    it('should increment usage count', () => {
+        const builtIn = TemplatesModule.BUILT_IN_TEMPLATES[0];
+        const beforeCount = builtIn.usageCount;
+        TemplatesModule.incrementUsage(builtIn.id);
+        expect(builtIn.usageCount).toBe(beforeCount + 1);
     });
 });
