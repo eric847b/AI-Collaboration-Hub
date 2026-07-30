@@ -272,9 +272,6 @@ const StorageModule = {
     }
 };
 
-// Re-export utility functions for convenience
-const { generateId, deriveScriptName, generateFilename, deriveDescription } = window.UnifiedSuite;
-
 // Export for module system
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { StorageModule };
