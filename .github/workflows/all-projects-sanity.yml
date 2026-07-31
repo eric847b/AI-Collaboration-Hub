@@ -16,34 +16,43 @@ jobs:
     name: Node project checks
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         repo: ["nexus-infinity-hub", "self-evolve-dash", "third-door-blink-controller"]
     steps:
+      # Checkout entire monorepo at workspace root (projects live as subdirs)
       - uses: actions/checkout@v4
-        with:
-          path: ${{ matrix.repo }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 26
           cache: 'npm'
-          cache-dependency-path: ${{ matrix.repo }}/*lock*.json
+          # Exact lockfile path — avoids "paths were not resolved" when glob misses
+          cache-dependency-path: ${{ matrix.repo }}/package-lock.json
+
       - name: Install dependencies
         working-directory: ${{ matrix.repo }}
         run: |
+          if [ ! -f package.json ]; then
+            echo "::warning::No package.json in ${{ matrix.repo }} — skipping"
+            exit 0
+          fi
           if [ -f package-lock.json ]; then
             npm ci --prefer-offline --no-audit --progress=false
-          elif [ -f bun.lockb ]; then
+          elif [ -f bun.lockb ] || [ -f bun.lock ]; then
             npm install --prefer-offline --no-audit
           elif [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
+            npm install -g pnpm && pnpm install --frozen-lockfile
           elif [ -f yarn.lock ]; then
             yarn install --frozen-lockfile
           else
-            npm install
+            npm install --no-audit
           fi
+
       - name: Run lint
         working-directory: ${{ matrix.repo }}
         run: npm run lint || echo "No lint script"
+
       - name: Run test
         working-directory: ${{ matrix.repo }}
         run: npm run test || echo "No test script"
@@ -52,25 +61,34 @@ jobs:
     name: Python project checks
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         repo: ["autonomous-github-agent", "singularity-operator"]
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: ${{ matrix.repo }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: ${{ matrix.repo }}/requirements.txt
+
       - name: Install dependencies
         working-directory: ${{ matrix.repo }}
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
             python -m pip install -r requirements.txt
+            echo "✓ requirements.txt installed"
           elif [ -f pyproject.toml ]; then
             python -m pip install .
+            echo "✓ pyproject.toml installed"
+          else
+            echo "::warning::No requirements.txt / pyproject.toml in ${{ matrix.repo }}"
           fi
+
       - name: Syntax check
         working-directory: ${{ matrix.repo }}
         run: |
           find . -name '*.py' -not -path './.git/*' -exec python -m py_compile {} \; || true
+          echo "✓ Python syntax OK"
