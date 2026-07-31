@@ -79,6 +79,16 @@ jobs:
                   print("skip", b.name, e)
           PY
 
+      - name: Run v4.4 problem solvers (syntax / peer / lockfiles)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          AGENT_OWNS_GITHUB: '1'
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/problem_solvers_runner.py ]; then
+            python autonomous-github-agent/.github/scripts/problem_solvers_runner.py || true
+          fi
+
       - name: Run Autonomous Agent on Monorepo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
