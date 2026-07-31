@@ -1,0 +1,43 @@
+{
+  "version": "4.5",
+  "tasks_found": 4,
+  "tasks_solved": 4,
+  "by_type": {
+    "peer_conflict": 3,
+    "missing_requirements": 1
+  },
+  "tasks": [
+    {
+      "id": "peer_a034bc8145",
+      "type": "peer_conflict",
+      "title": "Fix peer conflict: typescript@^7.0.2 vs typescript-eslint in ./nexus-infinity-hub",
+      "impact": 2.7,
+      "risk": 0.2,
+      "path": "./nexus-infinity-hub/package.json"
+    },
+    {
+      "id": "peer_9b9177f81d",
+      "type": "peer_conflict",
+      "title": "Fix peer conflict: typescript@^6.0.3 vs @typescript-eslint/eslint-plugin in ./ai-chat-websites",
+      "impact": 2.7,
+      "risk": 0.2,
+      "path": "./ai-chat-websites/package.json"
+    },
+    {
+      "id": "peer_9b9177f81d",
+      "type": "peer_conflict",
+      "title": "Fix peer conflict: typescript@^6.0.3 vs @typescript-eslint/parser in ./ai-chat-websites",
+      "impact": 2.7,
+      "risk": 0.2,
+      "path": "./ai-chat-websites/package.json"
+    },
+    {
+      "id": "req_a38500ff32",
+      "type": "missing_requirements",
+      "title": "Add requirements.txt for Python project ./solutions-dynamics",
+      "impact": 2.6,
+      "risk": 0.1,
+      "path": "./solutions-dynamics/requirements.txt"
+    }
+  ]
+}
