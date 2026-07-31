@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Autonomous GitHub Agent - LLM-powered self-improving agent for GitHub repos.
-Perfected v4.0 - Production-grade autonomous improvement engine.
+Perfected v4.1 - Continuous autonomy: branch hygiene, issue solving, self-evolution.
 
 Features:
 - Multi-LLM Orchestration with intelligent fallback
@@ -12,6 +12,8 @@ Features:
 - PR review integration
 - Sub-issue management
 - Self-auditing capabilities
+- Remote auto-fix branch cleanup + stale draft PR close
+- Highest-ROI catalyst prioritization
 """
 
 import os
@@ -23,7 +25,7 @@ import requests
 import subprocess
 import sys
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 
 # Try to import PyGithub for GitHub API operations
@@ -51,6 +53,7 @@ RETRY_MAX_DELAY = 30
 PROFILE_PATH = ".agent_profile.json"
 MAX_DEPTH = 3
 DEFAULT_MAX_ITERATIONS = 10
+STALE_PR_DAYS = 2
 
 # High-risk action keywords with categories
 HIGH_RISK_KEYWORDS = {
@@ -79,13 +82,13 @@ class AgentProfile:
             try:
                 with open(self.path, 'r') as f:
                     data = json.load(f)
-                    # Ensure all required fields exist
                     defaults = {
                         "runs": 0, "errors": 0, "security_events": 0,
                         "injections_blocked": 0, "high_risk_blocked": 0,
                         "avg_latency": 0, "success_rate": 1.0,
                         "directives": [], "max_iterations": DEFAULT_MAX_ITERATIONS,
-                        "retry_count": 3, "provider_stats": {}
+                        "retry_count": 3, "provider_stats": {},
+                        "branches_deleted": 0, "prs_closed": 0
                     }
                     for key, value in defaults.items():
                         if key not in data:
@@ -98,7 +101,8 @@ class AgentProfile:
             "injections_blocked": 0, "high_risk_blocked": 0,
             "avg_latency": 0, "success_rate": 1.0,
             "directives": [], "max_iterations": DEFAULT_MAX_ITERATIONS,
-            "retry_count": 3, "provider_stats": {}
+            "retry_count": 3, "provider_stats": {},
+            "branches_deleted": 0, "prs_closed": 0
         }
     
     def save(self):
@@ -106,14 +110,10 @@ class AgentProfile:
             json.dump(self.data, f, indent=2)
     
     def record_success(self, latency: float, provider: str = "unknown"):
-        """Record a successful LLM call."""
         self.data["runs"] += 1
-        # Update average latency
         prev_avg = self.data.get("avg_latency", 0)
         runs = self.data["runs"]
         self.data["avg_latency"] = (prev_avg * (runs - 1) + latency) / runs
-        
-        # Update provider stats
         if provider not in self.data["provider_stats"]:
             self.data["provider_stats"][provider] = {"calls": 0, "latency": 0}
         self.data["provider_stats"][provider]["calls"] += 1
@@ -133,62 +133,32 @@ class AgentProfile:
 
 
 def sanitize_input(text: str, profile: AgentProfile = None) -> str:
-    """Sanitize input to prevent prompt injection with comprehensive patterns."""
     if not text:
         return ""
-    
     sanitized = text
-    
-    # Remove HTML comments (common injection vector)
     sanitized = re.sub(r'<!--.*?-->', '', sanitized, flags=re.DOTALL)
-    
-    # Remove markdown HTML comments
     sanitized = re.sub(r'<!(--.*?--|.*?-->)', '', sanitized, flags=re.DOTALL)
-    
-    # Remove system/role override attempts
     dangerous_patterns = [
-        r'ignore all previous',
-        r'system:',
-        r'\bsystem\s*:',
-        r'override system',
-        r'new instructions:',
-        r'you are now',
-        r'roleplay as',
-        r'developer mode',
+        r'ignore all previous', r'system:', r'\bsystem\s*:', r'override system',
+        r'new instructions:', r'you are now', r'roleplay as', r'developer mode',
         r'jailbreak',
-        r'\bsha\b',  # Prevent SHA injection
     ]
-    
     lower_sanitized = sanitized.lower()
     for pattern in dangerous_patterns:
         if re.search(pattern, lower_sanitized):
             if profile:
                 profile.record_security_event("injection")
             return "[BLOCKED - Injection detected]"
-    
-    # HTML escape to prevent rendering attacks
     sanitized = sanitized.replace('<', '<').replace('>', '>')
-    
     return sanitized
 
 
-def get_sanitized_tasks(tasks: List[Dict]) -> List[Dict]:
-    """Sanitize all task fields to prevent injection."""
-    return [{
-        **t,
-        "title": sanitize_input(t.get("title", "")),
-        "body": sanitize_input(t.get("body", ""))
-    } for t in tasks]
-
-
 def is_high_risk(action: str) -> bool:
-    """Check if an action contains high-risk patterns."""
     action_lower = action.lower()
     return any(pattern in action_lower for pattern in HIGH_RISK_PATTERNS)
 
 
 def get_risk_category(action: str) -> Optional[str]:
-    """Get the risk category of an action."""
     action_lower = action.lower()
     for category, keywords in HIGH_RISK_KEYWORDS.items():
         if any(kw in action_lower for kw in keywords):
@@ -197,7 +167,6 @@ def get_risk_category(action: str) -> Optional[str]:
 
 
 def get_depth() -> int:
-    """Get current recursion depth from git commit message."""
     try:
         result = os.popen('git log -1 --pretty=format:"%s"').read()
         if 'DEPTH:' in result:
@@ -210,7 +179,6 @@ def get_depth() -> int:
 
 
 def with_retry(func, *args, max_retries: int = MAX_RETRIES, **kwargs) -> Tuple[Any, Optional[str]]:
-    """Execute function with exponential backoff retry logic."""
     last_error = None
     for attempt in range(max_retries):
         try:
@@ -226,7 +194,6 @@ def with_retry(func, *args, max_retries: int = MAX_RETRIES, **kwargs) -> Tuple[A
 # ==================== LLM PROVIDER FUNCTIONS ====================
 
 def call_deepseek(prompt: str) -> Optional[str]:
-    """Call DeepSeek API (free tier available via deepseek.com)."""
     try:
         headers = {"Authorization": f"Bearer {os.getenv('DEEPSEEK_API_KEY', 'sk-free')}"}
         resp = requests.post(
@@ -243,7 +210,6 @@ def call_deepseek(prompt: str) -> Optional[str]:
 
 
 def call_ollama(prompt: str) -> Optional[str]:
-    """Call Ollama local API (free, no API key needed)."""
     try:
         resp = requests.post(
             "http://localhost:11434/api/chat",
@@ -258,7 +224,6 @@ def call_ollama(prompt: str) -> Optional[str]:
 
 
 def call_huggingface(prompt: str) -> Optional[str]:
-    """Call HuggingFace Inference API (free tier available)."""
     try:
         token = os.getenv("HF_API_KEY") or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
         if token:
@@ -277,7 +242,6 @@ def call_huggingface(prompt: str) -> Optional[str]:
 
 
 def call_openrouter(prompt: str) -> Optional[str]:
-    """Call OpenRouter API (free tier available)."""
     try:
         token = os.getenv("OPENROUTER_API_KEY")
         if token:
@@ -295,7 +259,6 @@ def call_openrouter(prompt: str) -> Optional[str]:
 
 
 def call_github_models(prompt: str) -> Optional[str]:
-    """Call GitHub Models API (free tier available via GitHub)."""
     try:
         token = os.getenv("GITHUB_TOKEN")
         if token:
@@ -313,7 +276,6 @@ def call_github_models(prompt: str) -> Optional[str]:
 
 
 def call_gemini(prompt: str) -> Optional[str]:
-    """Call Google Gemini API."""
     try:
         token = os.getenv("GEMINI_API_KEY")
         if token:
@@ -330,7 +292,6 @@ def call_gemini(prompt: str) -> Optional[str]:
 
 
 def call_openai(prompt: str) -> Optional[str]:
-    """Call OpenAI API."""
     try:
         if os.getenv("OPENAI_API_KEY"):
             from openai import OpenAI
@@ -347,7 +308,6 @@ def call_openai(prompt: str) -> Optional[str]:
 
 
 def call_anthropic(prompt: str) -> Optional[str]:
-    """Call Anthropic Claude API."""
     try:
         if os.getenv("ANTHROPIC_API_KEY"):
             from anthropic import Anthropic
@@ -364,14 +324,10 @@ def call_anthropic(prompt: str) -> Optional[str]:
 
 
 def call_llm(prompt: str, provider: str = "auto", profile: AgentProfile = None) -> str:
-    """Call LLM with automatic free-provider prioritization and performance tracking."""
     start_time = time.time()
-    
-    # Try free providers first (in order of priority)
     for p in FREE_PROVIDERS + PAID_PROVIDERS:
         if provider != "auto" and provider != p:
             continue
-        
         func_name = f"call_{p}"
         if func_name in globals():
             func = globals()[func_name]
@@ -381,35 +337,108 @@ def call_llm(prompt: str, provider: str = "auto", profile: AgentProfile = None) 
                 if profile:
                     profile.record_success(latency, p)
                 return result
-    
     return "[No LLM] Tip: Use DEEPSEEK_API_KEY or HF_TOKEN for free AI"
+
+
+# ==================== GITHUB HYGIENE (v4.1) ====================
+
+def cleanup_remote_auto_fix_branches(profile: AgentProfile = None) -> Dict:
+    """Delete remote auto-fix-* branches that match main or are fully merged."""
+    result = {"deleted": [], "error": ""}
+    if not GITHUB_AVAILABLE:
+        return result
+    try:
+        token = os.getenv("GITHUB_TOKEN")
+        repo = os.getenv("REPO")
+        if not token or not repo:
+            return result
+        g = Github(token)
+        r = g.get_repo(repo)
+        main_sha = r.get_branch("main").commit.sha
+        for b in r.get_branches():
+            name = b.name
+            if name in ("main", "master") or getattr(b, "protected", False):
+                continue
+            if not name.startswith("auto-fix-"):
+                continue
+            try:
+                if b.commit.sha == main_sha:
+                    r.get_git_ref(f"heads/{name}").delete()
+                    result["deleted"].append(name)
+                    continue
+                comparison = r.compare("main", name)
+                if comparison.ahead_by == 0:
+                    r.get_git_ref(f"heads/{name}").delete()
+                    result["deleted"].append(name)
+            except Exception as e:
+                logger.debug(f"Skip branch {name}: {e}")
+        if profile and result["deleted"]:
+            profile.data["branches_deleted"] = profile.data.get("branches_deleted", 0) + len(result["deleted"])
+        logger.info(f"Remote branch cleanup: deleted {len(result['deleted'])}")
+    except Exception as e:
+        result["error"] = str(e)
+        logger.debug(f"Remote cleanup error: {e}")
+    return result
+
+
+def close_stale_draft_prs(profile: AgentProfile = None, days: int = STALE_PR_DAYS) -> Dict:
+    """Close open draft / bot PRs older than `days`."""
+    result = {"closed": [], "error": ""}
+    if not GITHUB_AVAILABLE:
+        return result
+    try:
+        token = os.getenv("GITHUB_TOKEN")
+        repo = os.getenv("REPO")
+        if not token or not repo:
+            return result
+        g = Github(token)
+        r = g.get_repo(repo)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        for pr in r.get_pulls(state="open"):
+            try:
+                created = pr.created_at
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                head = pr.head.ref if pr.head else ""
+                is_bot = pr.title.startswith("🤖") or (head or "").startswith("auto-fix-")
+                if is_bot and created < cutoff:
+                    pr.edit(state="closed")
+                    result["closed"].append(pr.number)
+            except Exception as e:
+                logger.debug(f"PR close skip: {e}")
+        if profile and result["closed"]:
+            profile.data["prs_closed"] = profile.data.get("prs_closed", 0) + len(result["closed"])
+        logger.info(f"Stale PR cleanup: closed {len(result['closed'])}")
+    except Exception as e:
+        result["error"] = str(e)
+    return result
 
 
 # ==================== GITHUB OPERATIONS ====================
 
 def fetch_github_issues() -> List[Dict]:
-    """Fetch open issues from GitHub API."""
     tasks = []
     if not GITHUB_AVAILABLE:
         return tasks
-    
     try:
         token = os.getenv("GITHUB_TOKEN")
         repo = os.getenv("REPO")
         if not token or not repo:
             return tasks
-        
         g = Github(token)
         r = g.get_repo(repo)
-        for issue in list(r.get_issues(state="open"))[:10]:
+        for issue in list(r.get_issues(state="open"))[:15]:
+            if issue.pull_request:
+                continue
             tasks.append({
                 "type": "issue",
                 "id": f"issue_{issue.number}",
                 "title": sanitize_input(issue.title),
                 "body": sanitize_input((issue.body or "")[:2000]),
-                "impact": 2.0 if "bug" in (issue.title.lower() + (issue.body or "").lower()) else 1.5,
+                "impact": 2.5 if "bug" in (issue.title.lower() + (issue.body or "").lower()) else 2.0,
                 "risk": 0.1,
-                "url": issue.html_url
+                "url": issue.html_url,
+                "issue_number": issue.number
             })
     except Exception as e:
         logger.debug(f"GitHub issues fetch failed: {e}")
@@ -417,32 +446,27 @@ def fetch_github_issues() -> List[Dict]:
 
 
 def fetch_github_notifications() -> List[Dict]:
-    """Fetch GitHub notifications for the authenticated user."""
     tasks = []
     if not GITHUB_AVAILABLE:
         return tasks
-    
     try:
         token = os.getenv("GITHUB_TOKEN")
         if not token:
             return tasks
-        
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
         resp = requests.get(
             "https://api.github.com/notifications",
             headers=headers,
-            params={"all": "true", "per_page": 20}
+            params={"all": "false", "per_page": 20}
         )
         if resp.ok:
             for note in resp.json():
-                # Sanitize notification title/body
                 title = sanitize_input(note.get("subject", {}).get("title", ""))
-                body = sanitize_input(note.get("payload", {}).get("comment", "") or "")
                 tasks.append({
                     "type": "notification",
                     "id": f"note_{note.get('id')}",
                     "title": title,
-                    "body": body,
+                    "body": "",
                     "impact": 1.5,
                     "risk": 0.2,
                     "url": note.get("url", "")
@@ -453,17 +477,14 @@ def fetch_github_notifications() -> List[Dict]:
 
 
 def fetch_pull_requests() -> List[Dict]:
-    """Fetch open pull requests for review."""
     tasks = []
     if not GITHUB_AVAILABLE:
         return tasks
-    
     try:
         token = os.getenv("GITHUB_TOKEN")
         repo = os.getenv("REPO")
         if not token or not repo:
             return tasks
-        
         g = Github(token)
         r = g.get_repo(repo)
         for pr in list(r.get_pulls(state="open"))[:10]:
@@ -482,106 +503,55 @@ def fetch_pull_requests() -> List[Dict]:
     return tasks
 
 
-def fetch_sub_issues() -> List[Dict]:
-    """Fetch sub-issues if the repository has them enabled."""
-    tasks = []
-    if not GITHUB_AVAILABLE:
-        return tasks
-    
-    try:
-        token = os.getenv("GITHUB_TOKEN")
-        repo = os.getenv("REPO")
-        if not token or not repo:
-            return tasks
-        
-        g = Github(token)
-        r = g.get_repo(repo)
-        # Search for parent issues that might have sub-issues
-        for issue in list(r.get_issues(state="open", labels=["enhancement", "epic"]))[:5]:
-            tasks.append({
-                "type": "sub_issue",
-                "id": f"sub_{issue.number}",
-                "title": sanitize_input(f"Break down: {issue.title}"),
-                "body": sanitize_input(issue.body or ""),
-                "impact": 1.8,
-                "risk": 0.3,
-                "url": issue.html_url,
-                "parent_id": issue.number
-            })
-    except Exception as e:
-        logger.debug(f"Sub-issue fetch failed: {e}")
-    return tasks
-
-
 def scan_tasks() -> List[Dict]:
-    """Comprehensive task scanning across codebase and GitHub."""
     tasks = []
-    
-    # Scan code for TODO/FIXME
     for root, dirs, files in os.walk('.'):
         dirs[:] = [d for d in dirs if not d.startswith('.') and d != '.git']
         for f in files:
             if f.endswith(('.py', '.js', '.ts', '.md', '.json', '.yaml', '.yml')):
                 path = os.path.join(root, f)
                 try:
-                    with open(path, 'r') as file:
+                    with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                         for m in re.finditer(r'(TODO|FIXME):?\s*(.+?)(?:\n|$)', content):
                             match_text = m.group(0).lower()
                             impact = 2.0 if any(k in match_text for k in ["security", "bug", "critical", "fix"]) else 1.5
                             tasks.append({
                                 "type": "todo",
-                                "title": m.group(0).strip(),
+                                "title": m.group(0).strip()[:200],
                                 "path": path,
                                 "impact": impact,
                                 "risk": 0.1
                             })
                 except Exception as e:
                     logger.debug(f"Scan error {path}: {e}")
-    
-    # Fetch GitHub issues
     tasks.extend(fetch_github_issues())
-    
-    # Fetch notifications
     tasks.extend(fetch_github_notifications())
-    
-    # Fetch PRs for review
     tasks.extend(fetch_pull_requests())
-    
-    # Fetch sub-issues
-    tasks.extend(fetch_sub_issues())
-    
     return tasks
 
 
 def decide_task(tasks: List[Dict], profile: AgentProfile) -> Optional[Dict]:
-    """Intelligently prioritize tasks based on impact, risk, and profile metrics."""
     if not tasks:
         return None
-    
-    # Calculate priority scores
     for task in tasks:
         base_score = task.get("impact", 1.0) / (1 + task.get("risk", 0.5))
-        
-        # Boost based on type
         type_boosts = {
+            "issue": 1.8,
             "pr_review": 1.3,
             "security": 1.5,
-            "sub_issue": 1.2
+            "todo": 1.1,
+            "notification": 1.0,
         }
         task["priority"] = base_score * type_boosts.get(task.get("type", ""), 1.0)
-    
-    # Sort by priority
     return max(tasks, key=lambda t: t.get("priority", 0))
 
 
 # ==================== GIT OPERATIONS ====================
 
 def merge_merged_branches(branch: str = "main") -> Dict:
-    """Merge already-merged branches and delete them."""
     result = {"merged": [], "deleted": [], "error": ""}
     try:
-        # Find merged branches
         output = os.popen(f"git branch --merged {branch} | grep -v '\\*\\|main\\|master'").read()
         for b in output.strip().split('\n'):
             b = b.strip()
@@ -589,7 +559,6 @@ def merge_merged_branches(branch: str = "main") -> Dict:
                 os.system(f"git branch -d {b} 2>/dev/null")
                 result["merged"].append(b)
                 result["deleted"].append(b)
-        # Prune remote
         os.system("git remote prune origin 2>/dev/null || true")
     except Exception as e:
         result["error"] = str(e)
@@ -597,60 +566,45 @@ def merge_merged_branches(branch: str = "main") -> Dict:
 
 
 def sync_with_main() -> bool:
-    """Sync current branch with main."""
     try:
-        os.system("git fetch origin && git merge origin/main -m 'Sync with main DEPTH:0'")
+        os.system("git fetch origin && git merge origin/main -m 'Sync with main DEPTH:0' || true")
         return True
-    except:
+    except Exception:
         return False
 
 
 def get_current_branch() -> str:
-    """Get current git branch name."""
     try:
-        return os.popen('git branch --show-current').read().strip()
-    except:
+        return os.popen('git branch --show-current').read().strip() or "main"
+    except Exception:
         return "main"
 
 
 # ==================== TOOL EXECUTION ====================
 
 def exec_tool(action: str, args: Dict = None, profile: AgentProfile = None) -> Dict:
-    """Execute tool with safety checks and logging."""
     result = {"success": False, "output": "", "error": ""}
     if not args:
         args = {}
-    
     try:
         if action == "read_file":
             path = args.get("path", "")
             if not os.path.exists(path):
                 result["error"] = f"File not found: {path}"
                 return result
-            with open(path, 'r') as f:
+            with open(path, 'r', errors='ignore') as f:
                 result = {"success": True, "output": f.read()}
-        
         elif action == "edit_file":
-            if is_high_risk(action):
-                if profile:
-                    profile.record_security_event("high_risk")
-                result["error"] = "Blocked: High-risk action detected"
-                return result
-            
             path = args.get("path", "")
             content = args.get("content", "")
-            
-            # Validate path to prevent traversal attacks
             if ".." in path or path.startswith("/"):
                 if profile:
                     profile.record_security_event("high_risk")
                 result["error"] = "Blocked: Invalid path"
                 return result
-            
             with open(path, 'w') as f:
                 f.write(content)
             result = {"success": True, "output": f"Updated {path}"}
-        
         elif action == "run_command":
             cmd = args.get("cmd", "")
             if is_high_risk(cmd):
@@ -660,28 +614,21 @@ def exec_tool(action: str, args: Dict = None, profile: AgentProfile = None) -> D
                 result["error"] = f"Blocked: High-risk command ({cat})"
                 return result
             result = {"success": True, "output": os.popen(cmd).read()}
-        
         elif action == "create_branch":
-            branch = args.get("branch", f"auto-evolve-{int(time.time())}")
-            # Sanitize branch name
+            branch = args.get("branch", f"auto-fix-{int(time.time())}")
             branch = re.sub(r'[^a-zA-Z0-9_-]', '-', branch)
             os.system(f"git checkout -b {branch} 2>/dev/null || true")
             result = {"success": True, "output": f"Branch: {branch}"}
-        
         elif action == "commit":
-            message = args.get("message", "Auto")
-            # Sanitize commit message
-            message = re.sub(r'[<>]', '', message)
+            message = re.sub(r'[<>]', '', args.get("message", "Auto"))
             depth = args.get("depth", 0)
-            os.system(f"git add -A && git commit -m '{message}' DEPTH:{depth}")
+            os.system(f"git add -A && git commit -m '{message} DEPTH:{depth}' || true")
             result = {"success": True, "output": "Committed"}
-        
         elif action == "push":
             branch = args.get("branch", "")
             if branch:
                 os.system(f"git push origin {branch} 2>/dev/null || true")
             result = {"success": True, "output": "Pushed"}
-        
         elif action == "create_pr":
             if GITHUB_AVAILABLE:
                 token = os.getenv("GITHUB_TOKEN")
@@ -699,39 +646,37 @@ def exec_tool(action: str, args: Dict = None, profile: AgentProfile = None) -> D
                     result = {"success": True, "output": f"PR #{pr.number}", "pr_url": pr.html_url}
             else:
                 result = {"success": False, "error": "GitHub not available"}
-        
         elif action == "merge_branches":
             result = merge_merged_branches(args.get("branch", "main"))
-        
+            remote = cleanup_remote_auto_fix_branches(profile)
+            result["remote_deleted"] = remote.get("deleted", [])
+        elif action == "cleanup_remote":
+            result = cleanup_remote_auto_fix_branches(profile)
+            result["success"] = True
+        elif action == "close_stale_prs":
+            result = close_stale_draft_prs(profile)
+            result["success"] = True
         elif action == "sync":
             result = {"success": sync_with_main(), "output": "Synced with main"}
-        
         else:
             result["error"] = f"Unknown action: {action}"
-    
     except Exception as e:
         result["error"] = str(e)
         if profile:
             profile.record_error()
-    
     return result
 
 
 def run_self_audit(profile: AgentProfile) -> List[Dict]:
-    """Run a self-audit to identify improvements for the agent itself."""
     audit_tasks = []
-    
     for root, dirs, files in os.walk('.github'):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
         for f in files:
-            if f.endswith('.py') and f != '__pycache__':
+            if f.endswith('.py'):
                 path = os.path.join(root, f)
                 try:
-                    with open(path, 'r') as file:
+                    with open(path, 'r', errors='ignore') as file:
                         content = file.read()
-                        lines = content.split('\n')
-                        
-                        # Check for potential issues
                         if 'TODO' in content or 'FIXME' in content:
                             audit_tasks.append({
                                 "type": "agent_improvement",
@@ -740,131 +685,107 @@ def run_self_audit(profile: AgentProfile) -> List[Dict]:
                                 "impact": 2.0,
                                 "risk": 0.3
                             })
-                        
-                        # Check for missing error handling
-                        if content.count('try:') > content.count('except'):
-                            audit_tasks.append({
-                                "type": "agent_improvement",
-                                "title": f"Add error handling to {f}",
-                                "path": path,
-                                "impact": 1.5,
-                                "risk": 0.2
-                            })
                 except Exception as e:
                     logger.debug(f"Audit scan error: {e}")
-    
     return audit_tasks
 
 
 def evolve_agent_directives(profile: AgentProfile):
-    """Generate self-improvement directives based on profile metrics."""
     directives = []
-    
-    # Analyze error rate
     if profile.data.get("errors", 0) > profile.data.get("runs", 1) * 0.3:
         directives.append("High error rate - reduce mutation aggressiveness")
-    
-    # Analyze latency
     if profile.data.get("avg_latency", 0) > 10:
         directives.append("High latency - prioritize local providers (ollama)")
-    
-    # Check for security events
     if profile.data.get("security_events", 0) > 0:
         directives.append("Security events detected - enhance guardrails")
-    
-    # Provider performance analysis
     if profile.data.get("provider_stats"):
         best_provider = min(
             profile.data["provider_stats"].items(),
             key=lambda x: x[1].get("latency", float('inf'))
         )[0]
         directives.append(f"Prefer {best_provider} (lowest latency)")
-    
     profile.data["directives"] = directives
     return directives
 
 
 def main():
-    """Main entry point for the autonomous agent."""
     profile = AgentProfile()
     depth = get_depth()
-    
-    logger.info(f"Starting agent - Depth: {depth}")
-    
+    logger.info(f"Starting agent v4.1 - Depth: {depth}")
+
     if depth >= MAX_DEPTH:
         logger.info("Max depth reached - exiting")
         return
-    
-    # Clean up merged branches first
+
+    # 1) Highest-ROI hygiene first: purge remote auto-fix noise + stale drafts
     try:
-        merged = merge_merged_branches()
-        if merged["deleted"]:
-            logger.info(f"Cleaned up branches: {merged['deleted']}")
+        local = merge_merged_branches()
+        if local.get("deleted"):
+            logger.info(f"Local branches cleaned: {local['deleted']}")
+        remote = cleanup_remote_auto_fix_branches(profile)
+        if remote.get("deleted"):
+            logger.info(f"Remote auto-fix deleted: {remote['deleted']}")
+        closed = close_stale_draft_prs(profile)
+        if closed.get("closed"):
+            logger.info(f"Stale PRs closed: {closed['closed']}")
     except Exception as e:
-        logger.debug(f"Branch cleanup skipped: {e}")
-    
-    # Scan for tasks
+        logger.debug(f"Hygiene skipped: {e}")
+
+    # 2) Scan + prioritize real work (issues first)
     tasks = scan_tasks()
-    
-    # Run self-audit and add improvement tasks
-    audit_tasks = run_self_audit(profile)
-    tasks.extend(audit_tasks)
-    
-    # Decide which task to execute
+    tasks.extend(run_self_audit(profile))
     task = decide_task(tasks, profile)
-    
+
     if task:
         logger.info(f"Executing task: {task.get('title')} (type: {task.get('type')})")
-        
-        # Build context-aware prompt
         task_type = task.get("type", "unknown")
         if task_type == "pr_review":
-            prompt = f"Review this PR: {task.get('title')}\n\n{task.get('body', '')[:1000]}"
-        elif task_type == "sub_issue":
-            prompt = f"Break down into sub-issues: {task.get('title')}\n\n{task.get('body', '')[:1000]}"
+            prompt = f"Review this PR and propose concrete code fixes if needed:\n{task.get('title')}\n\n{task.get('body', '')[:1000]}"
         elif task_type == "issue":
-            prompt = f"Fix issue: {task.get('title')}\n\n{task.get('body', '')[:1000]}"
+            prompt = (
+                f"Solve this GitHub issue completely. Provide the full fixed file content when editing code.\n"
+                f"Issue: {task.get('title')}\n\n{task.get('body', '')[:1500]}"
+            )
         else:
-            prompt = f"Improve: {task.get('title')}"
-        
+            prompt = f"Improve / fix: {task.get('title')}"
+
+        full_prompt = prompt
         if task.get("path"):
             try:
-                with open(task["path"], 'r') as f:
+                with open(task["path"], 'r', errors='ignore') as f:
                     file_content = f.read()
-                full_prompt = f"{prompt}\n\nFile: {task['path']}\n\nCurrent content:\n{file_content[:3000]}"
-            except:
-                full_prompt = prompt
-            
-            response = call_llm(full_prompt)
-            
-            if response and "error" not in response.lower():
-                # Create branch and apply changes
-                branch_name = f"auto-fix-{int(time.time())}"
-                exec_tool("create_branch", {"branch": branch_name}, profile)
-                
-                # Sync with main first
-                sync_with_main()
-                
-                # Apply fix
-                exec_tool("edit_file", {"path": task["path"], "content": response}, profile)
-                exec_tool("commit", {"message": f"Auto-fix: {task.get('title')}", "depth": depth + 1}, profile)
-                exec_tool("push", {"branch": branch_name}, profile)
-                
-                # Create draft PR
-                exec_tool("create_pr", {
-                    "title": f"🤖 {task.get('title')}",
-                    "body": f"Autonomous improvement for: {task.get('title')}",
-                    "head": branch_name
-                }, profile)
+                full_prompt = f"{prompt}\n\nFile: {task['path']}\n\nCurrent content:\n{file_content[:4000]}"
+            except Exception:
+                pass
+
+        response = call_llm(full_prompt, profile=profile)
+
+        if response and "[No LLM]" not in response and "error" not in response.lower()[:40]:
+            branch_name = f"auto-fix-{int(time.time())}"
+            exec_tool("create_branch", {"branch": branch_name}, profile)
+            sync_with_main()
+            if task.get("path") and not response.strip().startswith("#") is False:
+                # Prefer writing full file when LLM returns substantial content
+                if len(response) > 80 and task.get("path"):
+                    exec_tool("edit_file", {"path": task["path"], "content": response}, profile)
+            exec_tool("commit", {"message": f"Auto-fix: {task.get('title', '')[:80]}", "depth": depth + 1}, profile)
+            exec_tool("push", {"branch": branch_name}, profile)
+            exec_tool("create_pr", {
+                "title": f"🤖 {task.get('title', 'Autonomous improvement')[:100]}",
+                "body": f"Autonomous improvement for: {task.get('title')}\n\nSource: {task.get('url', 'code scan')}",
+                "head": branch_name
+            }, profile)
     else:
-        logger.info("No tasks found - agent idle")
-    
-    # Evolve directives
+        logger.info("No tasks found - hygiene complete, agent idle")
+
     evolve_agent_directives(profile)
-    
-    profile.data["runs"] += 1
+    profile.data["runs"] = profile.data.get("runs", 0) + 1
     profile.save()
-    logger.info(f"Agent run complete (runs: {profile.data['runs']}, directives: {profile.data.get('directives', [])})")
+    logger.info(
+        f"Agent run complete (runs={profile.data['runs']}, "
+        f"branches_deleted={profile.data.get('branches_deleted', 0)}, "
+        f"prs_closed={profile.data.get('prs_closed', 0)})"
+    )
 
 
 if __name__ == "__main__":
