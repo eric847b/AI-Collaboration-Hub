@@ -174,52 +174,22 @@ def fix_peer_conflict_in_package_json(pkg_path: str, peer: str, pin: str) -> Dic
 
 def fix_python_syntax_file(path: str, content_hint: str = "") -> Dict:
     """
-    Best-effort local fixes for common syntax errors.
-    Handles unterminated f-strings with nested quotes by converting to concat.
-    Full complex fixes still go through LLM in the agent.
+    Best-effort local check for Python syntax errors.
+    Complex rewrites are handled by problem_solvers_runner / LLM agent.
     """
     result = {"success": False, "output": "", "error": ""}
     try:
         with open(path, "r", errors="ignore") as fh:
             src = fh.read()
-        # Try parse — if already OK, done
         try:
             ast.parse(src)
             result["success"] = True
             result["output"] = "already valid"
             return result
         except SyntaxError as e:
-            msg = (e.msg or "").lower()
-
-        fixed = src
-        # Pattern: f"...{' + '.join(...)}...unterminated
-        # Replace nested f-string join with precomputed variable pattern is LLM territory;
-        # apply a narrow fix for the known advanced_userscript pattern.
-        if "unterminated f-string" in msg or "unterminated string" in msg:
-            # Convert f"....{' + '.join(x)}...." style if present on one broken line
-            pattern = re.compile(
-                r"script\s*=\s*f\"([^\"]*)\{' \+ '\.join\(([^)]+)\)\}([^\"]*)",
-                re.DOTALL,
-            )
-            m = pattern.search(fixed)
-            if m:
-                before, join_arg, after = m.group(1), m.group(2), m.group(3)
-                replacement = (
-                    f"description = ' + '.join({join_arg})\n"
-                    f"        script = (
-"
-                    f"            \"{before}\"\n"
-                    f"            f\"{{description}}\"\n"
-                    f"            \"{after}\"\n"
-                    f"        )"
-                )
-                # Too fragile — mark for LLM
-                result["error"] = "unterminated f-string — needs structured rewrite"
-                result["output"] = f"line={e.lineno} msg={e.msg}"
-                return result
-
-        result["error"] = f"unfixed syntax: {e.msg} at line {e.lineno}"
-        result["output"] = (e.text or "")[:200]
+            result["error"] = f"unfixed syntax: {e.msg} at line {e.lineno}"
+            result["output"] = (e.text or "")[:200]
+            return result
     except Exception as ex:
         result["error"] = str(ex)
     return result
@@ -277,12 +247,15 @@ def create_minimal_lockfile(project_dir: str) -> Dict:
                 "": {"name": name, "version": version}
             },
         }
-        # Include declared deps as unresolved stubs if present (agent should prefer npm install)
         deps = data.get("dependencies") or {}
         if deps:
             lock["packages"][""]["dependencies"] = deps
             lock["dependencies"] = {
-                k: {"version": re.sub(r"^[~^>=<]+", "", str(v)), "resolved": "", "integrity": ""}
+                k: {
+                    "version": re.sub(r"^[~^>=<]+", "", str(v)),
+                    "resolved": "",
+                    "integrity": "",
+                }
                 for k, v in deps.items()
             }
         path = os.path.join(project_dir, "package-lock.json")
