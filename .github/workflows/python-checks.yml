@@ -43,8 +43,17 @@ jobs:
       - name: Check syntax
         working-directory: ${{ matrix.project }}
         run: |
-          # Compile all .py files under this project (non-blocking if none)
-          find . -name '*.py' -not -path './.git/*' -print0 | xargs -0 -r python -m py_compile
+          errors=0
+          while IFS= read -r -d '' f; do
+            if ! python -m py_compile "$f"; then
+              echo "::error file=$f::Python syntax error"
+              errors=$((errors+1))
+            fi
+          done < <(find . -name '*.py' -not -path './.git/*' -print0)
+          if [ "$errors" -ne 0 ]; then
+            echo "::error::$errors Python file(s) failed syntax check in ${{ matrix.project }}"
+            exit 1
+          fi
           echo "✓ Syntax check complete"
 
       - name: Install dev requirements (optional)
