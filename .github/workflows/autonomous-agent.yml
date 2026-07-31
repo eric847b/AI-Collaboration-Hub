@@ -11,10 +11,13 @@ on:
         description: 'LLM provider to use (auto, openai, anthropic, gemini, etc.)'
         required: false
         default: 'auto'
+  schedule:
+    # Continuous autonomy — every 2 hours
+    - cron: '0 */2 * * *'
   push:
     branches: [main]
   issues:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, reopened]
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -22,6 +25,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: read
 
 jobs:
   agent:
@@ -40,6 +44,41 @@ jobs:
       - name: Install dependencies
         run: pip install PyGithub openai anthropic requests 2>/dev/null || pip install PyGithub requests
 
+      - name: Cleanup stale auto-fix branches first
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python << 'PY'
+          import os
+          try:
+              from github import Github
+          except ImportError:
+              raise SystemExit(0)
+          token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("REPO")
+          if not token or not repo:
+              raise SystemExit(0)
+          g = Github(token)
+          r = g.get_repo(repo)
+          main_sha = r.get_branch("main").commit.sha
+          for b in r.get_branches():
+              if b.name in ("main", "master") or b.protected:
+                  continue
+              if not b.name.startswith("auto-fix-"):
+                  continue
+              try:
+                  if b.commit.sha == main_sha:
+                      r.get_git_ref(f"heads/{b.name}").delete()
+                      print("deleted", b.name)
+                      continue
+                  cmp = r.compare("main", b.name)
+                  if cmp.ahead_by == 0:
+                      r.get_git_ref(f"heads/{b.name}").delete()
+                      print("deleted-merged", b.name)
+              except Exception as e:
+                  print("skip", b.name, e)
+          PY
+
       - name: Run Autonomous Agent on Monorepo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,10 +93,14 @@ jobs:
           REPO: ${{ github.repository }}
           TASK: ${{ inputs.task }}
           PROVIDER: ${{ inputs.provider }}
+          AGENT_OWNS_GITHUB: '1'
         run: |
-          # Run agent on each subproject
-          cd autonomous-github-agent && python .github/scripts/agent.py || true
-          cd ../singularity-operator && python .github/scripts/agent.py || true
+          if [ -f autonomous-github-agent/.github/scripts/agent.py ]; then
+            python autonomous-github-agent/.github/scripts/agent.py || true
+          fi
+          if [ -f singularity-operator/.github/scripts/agent.py ]; then
+            (cd singularity-operator && python .github/scripts/agent.py) || true
+          fi
 
       - name: Status Report
         run: |
