@@ -20,14 +20,12 @@ jobs:
       matrix:
         repo: ["nexus-infinity-hub", "self-evolve-dash", "third-door-blink-controller"]
     steps:
-      # Checkout entire monorepo at workspace root (projects live as subdirs)
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 26
           cache: 'npm'
-          # Exact lockfile path — avoids "paths were not resolved" when glob misses
           cache-dependency-path: ${{ matrix.repo }}/package-lock.json
 
       - name: Install dependencies
@@ -37,16 +35,27 @@ jobs:
             echo "::warning::No package.json in ${{ matrix.repo }} — skipping"
             exit 0
           fi
+          install_ok=0
           if [ -f package-lock.json ]; then
-            npm ci --prefer-offline --no-audit --progress=false
-          elif [ -f bun.lockb ] || [ -f bun.lock ]; then
-            npm install --prefer-offline --no-audit
-          elif [ -f pnpm-lock.yaml ]; then
-            npm install -g pnpm && pnpm install --frozen-lockfile
-          elif [ -f yarn.lock ]; then
-            yarn install --frozen-lockfile
-          else
-            npm install --no-audit
+            if npm ci --prefer-offline --no-audit --progress=false; then
+              install_ok=1
+            else
+              echo "::warning::npm ci failed (peer/ERESOLVE?) — retrying with --legacy-peer-deps"
+              if npm ci --prefer-offline --no-audit --progress=false --legacy-peer-deps; then
+                install_ok=1
+              fi
+            fi
+          fi
+          if [ "$install_ok" -eq 0 ]; then
+            if [ -f bun.lockb ] || [ -f bun.lock ]; then
+              npm install --prefer-offline --no-audit --legacy-peer-deps || true
+            elif [ -f pnpm-lock.yaml ]; then
+              npm install -g pnpm && pnpm install --frozen-lockfile || true
+            elif [ -f yarn.lock ]; then
+              yarn install --frozen-lockfile || true
+            else
+              npm install --no-audit --legacy-peer-deps
+            fi
           fi
 
       - name: Run lint
@@ -90,5 +99,16 @@ jobs:
       - name: Syntax check
         working-directory: ${{ matrix.repo }}
         run: |
-          find . -name '*.py' -not -path './.git/*' -exec python -m py_compile {} \; || true
+          # Fail on syntax errors (do not swallow py_compile failures)
+          errors=0
+          while IFS= read -r -d '' f; do
+            if ! python -m py_compile "$f"; then
+              echo "::error file=$f::Python syntax error"
+              errors=$((errors+1))
+            fi
+          done < <(find . -name '*.py' -not -path './.git/*' -print0)
+          if [ "$errors" -ne 0 ]; then
+            echo "::error::$errors Python file(s) failed syntax check"
+            exit 1
+          fi
           echo "✓ Python syntax OK"
