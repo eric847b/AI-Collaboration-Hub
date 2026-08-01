@@ -1,10 +1,8 @@
 name: CI Self-Heal
 
-# Highest-leverage autonomous repair loop.
-# Runs on schedule, on manual dispatch, and after other workflows finish (especially failures).
+# v5.1 — full autonomous repair + multi-repo + escalation + export
 on:
   schedule:
-    # Every 3 hours — keep the monorepo self-healing without burning too many minutes
     - cron: '15 */3 * * *'
   workflow_dispatch:
     inputs:
@@ -16,6 +14,10 @@ on:
         description: 'MAX_SOLVER_TASKS'
         required: false
         default: '8'
+      multi_repo:
+        description: 'MULTI_REPO=1 metadata scan'
+        required: false
+        default: '0'
   workflow_run:
     workflows:
       - "Autonomous Agent"
@@ -38,7 +40,6 @@ concurrency:
 jobs:
   self-heal:
     runs-on: ubuntu-latest
-    # Always run on schedule / dispatch; on workflow_run only when the upstream concluded
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'failure' ||
@@ -57,7 +58,6 @@ jobs:
       - name: Install agent dependencies
         run: |
           pip install PyGithub requests 2>/dev/null || true
-          # Optional security tooling (best-effort)
           pip install pip-audit 2>/dev/null || true
 
       - name: Cleanup stale auto-fix branches
@@ -95,7 +95,7 @@ jobs:
                   print("skip", b.name, e)
           PY
 
-      - name: Run expanded problem solvers (v4.5+)
+      - name: Run problem solvers v5+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -105,11 +105,9 @@ jobs:
         run: |
           if [ -f autonomous-github-agent/.github/scripts/problem_solvers_runner.py ]; then
             python autonomous-github-agent/.github/scripts/problem_solvers_runner.py || true
-          else
-            echo "problem_solvers_runner.py not found"
           fi
 
-      - name: Security audit (report-only)
+      - name: Security audit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -117,11 +115,35 @@ jobs:
         run: |
           if [ -f autonomous-github-agent/.github/scripts/security_audit.py ]; then
             python autonomous-github-agent/.github/scripts/security_audit.py || true
-          else
-            echo "security_audit.py not yet present — skip"
           fi
 
-      - name: Upload agent report
+      - name: Multi-repo metadata scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          MULTI_REPO: ${{ github.event.inputs.multi_repo || '0' }}
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/multi_repo.py ]; then
+            python autonomous-github-agent/.github/scripts/multi_repo.py || true
+          fi
+
+      - name: Escalate recurring failures
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/escalate.py ]; then
+            python autonomous-github-agent/.github/scripts/escalate.py || true
+          fi
+
+      - name: Export Nexus state
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/collab_export.py ]; then
+            python autonomous-github-agent/.github/scripts/collab_export.py || true
+          fi
+
+      - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -129,14 +151,22 @@ jobs:
           path: |
             agent-report.json
             security-audit-report.json
+            multi-repo-report.json
+            auto-fix-ledger.json
+            last-nexus-consensus.json
+            nexus-export.json
           if-no-files-found: ignore
           retention-days: 14
 
       - name: Summary
         run: |
-          echo "### CI Self-Heal complete" >> $GITHUB_STEP_SUMMARY
-          if [ -f agent-report.json ]; then
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat agent-report.json >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### CI Self-Heal v5.1 complete" >> $GITHUB_STEP_SUMMARY
+          for f in agent-report.json multi-repo-report.json nexus-export.json; do
+            if [ -f "$f" ]; then
+              echo "#### $f" >> $GITHUB_STEP_SUMMARY
+              echo '```json' >> $GITHUB_STEP_SUMMARY
+              head -c 4000 "$f" >> $GITHUB_STEP_SUMMARY
+              echo >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
