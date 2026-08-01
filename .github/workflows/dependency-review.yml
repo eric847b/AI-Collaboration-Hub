@@ -1,0 +1,22 @@
+name: Dependency Review
+
+# Free for public repos — blocks PRs that introduce known-vulnerable packages
+# https://github.com/actions/dependency-review-action
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
