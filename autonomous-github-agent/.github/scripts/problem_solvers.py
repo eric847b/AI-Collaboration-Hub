@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Autonomous agent problem solvers v4.4
+Autonomous agent problem solvers v4.5
 Handles CI failure classes:
   - npm ERESOLVE / peer dependency conflicts
   - Python syntax errors (py_compile)
   - Missing lockfiles (deps-aware)
+  - Missing requirements.txt / pyproject.toml for Python projects with 3rd-party imports
+  - Outdated GitHub Actions versions (common deprecations)
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ import json
 import os
 import re
 import hashlib
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 SKIP_DIRS = {
     ".git", "node_modules", "Archive", "dist", "build", "__pycache__",
@@ -28,6 +30,52 @@ PEER_RULES = [
     ("@typescript-eslint/eslint-plugin", "typescript", 6, "~5.9.3"),
     ("@typescript-eslint/parser", "typescript", 6, "~5.9.3"),
 ]
+
+# Common 3rd-party Python packages we can safely pin when detected
+KNOWN_PY_PINS = {
+    "requests": "requests>=2.28.0",
+    "httpx": "httpx>=0.24.0",
+    "aiohttp": "aiohttp>=3.8.0",
+    "numpy": "numpy>=1.23.0",
+    "pandas": "pandas>=1.5.0",
+    "pyyaml": "PyYAML>=6.0",
+    "yaml": "PyYAML>=6.0",
+    "pydantic": "pydantic>=1.10.0",
+    "fastapi": "fastapi>=0.100.0",
+    "flask": "flask>=2.2.0",
+    "django": "django>=4.0",
+    "sqlalchemy": "SQLAlchemy>=1.4.0",
+    "pytest": "pytest>=7.0.0",
+    "black": "black>=23.0.0",
+    "ruff": "ruff>=0.1.0",
+    "mypy": "mypy>=1.0.0",
+    "click": "click>=8.0.0",
+    "typer": "typer>=0.9.0",
+    "rich": "rich>=13.0.0",
+    "tqdm": "tqdm>=4.64.0",
+    "python-dotenv": "python-dotenv>=1.0.0",
+    "dotenv": "python-dotenv>=1.0.0",
+    "openai": "openai>=1.0.0",
+    "anthropic": "anthropic>=0.20.0",
+    "groq": "groq>=0.4.0",
+    "github": "PyGithub>=1.59.0",
+    "PyGithub": "PyGithub>=1.59.0",
+}
+
+# GitHub Actions known-good majors (surgical bump targets)
+GHA_KNOWN_GOOD = {
+    "actions/checkout": "v4",
+    "actions/setup-node": "v4",
+    "actions/setup-python": "v5",
+    "actions/cache": "v4",
+    "actions/upload-artifact": "v4",
+    "actions/download-artifact": "v4",
+    "actions/github-script": "v7",
+    "actions/setup-java": "v4",
+    "actions/setup-go": "v5",
+    "docker/build-push-action": "v5",
+    "docker/login-action": "v3",
+}
 
 
 def _walk_files(root: str, suffixes: tuple) -> List[str]:
@@ -263,6 +311,174 @@ def create_minimal_lockfile(project_dir: str) -> Dict:
             json.dump(lock, fh, indent=2)
             fh.write("\n")
         result = {"success": True, "output": f"wrote {path}"}
+    except Exception as e:
+        result["error"] = str(e)
+    return result
+
+
+def _collect_third_party_imports(py_path: str) -> Set[str]:
+    """Return set of top-level third-party module names imported in a file."""
+    found: Set[str] = set()
+    try:
+        with open(py_path, "r", errors="ignore") as fh:
+            src = fh.read()
+        tree = ast.parse(src, filename=py_path)
+    except Exception:
+        return found
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                top = alias.name.split(".")[0]
+                if top and not top.startswith("_"):
+                    found.add(top)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.level == 0:
+                top = node.module.split(".")[0]
+                if top and not top.startswith("_"):
+                    found.add(top)
+    # Filter obvious stdlib / local
+    stdlibish = {
+        "os", "sys", "re", "json", "ast", "hashlib", "typing", "collections",
+        "pathlib", "datetime", "time", "logging", "subprocess", "shutil",
+        "tempfile", "io", "copy", "functools", "itertools", "operator",
+        "contextlib", "dataclasses", "enum", "abc", "traceback", "inspect",
+        "importlib", "pkgutil", "unittest", "doctest", "argparse", "getopt",
+        "configparser", "csv", "xml", "html", "http", "urllib", "email",
+        "base64", "binascii", "struct", "codecs", "locale", "gettext",
+        "string", "textwrap", "unicodedata", "difflib", "pprint", "reprlib",
+        "math", "cmath", "decimal", "fractions", "random", "statistics",
+        "secrets", "hashlib", "hmac", "uuid", "socket", "ssl", "select",
+        "selectors", "asyncio", "concurrent", "multiprocessing", "threading",
+        "queue", "sched", "signal", "mmap", "ctypes", "platform", "errno",
+        "gc", "sysconfig", "builtins", "__future__",
+    }
+    return {m for m in found if m not in stdlibish}
+
+
+def scan_missing_requirements(root: str = ".") -> List[Dict]:
+    """Find Python project dirs that import 3rd-party packages but lack requirements.txt / pyproject.toml."""
+    tasks = []
+    # Group .py files by their containing project-ish directory
+    candidates: Dict[str, Set[str]] = {}
+    for path in _walk_files(root, (".py",)):
+        d = os.path.dirname(path) or "."
+        # Prefer nearest directory that looks like a package root
+        proj = d
+        for _ in range(3):
+            parent = os.path.dirname(proj) or "."
+            if parent == proj:
+                break
+            # Stop if we hit repo root markers
+            if os.path.isfile(os.path.join(proj, "setup.py")) or os.path.isfile(os.path.join(proj, "pyproject.toml")):
+                break
+            proj = parent
+        mods = _collect_third_party_imports(path)
+        if mods:
+            candidates.setdefault(proj, set()).update(mods)
+
+    for proj, mods in candidates.items():
+        req = os.path.join(proj, "requirements.txt")
+        pyproj = os.path.join(proj, "pyproject.toml")
+        if os.path.isfile(req) or os.path.isfile(pyproj):
+            continue
+        # Only emit if at least one known pin exists
+        pins = [KNOWN_PY_PINS[m] for m in sorted(mods) if m in KNOWN_PY_PINS]
+        if not pins:
+            # Still flag with generic placeholder if real 3rd-party imports exist
+            pins = ["# Auto-generated placeholder — add project dependencies here", "requests>=2.28.0"]
+        rel = proj if proj != "." else "."
+        tasks.append({
+            "type": "missing_requirements",
+            "id": f"pyreq_{hashlib.md5(rel.encode()).hexdigest()[:10]}",
+            "title": f"Add requirements.txt for Python project {rel}",
+            "body": (
+                f"Directory `{rel}` contains Python files importing third-party modules "
+                f"({', '.join(sorted(mods)[:8])}{'...' if len(mods) > 8 else ''}) "
+                f"but has no requirements.txt or pyproject.toml.\n\n"
+                f"This causes non-reproducible installs and CI failures.\n\n"
+                f"Auto-fix will write a minimal requirements.txt with known-good pins."
+            ),
+            "path": req,
+            "project_dir": rel,
+            "impact": 2.6,
+            "risk": 0.1,
+            "pins": pins,
+            "modules": sorted(mods),
+        })
+    return tasks
+
+
+def fix_missing_requirements(project_dir: str, pins: List[str]) -> Dict:
+    """Write a minimal requirements.txt."""
+    result = {"success": False, "output": "", "error": ""}
+    try:
+        path = os.path.join(project_dir, "requirements.txt")
+        lines = ["# Auto-generated by autonomous-github-agent v4.5"] + list(pins)
+        with open(path, "w") as fh:
+            fh.write("\n".join(lines) + "\n")
+        result = {"success": True, "output": f"Wrote {path} with {len(pins)} entries"}
+    except Exception as e:
+        result["error"] = str(e)
+    return result
+
+
+def scan_gha_deprecations(root: str = ".") -> List[Dict]:
+    """Find workflow uses: actions/*@vN that are behind known-good majors."""
+    tasks = []
+    workflow_dirs = []
+    for r, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        if os.path.basename(r) == "workflows" and ".github" in r.replace("\\", "/"):
+            workflow_dirs.append(r)
+    for wdir in workflow_dirs:
+        for fname in os.listdir(wdir):
+            if not (fname.endswith(".yml") or fname.endswith(".yaml")):
+                continue
+            path = os.path.join(wdir, fname)
+            try:
+                with open(path, "r", errors="ignore") as fh:
+                    content = fh.read()
+            except Exception:
+                continue
+            for m in re.finditer(r"uses:\s*([\w\-]+/[\w\-]+)@v?(\d+)", content):
+                action, major = m.group(1), int(m.group(2))
+                if action in GHA_KNOWN_GOOD:
+                    good = GHA_KNOWN_GOOD[action]
+                    good_major = int(re.search(r"\d+", good).group(0))
+                    if major < good_major:
+                        tasks.append({
+                            "type": "gha_deprecation",
+                            "id": f"gha_{hashlib.md5((path + action).encode()).hexdigest()[:10]}",
+                            "title": f"Bump {action}@v{major} -> {good} in {path}",
+                            "body": (
+                                f"`{path}` uses `{action}@v{major}` which is behind the "
+                                f"monorepo known-good `{good}`.\n\n"
+                                f"Surgical bump recommended for security and feature parity."
+                            ),
+                            "path": path,
+                            "action": action,
+                            "old_major": major,
+                            "new_ref": good,
+                            "impact": 2.4,
+                            "risk": 0.18,
+                        })
+    return tasks
+
+
+def fix_gha_version(path: str, action: str, new_ref: str) -> Dict:
+    """Replace uses: action@vN with known-good ref."""
+    result = {"success": False, "output": "", "error": ""}
+    try:
+        with open(path, "r", errors="ignore") as fh:
+            content = fh.read()
+        pattern = re.compile(rf"(uses:\s*{re.escape(action)}@)v?\d+")
+        new_content, n = pattern.subn(rf"\g<1>{new_ref}", content)
+        if n == 0:
+            result["error"] = "no match"
+            return result
+        with open(path, "w") as fh:
+            fh.write(new_content)
+        result = {"success": True, "output": f"Updated {n} occurrence(s) of {action} -> {new_ref}"}
     except Exception as e:
         result["error"] = str(e)
     return result
