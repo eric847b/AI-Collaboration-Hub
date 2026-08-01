@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-Agent v4.5 problem-solvers runner.
-Scans for and auto-fixes:
-  1) Python SyntaxError (py_compile / ast.parse)
-  2) npm ERESOLVE peer conflicts (typescript vs typescript-eslint)
-  3) Missing lockfiles (deps-aware minimal stubs)
-  4) Missing requirements.txt for Python projects with 3rd-party imports
-  5) Outdated GitHub Actions versions
-Opens draft PRs via git + PyGithub when AGENT_OWNS_GITHUB=1.
-Supports DRY_RUN=1 (report only) and MAX_SOLVER_TASKS (default 5).
-Writes agent-report.json with structured counts.
+Agent v5.0 Nexus — problem-solvers runner.
+
+Scans + auto-fixes:
+  1) Python SyntaxError
+  2) npm peer conflicts (typescript vs typescript-eslint)
+  3) Missing lockfiles
+  4) Missing requirements.txt
+  5) Outdated GitHub Actions
+  6) Duplicate draft auto-PR cleanup (new in v5)
+  7) Closed-loop ledger updates
+
+Supports DRY_RUN=1, MAX_SOLVER_TASKS (default 8), writes agent-report.json.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 import time
 import logging
 from collections import Counter
 
-# Ensure sibling imports work when run from repo root
 _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
@@ -39,6 +39,12 @@ from problem_solvers import (  # noqa: E402
     fix_gha_version,
 )
 
+try:
+    from closed_loop import record_fix, mark_verified, note_reappear
+    CLOSED_LOOP = True
+except ImportError:
+    CLOSED_LOOP = False
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("problem_solvers_runner")
 
@@ -49,7 +55,8 @@ except ImportError:
     GITHUB_AVAILABLE = False
 
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
-MAX_SOLVER_TASKS = int(os.getenv("MAX_SOLVER_TASKS", "5"))
+MAX_SOLVER_TASKS = int(os.getenv("MAX_SOLVER_TASKS", "8"))
+VERSION = "5.0"
 
 
 def _git(cmd: str) -> str:
@@ -75,69 +82,60 @@ def _branch_and_pr(title: str, body: str, branch: str) -> bool:
         r = g.get_repo(repo)
         pr = r.create_pull(title=title, body=body, head=branch, base="main", draft=True)
         log.info(f"Opened PR #{pr.number}: {title}")
+        if CLOSED_LOOP:
+            try:
+                record_fix("auto_pr", title, pr_number=pr.number)
+            except Exception:
+                pass
         return True
     except Exception as e:
         log.warning(f"PR create failed: {e}")
         return False
 
 
+def cleanup_duplicate_draft_prs() -> int:
+    """Close older open draft 🤖 auto-fix PRs that share the same normalized title prefix."""
+    if not GITHUB_AVAILABLE or DRY_RUN:
+        return 0
+    token = os.getenv("GITHUB_TOKEN")
+    repo = os.getenv("REPO")
+    if not token or not repo:
+        return 0
+    closed = 0
+    try:
+        g = Github(token)
+        r = g.get_repo(repo)
+        # group by title without trailing noise
+        groups: dict = {}
+        for pr in r.get_pulls(state="open"):
+            if not pr.draft and not pr.title.startswith("🤖"):
+                continue
+            if not (pr.title.startswith("🤖") or (pr.head and pr.head.ref.startswith("auto-fix"))):
+                continue
+            # normalize: strip timestamps-ish noise, keep problem class
+            key = pr.title.split(" in ")[0].strip() if " in " in pr.title else pr.title[:60]
+            groups.setdefault(key, []).append(pr)
+        for key, prs in groups.items():
+            if len(prs) < 2:
+                continue
+            # keep newest, close older
+            prs_sorted = sorted(prs, key=lambda p: p.number, reverse=True)
+            for old in prs_sorted[1:]:
+                try:
+                    old.edit(state="closed")
+                    closed += 1
+                    log.info(f"Closed duplicate draft PR #{old.number}")
+                except Exception as e:
+                    log.debug(f"close skip {old.number}: {e}")
+    except Exception as e:
+        log.warning(f"duplicate cleanup error: {e}")
+    return closed
+
+
 def handle_python_syntax(task: dict) -> bool:
     path = task.get("path")
     if not path or not os.path.isfile(path):
         return False
-    with open(path, "r", errors="ignore") as fh:
-        src = fh.read()
-    # Known pattern: nested quotes inside f-string (advanced_userscript)
-    if "unterminated f-string" in (task.get("msg") or "").lower() or "f\"" in src:
-        # Prefer full safe rewrite when file is the userscript generator
-        if path.replace("\\", "/").endswith("advanced_userscript.py"):
-            fixed = '''#!/usr/bin/env python3
-"""AdvancedUserscriptGenerator - Groq-powered userscript generator."""
-
-from typing import List, Optional
-
-
-class AdvancedUserscriptGenerator:
-    """Generates production-ready, self-updating userscripts."""
-
-    def generate(self, features: Optional[List[str]] = None) -> str:
-        if features is None:
-            features = [
-                "auto-update",
-                "diff-viewer",
-                "error-handling",
-                "credit-monitor",
-                "Groq integration",
-                "browser automation",
-            ]
-        description = " + ".join(features)
-        script = (
-            "// ==UserScript==\\n"
-            "// @name Singularity Advanced Userscript\\n"
-            "// @version 0.3\\n"
-            f"// @description {description}\\n"
-            "// ==/UserScript==\\n"
-            "\\n"
-            "console.log('Advanced Singularity userscript active');\\n"
-        )
-        return script
-
-    def apply_self_fix(self, code: str) -> str:
-        return code + "\\n// Auto-fixed by Orchestrator"
-
-
-print("AdvancedUserscriptGenerator ready.")
-'''
-            if not DRY_RUN:
-                with open(path, "w") as fh:
-                    fh.write(fixed)
-            branch = f"auto-fix-pysyn-{int(time.time())}"
-            return _branch_and_pr(
-                f"🤖 Fix Python SyntaxError: {path}",
-                task.get("body", ""),
-                branch,
-            )
-    # Generic: leave a note file for LLM agent if we cannot auto-rewrite
     note = path + ".SYNTAX_ERROR.md"
     if not DRY_RUN:
         with open(note, "w") as fh:
@@ -161,7 +159,6 @@ def handle_peer_conflict(task: dict) -> bool:
     if not res.get("success"):
         log.warning(f"peer fix failed: {res}")
         return False
-    # Best-effort lockfile regen
     proj = task.get("project_dir", ".")
     _git(f"cd {proj!r} && npm install --package-lock-only --legacy-peer-deps --ignore-scripts --no-audit 2>&1 || true")
     branch = f"auto-fix-peer-{int(time.time())}"
@@ -177,7 +174,6 @@ def handle_lockfile(task: dict) -> bool:
     if DRY_RUN:
         log.info(f"[DRY_RUN] would generate lockfile for {proj}")
         return True
-    # Prefer npm; fall back to minimal stub
     out = _git(
         f"cd {proj!r} && npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps 2>&1 || true"
     )
@@ -200,13 +196,12 @@ def handle_missing_requirements(task: dict) -> bool:
     proj = task.get("project_dir", ".")
     pins = task.get("pins") or ["requests>=2.28.0"]
     if DRY_RUN:
-        log.info(f"[DRY_RUN] would write requirements.txt for {proj} with {pins}")
+        log.info(f"[DRY_RUN] would write requirements.txt for {proj}")
         return True
     res = fix_missing_requirements(proj, pins)
     if not res.get("success"):
-        log.warning(f"requirements fix failed: {res}")
         return False
-    branch = f"auto-fix-{int(time.time())}-pyreq_{proj.replace('/', '-')[:20]}"
+    branch = f"auto-fix-{int(time.time())}-pyreq"
     return _branch_and_pr(
         f"🤖 Python deps: {proj}",
         task.get("body", "") + f"\n\nOutput:\n```\n{res.get('output')}\n```",
@@ -223,7 +218,6 @@ def handle_gha_deprecation(task: dict) -> bool:
         return True
     res = fix_gha_version(path, action, new_ref)
     if not res.get("success"):
-        log.warning(f"gha fix failed: {res}")
         return False
     branch = f"auto-fix-gha-{int(time.time())}"
     return _branch_and_pr(
@@ -234,9 +228,13 @@ def handle_gha_deprecation(task: dict) -> bool:
 
 
 def main():
-    log.info("problem_solvers_runner v4.5 starting (DRY_RUN=%s MAX=%s)", DRY_RUN, MAX_SOLVER_TASKS)
+    log.info("problem_solvers_runner v%s starting (DRY_RUN=%s MAX=%s)", VERSION, DRY_RUN, MAX_SOLVER_TASKS)
     _git("git config user.name 'github-actions[bot]'")
     _git("git config user.email 'github-actions[bot]@users.noreply.github.com'")
+
+    # v5: cleanup duplicates first so the board stays usable
+    dup_closed = cleanup_duplicate_draft_prs()
+    log.info("Duplicate draft PRs closed: %s", dup_closed)
 
     tasks = []
     tasks.extend(scan_python_syntax("."))
@@ -245,7 +243,6 @@ def main():
     tasks.extend(scan_missing_requirements("."))
     tasks.extend(scan_gha_deprecations("."))
 
-    # Priority order: syntax → requirements → peer → lockfile(with deps) → GHA → lockfile(no deps)
     def score(t):
         weights = {
             "python_syntax": 100,
@@ -260,12 +257,22 @@ def main():
         return base + t.get("impact", 0)
 
     tasks = sorted(tasks, key=score, reverse=True)[:MAX_SOLVER_TASKS]
-    log.info(f"Found {len(tasks)} high-priority problems (capped at {MAX_SOLVER_TASKS})")
+    log.info("Found %s high-priority problems", len(tasks))
+
+    # closed-loop: if we still see peer_conflict after prior fixes, note reappear
+    if CLOSED_LOOP:
+        types_seen = {t.get("type") for t in tasks}
+        for ttype in types_seen:
+            try:
+                note_reappear(ttype)
+            except Exception:
+                pass
 
     report = {
-        "version": "4.5",
+        "version": VERSION,
         "dry_run": DRY_RUN,
         "max_tasks": MAX_SOLVER_TASKS,
+        "duplicates_closed": dup_closed,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "tasks": [],
         "counts_by_type": {},
@@ -277,7 +284,7 @@ def main():
     for t in tasks:
         ttype = t.get("type", "unknown")
         type_counts[ttype] += 1
-        log.info(f"Handling {ttype}: {t.get('title')}")
+        log.info("Handling %s: %s", ttype, t.get("title"))
         entry = {"type": ttype, "title": t.get("title"), "impact": t.get("impact"), "risk": t.get("risk"), "success": False}
         try:
             if not DRY_RUN:
@@ -297,8 +304,13 @@ def main():
             if ok:
                 solved += 1
                 entry["success"] = True
+                if CLOSED_LOOP:
+                    try:
+                        record_fix(ttype, t.get("title", ""))
+                    except Exception:
+                        pass
         except Exception as e:
-            log.warning(f"Task error: {e}")
+            log.warning("Task error: %s", e)
             entry["error"] = str(e)
         report["tasks"].append(entry)
 
@@ -310,9 +322,9 @@ def main():
             json.dump(report, fh, indent=2)
         log.info("Wrote agent-report.json")
     except Exception as e:
-        log.warning(f"Could not write report: {e}")
+        log.warning("Could not write report: %s", e)
 
-    log.info(f"problem_solvers_runner done — solved={solved}")
+    log.info("problem_solvers_runner v%s done — solved=%s", VERSION, solved)
 
 
 if __name__ == "__main__":
