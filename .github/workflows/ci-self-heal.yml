@@ -1,0 +1,142 @@
+name: CI Self-Heal
+
+# Highest-leverage autonomous repair loop.
+# Runs on schedule, on manual dispatch, and after other workflows finish (especially failures).
+on:
+  schedule:
+    # Every 3 hours — keep the monorepo self-healing without burning too many minutes
+    - cron: '15 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report only (DRY_RUN=1)'
+        required: false
+        default: '0'
+      max_tasks:
+        description: 'MAX_SOLVER_TASKS'
+        required: false
+        default: '8'
+  workflow_run:
+    workflows:
+      - "Autonomous Agent"
+      - "python-checks"
+      - "lockfile-validation"
+      - "all-projects-sanity"
+      - "lint-autofix"
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: ci-self-heal
+  cancel-in-progress: false
+
+jobs:
+  self-heal:
+    runs-on: ubuntu-latest
+    # Always run on schedule / dispatch; on workflow_run only when the upstream concluded
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install agent dependencies
+        run: |
+          pip install PyGithub requests 2>/dev/null || true
+          # Optional security tooling (best-effort)
+          pip install pip-audit 2>/dev/null || true
+
+      - name: Cleanup stale auto-fix branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python << 'PY'
+          import os
+          try:
+              from github import Github
+          except ImportError:
+              raise SystemExit(0)
+          token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("REPO")
+          if not token or not repo:
+              raise SystemExit(0)
+          g = Github(token)
+          r = g.get_repo(repo)
+          main_sha = r.get_branch("main").commit.sha
+          for b in r.get_branches():
+              if b.name in ("main", "master") or b.protected:
+                  continue
+              if not b.name.startswith(("auto-fix-", "auto-fix/")):
+                  continue
+              try:
+                  if b.commit.sha == main_sha:
+                      r.get_git_ref(f"heads/{b.name}").delete()
+                      print("deleted", b.name)
+                      continue
+                  cmp = r.compare("main", b.name)
+                  if cmp.ahead_by == 0:
+                      r.get_git_ref(f"heads/{b.name}").delete()
+                      print("deleted-merged", b.name)
+              except Exception as e:
+                  print("skip", b.name, e)
+          PY
+
+      - name: Run expanded problem solvers (v4.5+)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          AGENT_OWNS_GITHUB: '1'
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          MAX_SOLVER_TASKS: ${{ github.event.inputs.max_tasks || '8' }}
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/problem_solvers_runner.py ]; then
+            python autonomous-github-agent/.github/scripts/problem_solvers_runner.py || true
+          else
+            echo "problem_solvers_runner.py not found"
+          fi
+
+      - name: Security audit (report-only)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          AGENT_OWNS_GITHUB: '1'
+        run: |
+          if [ -f autonomous-github-agent/.github/scripts/security_audit.py ]; then
+            python autonomous-github-agent/.github/scripts/security_audit.py || true
+          else
+            echo "security_audit.py not yet present — skip"
+          fi
+
+      - name: Upload agent report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-report
+          path: |
+            agent-report.json
+            security-audit-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Summary
+        run: |
+          echo "### CI Self-Heal complete" >> $GITHUB_STEP_SUMMARY
+          if [ -f agent-report.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat agent-report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
