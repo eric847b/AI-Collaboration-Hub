@@ -1,6 +1,6 @@
 # Autonomous GitHub Agent — runtime dependencies
 # Used by: .github/workflows/python-checks.yml, autonomous-agent.yml, lockfile-validation
-PyGithub>=2.1.1
+PyGithub>=2.9.1
 requests>=2.31.0
 
 # Optional LLM providers (import-guarded in agent.py)
