@@ -1,17 +1,51 @@
 version: 2
+# Expanded monorepo coverage — free Dependabot (GitHub-native)
 updates:
+  # --- GitHub Actions (keep workflows current) ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # --- npm workspaces ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
   - package-ecosystem: "npm"
     directory: "/self-evolve-dash"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
   - package-ecosystem: "npm"
     directory: "/nexus-infinity-hub"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
   - package-ecosystem: "npm"
     directory: "/third-door-blink-controller"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+  - package-ecosystem: "npm"
+    directory: "/ai-chat-websites"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+  - package-ecosystem: "npm"
+    directory: "/collabhub-modules"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+
+  # --- Python ---
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
   - package-ecosystem: "pip"
     directory: "/autonomous-github-agent"
     schedule:
@@ -22,3 +56,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+  - package-ecosystem: "pip"
+    directory: "/solutions-dynamics"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
