@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Activity, CheckCircle, XCircle, AlertCircle, RefreshCw, Search } from "lucide-react";
+import { Activity, CheckCircle, XCircle, RefreshCw, Search } from "lucide-react";
 import { hybridDataManager } from "@/lib/hybridDataManager";
 import { ActivityLog as ActivityLogType } from "@/lib/localStorageManager";
 import { useEngineEvents } from "@/hooks/useEngineEvents";

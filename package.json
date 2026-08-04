@@ -10,6 +10,33 @@
     "verify": "powershell -ExecutionPolicy Bypass -File ./tools/verify-workspace.ps1",
     "health": "powershell -ExecutionPolicy Bypass -File ./tools/health-check.ps1",
     "lint": "echo 'Use: npm run lint:fix to auto-fix all projects (requires PowerShell)'",
-    "ci": "npm run verify && npm run health"
+    "ci": "npm run verify && npm run health",
+    "prepare": "husky"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eric847b/AI-Collaboration-Hub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/eric847b/AI-Collaboration-Hub/issues"
+  },
+  "homepage": "https://github.com/eric847b/AI-Collaboration-Hub#readme",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   }
 }

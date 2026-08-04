@@ -20,6 +20,8 @@ on:
     types: [opened, edited, reopened]
   pull_request:
     types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 */6 * * *'
 
 permissions:
   contents: write

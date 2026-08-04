@@ -51,11 +51,11 @@ class ProviderScorer {
       const parsed = JSON.parse(raw) as Record<string, ProviderMetrics>;
       for (const [k, v] of Object.entries(parsed || {})) {
         this.providers.set(k, {
-          recentRequests: [],
-          maxRequestsPerHour: Infinity,
-          status: 'unknown',
-          cooldownUntil: 0,
           ...v,
+          recentRequests: v.recentRequests ?? [],
+          maxRequestsPerHour: v.maxRequestsPerHour ?? Infinity,
+          status: v.status ?? 'unknown',
+          cooldownUntil: v.cooldownUntil ?? 0,
         });
       }
     } catch { /* ignore corrupt cache */ }

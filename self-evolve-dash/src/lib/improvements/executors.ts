@@ -2,15 +2,7 @@
 // 30+ pre-verified, instantly-executable improvements
 
 import { localStorageManager } from "../localStorageManager";
-import type { ExecutorFn, ImprovementResult } from "./types";
-
-// Helper to measure execution time
-const timed = async (fn: () => Promise<ImprovementResult>): Promise<ImprovementResult> => {
-  const start = performance.now();
-  const result = await fn();
-  const duration = performance.now() - start;
-  return { ...result, metrics: { before: 0, after: duration } };
-};
+import type { ExecutorFn } from "./types";
 
 export const EXECUTORS: Record<string, ExecutorFn> = {
   // ═══════════════════════════════════════════════════════════════
@@ -177,7 +169,7 @@ export const EXECUTORS: Record<string, ExecutorFn> = {
       },
       
       terminate() {
-        this.workers.forEach(w => w.terminate());
+        this.workers.forEach((w: Worker) => w.terminate());
         this.workers = [];
       }
     };
@@ -351,7 +343,6 @@ export const EXECUTORS: Record<string, ExecutorFn> = {
         touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
       } else if (e.type === 'touchend') {
         const dx = e.changedTouches[0].clientX - touchStart.x;
-        const dy = e.changedTouches[0].clientY - touchStart.y;
         const dt = Date.now() - touchStart.time;
         
         if (Math.abs(dx) > 50 && dt < 300) {

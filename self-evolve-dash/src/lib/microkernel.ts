@@ -3,7 +3,7 @@
 
 import registry from './commandRegistry';
 
-import logger from './universalLogger'; // Assuming it exists
+import { logger } from './universalLogger';
 
 // Core utilities as microkernel modules
 export const microkernel = {

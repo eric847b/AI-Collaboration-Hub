@@ -33,7 +33,7 @@ export async function testScript(script: any) {
 }
 
 export async function reviseScript(script: any, errorContext: string) {
-  const { data, error } = await supabase.functions.invoke('autonomous-improve', {
+  const { error } = await supabase.functions.invoke('autonomous-improve', {
     body: { scriptId: script.id, errorContext }
   });
   

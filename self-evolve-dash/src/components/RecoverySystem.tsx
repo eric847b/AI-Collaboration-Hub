@@ -8,7 +8,6 @@ import {
   RotateCcw, 
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Download,
   Upload
 } from 'lucide-react';

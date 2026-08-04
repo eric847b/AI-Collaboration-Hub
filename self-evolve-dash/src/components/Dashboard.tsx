@@ -35,7 +35,7 @@ export const Dashboard = () => {
   const [fragmentPoolOpen, setFragmentPoolOpen] = useState(false);
   const { toast } = useToast();
 
-  const { state, start, stop, isRunning, phase, metrics } = useAutonomousEngine();
+  const { start, stop, isRunning, phase, metrics } = useAutonomousEngine();
 
   const handleToggleEngine = useCallback(() => {
     if (isRunning) {

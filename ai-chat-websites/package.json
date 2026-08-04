@@ -30,7 +30,7 @@
     "setupFilesAfterEnv": [
       "<rootDir>/Userscripts/AI Chat Userscript Studio/Userscript Suite/scripts/jest-setup.js"
     ],
-    "testEnvironment": "node",
+    "testEnvironment": "jsdom",
     "testMatch": [
       "**/tests/**/*.test.js"
     ],

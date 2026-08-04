@@ -12,9 +12,9 @@ interface Version {
   id: string;
   version: string;
   code: string;
-  confidence_score: number;
+  confidence_score: number | null;
   test_results: any;
-  created_at: string;
+  created_at: string | null;
 }
 
 interface VersionHistoryProps {
@@ -119,19 +119,21 @@ export const VersionHistory = ({ scriptId, open, onOpenChange, onRestore }: Vers
                       <div className="flex items-center gap-3 mb-2">
                         <Badge variant="outline">v{version.version}</Badge>
                         <Badge 
-                          variant={version.confidence_score >= 70 ? "default" : "secondary"}
+                          variant={(version.confidence_score ?? 0) >= 70 ? "default" : "secondary"}
                           className="gap-1"
                         >
-                          {version.confidence_score >= 70 ? (
+                          {(version.confidence_score ?? 0) >= 70 ? (
                             <CheckCircle2 className="h-3 w-3" />
                           ) : (
                             <AlertCircle className="h-3 w-3" />
                           )}
-                          {version.confidence_score}% confidence
+                          {version.confidence_score ?? 0}% confidence
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(version.created_at), { addSuffix: true })}
+                        {version.created_at
+                          ? formatDistanceToNow(new Date(version.created_at), { addSuffix: true })
+                          : "Unknown date"}
                       </p>
                       {version.test_results && version.test_results.length > 0 && (
                         <div className="mt-2 text-xs text-muted-foreground">

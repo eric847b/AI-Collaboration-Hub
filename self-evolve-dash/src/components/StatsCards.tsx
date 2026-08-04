@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Code2, TrendingUp, Zap, RefreshCw, Brain } from "lucide-react";
+import { Code2, Zap, RefreshCw, Brain } from "lucide-react";
 import { hybridDataManager } from "@/lib/hybridDataManager";
 
 interface Stats {

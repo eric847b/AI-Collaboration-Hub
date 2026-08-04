@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { generateScript, testScript, reviseScript, logAction, archiveVersion } from "@/lib/agentUtils";
-import { Loader2, CheckCircle2, AlertCircle, Sparkles, RefreshCw, Code } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Sparkles, Code } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
@@ -61,6 +61,10 @@ export default function AutonomousAgent({ task, onCommit, onError }: AutonomousA
       setAttempts((prev) => prev + 1);
       
       const revised = await reviseScript(current, currentError);
+      if (!revised) {
+        currentError = "Revision returned no script";
+        break;
+      }
       setStatus("testing");
       const test = await testScript(revised);
 
