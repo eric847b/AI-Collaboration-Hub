@@ -68,3 +68,33 @@ jobs:
         working-directory: ${{ matrix.project }}
         continue-on-error: true
         run: flake8 . --max-line-length=100 --extend-ignore=E203,W503 || echo "flake8 not available"
+
+      - name: Run pytest (if available)
+        working-directory: ${{ matrix.project }}
+        continue-on-error: true
+        run: |
+          if python -m pytest --version 2>/dev/null; then
+            python -m pytest -v || echo "::warning::pytest found failures in ${{ matrix.project }}"
+          else
+            echo "pytest not installed — skipping"
+          fi
+
+      - name: Run mypy (if available)
+        working-directory: ${{ matrix.project }}
+        continue-on-error: true
+        run: |
+          if python -m mypy --version 2>/dev/null; then
+            python -m mypy . --ignore-missing-imports || echo "::warning::mypy found issues in ${{ matrix.project }}"
+          else
+            echo "mypy not installed — skipping"
+          fi
+
+      - name: Check black formatting (if available)
+        working-directory: ${{ matrix.project }}
+        continue-on-error: true
+        run: |
+          if python -m black --version 2>/dev/null; then
+            python -m black --check --line-length=100 . || echo "::warning::black formatting issues in ${{ matrix.project }}"
+          else
+            echo "black not installed — skipping"
+          fi
