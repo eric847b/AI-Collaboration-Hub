@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -26,7 +25,7 @@ export const AITaskPanel = () => {
   const { toast } = useToast();
 
   // Engine state
-  const { state, dispatch, isRunning } = useAutonomousEngine();
+  const { dispatch, isRunning } = useAutonomousEngine();
 
   // Local UI state
   const [task, setTask] = useState("");

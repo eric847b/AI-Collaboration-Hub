@@ -11,7 +11,7 @@ import {
   Play, Square, Brain, Zap, CheckCircle2, XCircle, 
   Clock, TrendingUp, Target, RefreshCw, List, Trash2,
   Ban, RotateCcw, Gauge, Layers, ShieldCheck, Bell, BellOff, Rocket,
-  AlertTriangle, Flame, Snowflake, Activity, Dna, Crosshair, ArrowUp, ArrowDown
+  AlertTriangle, Flame, Snowflake, Activity, Dna, Crosshair
 } from "lucide-react";
 import { autonomousEngine, AutonomousState } from "@/lib/autonomousEngine";
 import type { TuningMode } from "@/lib/improvements/types";
@@ -49,8 +49,6 @@ export const AutonomousControlPanel = () => {
   const [state, setState] = useState<AutonomousState>(autonomousEngine.getState());
   const [autoApply, setAutoApply] = useState(true);
   const [minConfidence, setMinConfidence] = useState(70);
-  const [showQueue, setShowQueue] = useState(false);
-  const [showBlacklist, setShowBlacklist] = useState(false);
   const [autoStart, setAutoStart] = useState(true);
   const [notifications, setNotifications] = useState(true);
 

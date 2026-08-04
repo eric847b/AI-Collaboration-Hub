@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge, BadgeVariant } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,7 +8,6 @@ import { Zap, CheckCircle2, XCircle, Loader2, PlayCircle, AlertTriangle } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAutonomousEngine } from "@/hooks/useAutonomousEngine";
 import { useEngineEvents } from "@/hooks/useEngineEvents";
-import { useResourceOrchestrator } from "@/hooks/useResourceOrchestrator";
 
 interface AppliedImprovement {
   id: string;
@@ -21,10 +20,11 @@ interface AppliedImprovement {
   riskLevel?: "low" | "medium" | "high";
 }
 
+type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>["variant"]>;
+
 export const AutoImplementPanel = () => {
   const { toast } = useToast();
   const { state, dispatch } = useAutonomousEngine();
-  const { providers, getBestProviderForTask } = useResourceOrchestrator();
 
   const [autoMode, setAutoMode] = useState(state.isRunning);
   const [minConfidence, setMinConfidence] = useState(state.adaptiveConfidence ?? 75);
@@ -47,8 +47,8 @@ export const AutoImplementPanel = () => {
         confidence: event.improvement.confidence,
         timestamp: event.improvement.timestamp || new Date().toISOString(),
         success: true,
-        provider: event.improvement.provider,
-        riskLevel: event.improvement.riskLevel,
+        provider: event.improvement.metadata?.provider,
+        riskLevel: event.improvement.metadata?.riskLevel,
       };
 
       setAppliedImprovements((prev) => [improvement, ...prev]);
@@ -68,29 +68,28 @@ export const AutoImplementPanel = () => {
         confidence: 0,
         timestamp: new Date().toISOString(),
         success: false,
-        provider: event.suggestion.provider,
+        provider: event.suggestion.metadata?.provider,
       };
 
       setAppliedImprovements((prev) => [failure, ...prev]);
       setIsProcessing(false);
-    }
-
-    if (event.type === "PROCESSING_STARTED") {
-      setIsProcessing(true);
     }
   });
 
   const toggleAutoMode = useCallback(
     (value: boolean) => {
       setAutoMode(value);
-      dispatch({ type: "TOGGLE_AUTO_MODE", payload: value });
+      if (value) {
+        dispatch({ type: "START" });
+      } else {
+        dispatch({ type: "STOP" });
+      }
 
       toast({
         title: value ? "Auto-Apply Enabled" : "Auto-Apply Disabled",
         description: value
           ? "High-confidence improvements will be applied automatically"
           : "Automatic application paused",
-        variant: value ? "default" : "outline",
       });
     },
     [dispatch, toast]
@@ -99,14 +98,12 @@ export const AutoImplementPanel = () => {
   const updateConfidence = useCallback(
     (value: number) => {
       setMinConfidence(value);
-      dispatch({ type: "SET_MIN_CONFIDENCE", payload: value });
-
       toast({
         title: "Confidence Threshold Updated",
         description: `Auto-apply now requires ${value}%+ confidence`,
       });
     },
-    [dispatch, toast]
+    [toast]
   );
 
   const getConfidenceBadgeVariant = useCallback((confidence: number): BadgeVariant => {
@@ -120,11 +117,6 @@ export const AutoImplementPanel = () => {
     if (risk === "medium") return <Badge variant="secondary" className="text-xs">Medium Risk</Badge>;
     return null;
   };
-
-  // Live resource status
-  const activeProvider = useMemo(() => {
-    return providers.find(p => p.status === "healthy") || providers[0];
-  }, [providers]);
 
   return (
     <Card className="p-6 glass-effect border-accent/20 animate-fade-in">
@@ -142,11 +134,6 @@ export const AutoImplementPanel = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs">
-              <div className={`w-2 h-2 rounded-full ${activeProvider?.status === "healthy" ? "bg-green-500" : "bg-yellow-500"}`} />
-              {activeProvider?.name}
-            </div>
-
             <Switch
               id="auto-mode"
               checked={autoMode}
@@ -165,7 +152,7 @@ export const AutoImplementPanel = () => {
           </div>
         </div>
 
-        {/* Confidence Slider + Resource Info */}
+        {/* Confidence Slider */}
         <Card className="p-5 bg-muted/30 border-accent/10">
           <div className="flex justify-between items-start mb-4">
             <div>

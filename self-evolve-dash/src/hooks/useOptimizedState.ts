@@ -8,7 +8,7 @@ export function useOptimizedState<T>(
   debounceMs: number = 0
 ): [T, (value: T | ((prev: T) => T)) => void, () => void] {
   const [state, setState] = useState<T>(initialValue);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const setOptimizedState = useCallback((value: T | ((prev: T) => T)) => {
     if (debounceMs > 0) {

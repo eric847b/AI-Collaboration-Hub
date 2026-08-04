@@ -36,7 +36,8 @@ export class UniversalLogger {
     this.logs.push(entry);
     
     const consoleMethod = level === 'success' ? 'info' : level;
-    console[consoleMethod as keyof Console](`[${level.toUpperCase()}] ${message}`, data || '');
+    const fn = (console as any)[consoleMethod] || console.log;
+    fn(`[${level.toUpperCase()}] ${message}`, data || '');
     
     try {
       localStorage.setItem('universalLogs', JSON.stringify(this.logs.slice(-200)));

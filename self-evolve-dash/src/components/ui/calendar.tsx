@@ -40,11 +40,11 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         ...classNames,
-      }}
+      } as React.ComponentProps<typeof DayPicker>["classNames"]}
       components={{
-        IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-      }}
+        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
+        IconRight: () => <ChevronRight className="h-4 w-4" />,
+      } as React.ComponentProps<typeof DayPicker>["components"]}
       {...props}
     />
   );

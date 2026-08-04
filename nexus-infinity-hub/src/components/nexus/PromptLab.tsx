@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNexus } from "@/store/nexus";
-import { Plus, Save, Tags, History, Columns2 } from "lucide-react";
+import { Plus, Save, History, Columns2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 
 export const PromptLab = () => {
   const { workspace, addPrompt, updatePrompt } = useNexus();

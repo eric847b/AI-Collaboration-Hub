@@ -1,11 +1,9 @@
-import { safeInvoke, safeQuery, isConnectionError, checkBackendHealth } from "./connectionUtils";
+import { checkBackendHealth } from "./connectionUtils";
 import { analyticsTracker } from "./analyticsTracker";
 import { localStorageManager } from "./localStorageManager";
-import { hybridDataManager } from "./hybridDataManager";
-import { localPatcher } from "./localPatcher";
 import { improvementExecutor } from "./improvements/executor";
 import type { TuningMode, CycleSpeed, EngineMetrics } from "./improvements/types";
-import { seedInitialTasks, runSchedulerTick, requeueRecurringTasks } from "./taskScheduler";
+import { seedInitialTasks, runSchedulerTick } from "./taskScheduler";
 import { taskQueue } from "./taskQueue";
 import { providerScorer } from "./providerScorer";
 
@@ -260,8 +258,6 @@ class AutonomousEngine {
 
   private successHistory = new Map<string, number>();
   private minConfidence = 65;
-  private autoApply = true;
-  private isOffline = false;
   private consecutiveFailures = 0;
   private autoStartEnabled = true;
   private notificationsEnabled = true;
@@ -305,8 +301,7 @@ class AutonomousEngine {
   async start() {
     if (this.state.isRunning) return;
 
-    const health = await checkBackendHealth();
-    this.isOffline = !health.healthy;
+    await checkBackendHealth();
 
     this.loadState();
     this.seedLocalImprovements();
@@ -1037,7 +1032,7 @@ class AutonomousEngine {
     }
   }
 
-  setAutoApply(v: boolean) { this.autoApply = v; }
+  setAutoApply(_v: boolean) { /* handled by engine internals */ }
   setMinConfidence(v: number) { this.minConfidence = v; }
   setAutoStart(v: boolean) { this.autoStartEnabled = v; }
   setNotifications(v: boolean) { this.notificationsEnabled = v; }

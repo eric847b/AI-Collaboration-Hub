@@ -78,7 +78,7 @@ export const EventBus = () => {
         <div className="glass-strong rounded-xl p-3 flex-1">
           <h4 className="text-[10px] mono uppercase text-neon-cyan mb-2">Node Activity</h4>
           <div className="space-y-2">
-            {["α-7", "β-3", "γ-12", "δ-5", "ω-1"].map((n, i) => {
+            {["α-7", "β-3", "γ-12", "δ-5", "ω-1"].map((n) => {
               const count = events.filter(e => e.node === n).length;
               return (
                 <div key={n}>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { Rnd } from "react-rnd";
 import { useNexus, type Widget } from "@/store/nexus";
 import { KernelWidget } from "./widgets/KernelWidget";
@@ -10,7 +10,7 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const widgetMap: Record<string, { title: string; comp: () => JSX.Element }> = {
+const widgetMap: Record<string, { title: string; comp: () => ReactElement }> = {
   kernel: { title: "Workspace Kernel", comp: KernelWidget },
   events: { title: "Reactive Event Bus", comp: EventsWidget },
   signals: { title: "Signal Monitor", comp: SignalsWidget },

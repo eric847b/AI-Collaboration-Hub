@@ -54,7 +54,7 @@ class HybridDataManager {
         version: parseInt(item.version) || 1,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        performance_score: item.confidence_score,
+        performance_score: item.confidence_score ?? undefined,
         metadata: {},
       }));
     } catch (error) {
@@ -90,7 +90,7 @@ class HybridDataManager {
             version: parseInt(data.version) || 1,
             created_at: data.created_at,
             updated_at: data.updated_at,
-            performance_score: data.confidence_score,
+            performance_score: data.confidence_score ?? undefined,
             metadata: {},
           };
         }
@@ -131,7 +131,7 @@ class HybridDataManager {
             version: parseInt(data.version) || 1,
             created_at: data.created_at,
             updated_at: data.updated_at,
-            performance_score: data.confidence_score,
+            performance_score: data.confidence_score ?? undefined,
             metadata: {},
           };
         }
@@ -188,7 +188,8 @@ class HybridDataManager {
 
     if (this.currentMode !== 'local' && this.isBackendHealthy) {
       try {
-        await supabase.from('activity_logs').insert([log]);
+        const { message, type, script_id, details } = log as ActivityLog & { script_id?: string | null; details?: string | null };
+        await supabase.from('activity_logs').insert([{ message, type, script_id, details }]);
       } catch (error) {
         console.warn('Failed to save log to remote:', error);
       }

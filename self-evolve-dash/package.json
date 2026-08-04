@@ -6,7 +6,6 @@
   "engines": {
     "node": ">=26.0.0"
   },
-
   "scripts": {
     "dev": "vite --open",
     "dev:host": "vite --host 0.0.0.0 --open",
@@ -16,10 +15,10 @@
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix || true",
     "typecheck": "tsc --noEmit",
+    "prepare": "husky",
     "check": "npm run lint && npm run typecheck",
     "ci": "npm run check && npm run build"
   },
-
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/theme-one-dark": "^6.1.3",
@@ -75,7 +74,6 @@
     "vaul": "^1.1.2",
     "zod": "^4.4.3"
   },
-
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/typography": "^0.5.20",
@@ -88,10 +86,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
     "lovable-tagger": "^1.3.1",
     "postcss": "^8.5.19",
     "tailwindcss": "^4.3.2",
-    "typescript": "^7.0.2",
+    "typescript": "~5.6.0",
     "typescript-eslint": "^8.64.0",
     "vite": "^8.1.4"
   }
