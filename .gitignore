@@ -51,4 +51,8 @@ Thumbs.db
 
 # Temp
 tmp/
-temp/.git_disabled/ 
+temp/.git_disabled/
+
+# Stray / disabled git repos (should never be tracked)
+.husky/
+**/.git_disabled/
