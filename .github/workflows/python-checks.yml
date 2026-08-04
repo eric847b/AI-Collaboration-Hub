@@ -16,23 +16,45 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-          cache-dependency-path: '${{ matrix.project }}/requirements*.txt'
+          cache-dependency-path: |
+            ${{ matrix.project }}/requirements.txt
+            ${{ matrix.project }}/requirements-dev.txt
 
       - name: Install base requirements
         working-directory: ${{ matrix.project }}
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            echo "✓ Installed requirements.txt"
+          elif [ -f pyproject.toml ]; then
+            pip install .
+            echo "✓ Installed from pyproject.toml"
+          else
+            echo "::warning::No requirements.txt or pyproject.toml in ${{ matrix.project }} — skipping dep install"
+          fi
 
       - name: Check syntax
         working-directory: ${{ matrix.project }}
-        run: python -m py_compile *.py 2>/dev/null || echo "Some files may not exist (non-blocking)"
+        run: |
+          errors=0
+          while IFS= read -r -d '' f; do
+            if ! python -m py_compile "$f"; then
+              echo "::error file=$f::Python syntax error"
+              errors=$((errors+1))
+            fi
+          done < <(find . -name '*.py' -not -path './.git/*' -print0)
+          if [ "$errors" -ne 0 ]; then
+            echo "::error::$errors Python file(s) failed syntax check in ${{ matrix.project }}"
+            exit 1
+          fi
+          echo "✓ Syntax check complete"
 
       - name: Install dev requirements (optional)
         working-directory: ${{ matrix.project }}

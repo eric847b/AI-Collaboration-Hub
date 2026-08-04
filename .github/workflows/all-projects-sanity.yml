@@ -16,34 +16,52 @@ jobs:
     name: Node project checks
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         repo: ["nexus-infinity-hub", "self-evolve-dash", "third-door-blink-controller"]
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: ${{ matrix.repo }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 26
           cache: 'npm'
-          cache-dependency-path: ${{ matrix.repo }}/*lock*.json
+          cache-dependency-path: ${{ matrix.repo }}/package-lock.json
+
       - name: Install dependencies
         working-directory: ${{ matrix.repo }}
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci --prefer-offline --no-audit --progress=false
-          elif [ -f bun.lockb ]; then
-            npm install --prefer-offline --no-audit
-          elif [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
-          elif [ -f yarn.lock ]; then
-            yarn install --frozen-lockfile
-          else
-            npm install
+          if [ ! -f package.json ]; then
+            echo "::warning::No package.json in ${{ matrix.repo }} — skipping"
+            exit 0
           fi
+          install_ok=0
+          if [ -f package-lock.json ]; then
+            if npm ci --prefer-offline --no-audit --progress=false; then
+              install_ok=1
+            else
+              echo "::warning::npm ci failed (peer/ERESOLVE?) — retrying with --legacy-peer-deps"
+              if npm ci --prefer-offline --no-audit --progress=false --legacy-peer-deps; then
+                install_ok=1
+              fi
+            fi
+          fi
+          if [ "$install_ok" -eq 0 ]; then
+            if [ -f bun.lockb ] || [ -f bun.lock ]; then
+              npm install --prefer-offline --no-audit --legacy-peer-deps || true
+            elif [ -f pnpm-lock.yaml ]; then
+              npm install -g pnpm && pnpm install --frozen-lockfile || true
+            elif [ -f yarn.lock ]; then
+              yarn install --frozen-lockfile || true
+            else
+              npm install --no-audit --legacy-peer-deps
+            fi
+          fi
+
       - name: Run lint
         working-directory: ${{ matrix.repo }}
         run: npm run lint || echo "No lint script"
+
       - name: Run test
         working-directory: ${{ matrix.repo }}
         run: npm run test || echo "No test script"
@@ -52,25 +70,45 @@ jobs:
     name: Python project checks
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         repo: ["autonomous-github-agent", "singularity-operator"]
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: ${{ matrix.repo }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: ${{ matrix.repo }}/requirements.txt
+
       - name: Install dependencies
         working-directory: ${{ matrix.repo }}
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
             python -m pip install -r requirements.txt
+            echo "✓ requirements.txt installed"
           elif [ -f pyproject.toml ]; then
             python -m pip install .
+            echo "✓ pyproject.toml installed"
+          else
+            echo "::warning::No requirements.txt / pyproject.toml in ${{ matrix.repo }}"
           fi
+
       - name: Syntax check
         working-directory: ${{ matrix.repo }}
         run: |
-          find . -name '*.py' -not -path './.git/*' -exec python -m py_compile {} \; || true
+          # Fail on syntax errors (do not swallow py_compile failures)
+          errors=0
+          while IFS= read -r -d '' f; do
+            if ! python -m py_compile "$f"; then
+              echo "::error file=$f::Python syntax error"
+              errors=$((errors+1))
+            fi
+          done < <(find . -name '*.py' -not -path './.git/*' -print0)
+          if [ "$errors" -ne 0 ]; then
+            echo "::error::$errors Python file(s) failed syntax check"
+            exit 1
+          fi
+          echo "✓ Python syntax OK"

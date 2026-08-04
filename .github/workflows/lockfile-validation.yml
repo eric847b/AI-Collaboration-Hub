@@ -7,6 +7,7 @@ on:
     branches: [main]
   schedule:
     - cron: '0 9 * * 0' # Weekly on Sunday
+  workflow_dispatch:
 
 jobs:
   validate-lockfiles:
@@ -14,41 +15,74 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Node project lockfiles
+      - name: Discover and validate Node lockfiles
         run: |
-          echo "Validating Node project lockfiles..."
-          REQUIRED=("nexus-infinity-hub" "self-evolve-dash" "collabhub-modules" "third-door-blink-controller")
-          
-          for proj in "${REQUIRED[@]}"; do
-            if [ -f "$proj/package.json" ]; then
-              if [ ! -f "$proj/package-lock.json" ] && [ ! -f "$proj/pnpm-lock.yaml" ] && [ ! -f "$proj/yarn.lock" ] && [ ! -f "$proj/bun.lockb" ]; then
-                echo "❌ $proj: Missing lockfile (package-lock.json, pnpm-lock.yaml, yarn.lock, or bun.lockb)"
-                exit 1
+          set -e
+          echo "Scanning monorepo for package.json projects..."
+          FAIL=0
+          WARN=0
+          while IFS= read -r -d '' pkg; do
+            dir=$(dirname "$pkg")
+            case "$dir" in
+              *node_modules*|*Archive*|*.git*|*dist*|*build*|*/archive/*) continue ;;
+            esac
+
+            # Only require lockfile when package has real dependencies
+            has_deps=0
+            if python3 -c "
+import json,sys
+try:
+  d=json.load(open(sys.argv[1]))
+  deps=d.get('dependencies') or {}
+  dev=d.get('devDependencies') or {}
+  opt=d.get('optionalDependencies') or {}
+  sys.exit(0 if (deps or dev or opt) else 1)
+except Exception:
+  sys.exit(0)
+" "$pkg" 2>/dev/null; then
+              has_deps=1
+            fi
+
+            has_lock=0
+            for lf in package-lock.json pnpm-lock.yaml yarn.lock bun.lockb bun.lock; do
+              if [ -f "$dir/$lf" ]; then
+                has_lock=1
+                break
+              fi
+            done
+
+            if [ "$has_lock" -eq 1 ]; then
+              echo "✓ $dir: lockfile present"
+            elif [ "$has_deps" -eq 1 ]; then
+              echo "❌ Missing lockfile under: $dir (has dependencies)"
+              FAIL=1
+            else
+              echo "⚠ $dir: no lockfile (no deps — advisory only)"
+              WARN=1
+            fi
+          done < <(find . -name package.json -print0 2>/dev/null)
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::One or more Node projects with dependencies lack a lockfile. Run npm/pnpm/yarn install and commit the lockfile."
+            exit 1
+          fi
+          echo "All dependency-bearing Node projects have lockfiles. (warnings=$WARN)"
+
+      - name: Check Python requirements (advisory)
+        run: |
+          echo "Scanning for Python projects..."
+          for proj in singularity-operator autonomous-github-agent solutions-dynamics; do
+            if [ -d "$proj" ]; then
+              if [ -f "$proj/requirements.txt" ] || [ -f "$proj/pyproject.toml" ]; then
+                echo "✓ $proj: requirements present"
               else
-                echo "✓ $proj: Lockfile present"
+                echo "⚠ $proj: missing requirements.txt (recommended)"
               fi
             fi
           done
 
-      - name: Check Python project requirements
+      - name: Summary
         run: |
-          echo "Validating Python project requirements..."
-          REQUIRED=("singularity-operator" "autonomous-github-agent")
-          
-          for proj in "${REQUIRED[@]}"; do
-            if [ -f "$proj/requirements.txt" ]; then
-              echo "✓ $proj: requirements.txt present"
-            else
-              echo "⚠ $proj: Missing requirements.txt (optional but recommended)"
-            fi
-          done
-
-      - name: Validate workflow syntax
-        run: |
-          echo "Checking workflow YAML..."
-          for wf in .github/workflows/*.yml; do
-            if [ -f "$wf" ]; then
-              echo "  ✓ $wf"
-            fi
-          done
-          echo "Workflow count: $(ls -1 .github/workflows/*.yml 2>/dev/null | wc -l)"
+          echo "Workflow YAML files:"
+          ls -1 .github/workflows/*.yml 2>/dev/null | wc -l
+          echo "Lockfile validation complete."

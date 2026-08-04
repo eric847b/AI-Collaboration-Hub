@@ -1,1 +1,3 @@
-groq
+# Singularity Operator — runtime dependencies (aligned with pyproject.toml)
+groq>=0.4.0
+requests>=2.31.0

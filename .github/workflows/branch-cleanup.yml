@@ -1,0 +1,98 @@
+name: Branch & Stale PR Cleanup
+
+on:
+  schedule:
+    # Every 6 hours — keep repo lean
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install deps
+        run: pip install PyGithub requests
+
+      - name: Cleanup stale auto-fix branches and draft PRs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python << 'PY'
+          import os, sys
+          from datetime import datetime, timezone, timedelta
+          try:
+              from github import Github
+          except ImportError:
+              print("PyGithub missing"); sys.exit(0)
+
+          token = os.environ.get("GITHUB_TOKEN")
+          repo_name = os.environ.get("REPO")
+          if not token or not repo_name:
+              print("Missing token/repo"); sys.exit(0)
+
+          g = Github(token)
+          r = g.get_repo(repo_name)
+          main = r.get_branch("main")
+          main_sha = main.commit.sha
+          deleted = []
+          closed_prs = []
+
+          # 1) Close stale open draft PRs from auto-fix branches (>2 days old)
+          cutoff = datetime.now(timezone.utc) - timedelta(days=2)
+          for pr in r.get_pulls(state="open"):
+              try:
+                  if not pr.draft and not pr.title.startswith("🤖"):
+                      continue
+                  created = pr.created_at
+                  if created.tzinfo is None:
+                      created = created.replace(tzinfo=timezone.utc)
+                  head = pr.head.ref
+                  if head.startswith("auto-fix-") or pr.title.startswith("🤖"):
+                      if created < cutoff:
+                          pr.edit(state="closed")
+                          closed_prs.append(pr.number)
+                          print(f"Closed stale PR #{pr.number} ({head})")
+              except Exception as e:
+                  print(f"PR close skip: {e}")
+
+          # 2) Delete remote auto-fix branches that match main SHA or are merged
+          for b in r.get_branches():
+              name = b.name
+              if name in ("main", "master") or b.protected:
+                  continue
+              if not name.startswith("auto-fix-"):
+                  continue
+              try:
+                  if b.commit.sha == main_sha:
+                      r.get_git_ref(f"heads/{name}").delete()
+                      deleted.append(name)
+                      print(f"Deleted identical-to-main: {name}")
+                      continue
+                  # Check if fully merged into main
+                  comparison = r.compare("main", name)
+                  if comparison.ahead_by == 0:
+                      r.get_git_ref(f"heads/{name}").delete()
+                      deleted.append(name)
+                      print(f"Deleted merged: {name}")
+              except Exception as e:
+                  print(f"Branch delete skip {name}: {e}")
+
+          print(f"Done. Deleted branches: {len(deleted)}, closed PRs: {len(closed_prs)}")
+          PY
