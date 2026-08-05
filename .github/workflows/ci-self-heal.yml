@@ -1,6 +1,6 @@
 name: CI Self-Heal
 
-# v5.1 — full autonomous repair + multi-repo + escalation + export
+# v5.2 — full autonomous repair + multi-repo + escalation + export + FailureSolver v3.4
 on:
   schedule:
     - cron: '15 */3 * * *'
@@ -59,6 +59,25 @@ jobs:
         run: |
           pip install PyGithub requests 2>/dev/null || true
           pip install pip-audit 2>/dev/null || true
+
+      - name: Proactive FailureSolver v3.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_FULL_PAT: ${{ secrets.GH_FULL_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ -f .github/run_failure_solver.py ]; then
+            python .github/run_failure_solver.py || true
+          elif [ -f autonomous-github-agent/.github/failure_solver.py ]; then
+            PYTHONPATH=autonomous-github-agent/.github python -c "
+from failure_solver import get_failure_solver
+import os
+s = get_failure_solver(os.getenv('GITHUB_REPOSITORY',''))
+print(s.run_proactive_pass(max_issues=3))
+" || true
+          else
+            echo "FailureSolver not present — skip"
+          fi
 
       - name: Cleanup stale auto-fix branches
         env:
@@ -160,7 +179,7 @@ jobs:
 
       - name: Summary
         run: |
-          echo "### CI Self-Heal v5.1 complete" >> $GITHUB_STEP_SUMMARY
+          echo "### CI Self-Heal v5.2 complete (FailureSolver wired)" >> $GITHUB_STEP_SUMMARY
           for f in agent-report.json multi-repo-report.json nexus-export.json; do
             if [ -f "$f" ]; then
               echo "#### $f" >> $GITHUB_STEP_SUMMARY
