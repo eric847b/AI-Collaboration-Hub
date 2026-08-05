@@ -1,6 +1,6 @@
 # Autonomous GitHub Agent — Status
 
-**Version: v5.2 Nexus** (as of 2026-08-01)
+**Version: v5.3 Nexus** (as of 2026-08-05)
 
 ## Live capabilities
 
@@ -19,6 +19,7 @@
 | Dependabot (npm / pip / actions) | ✅ |
 | Ruff + pre-commit | ✅ |
 | Dependency review on PRs | ✅ |
+| Groq SDK ≥1.6 pin (KNOWN_PY_PINS + singularity-operator v0.6) | ✅ |
 
 ## Env flags
 
@@ -31,9 +32,11 @@
 - [pre-commit](https://pre-commit.com)
 - [dependency-review-action](https://github.com/actions/dependency-review-action)
 - pip-audit
+- [Groq](https://console.groq.com/) (via singularity-operator v0.6)
 
 ## Docs
 
 - `docs/v5.0-nexus.md`
 - `docs/v5.1-all-ideas.md`
 - `docs/v5.2-top-ideas.md`
+- `docs/v5.3-groq-pin-sync.md`
