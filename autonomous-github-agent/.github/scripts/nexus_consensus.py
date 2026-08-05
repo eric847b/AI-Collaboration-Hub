@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Nexus Consensus (v5.0) — collaborative multi-role AI inspired by CollabHub userscripts.
+Nexus Consensus (v6.0) — collaborative multi-role AI inspired by CollabHub userscripts.
 
 Roles (from OmniNexus / UltimateNexus patterns):
   Planner → Researcher → Critic → Forge → Echo
@@ -16,7 +16,6 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-# Role → preferred provider hint (auto falls back through free → paid)
 ROLE_PROVIDER = {
     "Planner": "auto",
     "Researcher": "auto",
@@ -90,8 +89,6 @@ def run_consensus(
         latency = time.time() - start
         transcript.append({"role": role, "content": out[:4000], "latency": round(latency, 2)})
         context += f"\n### {role}\n{out[:1500]}\n"
-
-    # Simple confidence: Critic approve + presence of Forge actions
     critic_raw = next((t["content"] for t in transcript if t["role"] == "Critic"), "")
     forge_raw = next((t["content"] for t in transcript if t["role"] == "Forge"), "")
     critic = _safe_json(critic_raw)
@@ -114,7 +111,7 @@ def run_consensus(
     echo = next((t["content"] for t in transcript if t["role"] == "Echo"), "")
 
     return {
-        "version": "5.0",
+        "version": "6.0",
         "task": task[:500],
         "approve": approve,
         "confidence": round(min(confidence, 1.0), 2),

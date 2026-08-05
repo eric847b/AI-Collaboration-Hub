@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-v5.1 Bridge — wire Nexus consensus into agent decision path.
+v6.0 Bridge — wire Nexus consensus into agent decision path.
 
 Call before high-impact issue/PR fixes:
   consensus = consult_nexus(task_title, task_body, call_llm)
@@ -42,11 +42,12 @@ def consult_nexus(
             "actions": [],
             "echo": "consensus skipped",
             "skipped": True,
+            "version": "6.0",
         }
     task = f"{title}\n\n{(body or '')[:1500]}"
     try:
         result = run_consensus(task, call_llm_fn, profile=profile)
-        # persist last consensus for debugging
+        result["version"] = result.get("version") or "6.0"
         try:
             with open("last-nexus-consensus.json", "w") as fh:
                 json.dump(result, fh, indent=2)
@@ -60,6 +61,7 @@ def consult_nexus(
             "actions": [],
             "echo": f"consensus error: {e}",
             "error": str(e),
+            "version": "6.0",
         }
 
 
