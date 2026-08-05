@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent v5.0 Nexus — problem-solvers runner.
+Agent v6.0 Unified — problem-solvers runner.
 
 Scans + auto-fixes:
   1) Python SyntaxError
@@ -8,7 +8,7 @@ Scans + auto-fixes:
   3) Missing lockfiles
   4) Missing requirements.txt
   5) Outdated GitHub Actions
-  6) Duplicate draft auto-PR cleanup (new in v5)
+  6) Duplicate draft auto-PR cleanup
   7) Closed-loop ledger updates
 
 Supports DRY_RUN=1, MAX_SOLVER_TASKS (default 8), writes agent-report.json.
@@ -56,7 +56,7 @@ except ImportError:
 
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 MAX_SOLVER_TASKS = int(os.getenv("MAX_SOLVER_TASKS", "8"))
-VERSION = "5.0"
+VERSION = "6.0"
 
 
 def _git(cmd: str) -> str:
@@ -94,7 +94,7 @@ def _branch_and_pr(title: str, body: str, branch: str) -> bool:
 
 
 def cleanup_duplicate_draft_prs() -> int:
-    """Close older open draft 🤖 auto-fix PRs that share the same normalized title prefix."""
+    """Close older open draft auto-fix PRs that share the same normalized title prefix."""
     if not GITHUB_AVAILABLE or DRY_RUN:
         return 0
     token = os.getenv("GITHUB_TOKEN")
@@ -105,20 +105,17 @@ def cleanup_duplicate_draft_prs() -> int:
     try:
         g = Github(token)
         r = g.get_repo(repo)
-        # group by title without trailing noise
         groups: dict = {}
         for pr in r.get_pulls(state="open"):
-            if not pr.draft and not pr.title.startswith("🤖"):
+            if not pr.draft and not pr.title.startswith("\U0001f916"):
                 continue
-            if not (pr.title.startswith("🤖") or (pr.head and pr.head.ref.startswith("auto-fix"))):
+            if not (pr.title.startswith("\U0001f916") or (pr.head and pr.head.ref.startswith("auto-fix"))):
                 continue
-            # normalize: strip timestamps-ish noise, keep problem class
             key = pr.title.split(" in ")[0].strip() if " in " in pr.title else pr.title[:60]
             groups.setdefault(key, []).append(pr)
         for key, prs in groups.items():
             if len(prs) < 2:
                 continue
-            # keep newest, close older
             prs_sorted = sorted(prs, key=lambda p: p.number, reverse=True)
             for old in prs_sorted[1:]:
                 try:
@@ -142,7 +139,7 @@ def handle_python_syntax(task: dict) -> bool:
             fh.write(f"# Syntax error in `{path}`\n\n{task.get('body', '')}\n")
     branch = f"auto-fix-pysyn-{int(time.time())}"
     return _branch_and_pr(
-        f"🤖 Docs: Python syntax error in {path}",
+        f"\U0001f916 Docs: Python syntax error in {path}",
         task.get("body", ""),
         branch,
     )
@@ -163,7 +160,7 @@ def handle_peer_conflict(task: dict) -> bool:
     _git(f"cd {proj!r} && npm install --package-lock-only --legacy-peer-deps --ignore-scripts --no-audit 2>&1 || true")
     branch = f"auto-fix-peer-{int(time.time())}"
     return _branch_and_pr(
-        f"🤖 Fix peer conflict: {peer} -> {pin} in {proj}",
+        f"\U0001f916 Fix peer conflict: {peer} -> {pin} in {proj}",
         task.get("body", "") + f"\n\nApplied: {res.get('output')}",
         branch,
     )
@@ -186,7 +183,7 @@ def handle_lockfile(task: dict) -> bool:
         out = res.get("output", out)
     branch = f"auto-fix-lock-{int(time.time())}"
     return _branch_and_pr(
-        f"🤖 Lockfile: {proj}",
+        f"\U0001f916 Lockfile: {proj}",
         f"Autonomous lockfile for `{proj}`.\n\n```\n{out[-800:]}\n```",
         branch,
     )
@@ -203,7 +200,7 @@ def handle_missing_requirements(task: dict) -> bool:
         return False
     branch = f"auto-fix-{int(time.time())}-pyreq"
     return _branch_and_pr(
-        f"🤖 Python deps: {proj}",
+        f"\U0001f916 Python deps: {proj}",
         task.get("body", "") + f"\n\nOutput:\n```\n{res.get('output')}\n```",
         branch,
     )
@@ -221,7 +218,7 @@ def handle_gha_deprecation(task: dict) -> bool:
         return False
     branch = f"auto-fix-gha-{int(time.time())}"
     return _branch_and_pr(
-        f"🤖 GHA bump: {action} -> {new_ref}",
+        f"\U0001f916 GHA bump: {action} -> {new_ref}",
         task.get("body", "") + f"\n\nApplied: {res.get('output')}",
         branch,
     )
@@ -232,7 +229,6 @@ def main():
     _git("git config user.name 'github-actions[bot]'")
     _git("git config user.email 'github-actions[bot]@users.noreply.github.com'")
 
-    # v5: cleanup duplicates first so the board stays usable
     dup_closed = cleanup_duplicate_draft_prs()
     log.info("Duplicate draft PRs closed: %s", dup_closed)
 
@@ -259,7 +255,6 @@ def main():
     tasks = sorted(tasks, key=score, reverse=True)[:MAX_SOLVER_TASKS]
     log.info("Found %s high-priority problems", len(tasks))
 
-    # closed-loop: if we still see peer_conflict after prior fixes, note reappear
     if CLOSED_LOOP:
         types_seen = {t.get("type") for t in tasks}
         for ttype in types_seen:

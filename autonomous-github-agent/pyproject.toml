@@ -1,7 +1,7 @@
 [project]
 name = "autonomous-github-agent"
-version = "5.2.0"
-description = "Self-healing multi-LLM GitHub agent (Nexus v5.2)"
+version = "6.0.0"
+description = "Self-healing multi-LLM GitHub agent (Nexus v6.0 Unified)"
 requires-python = ">=3.11"
 dependencies = [
   "PyGithub>=1.59.0",

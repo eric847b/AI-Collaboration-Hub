@@ -1,6 +1,6 @@
 # Autonomous GitHub Agent — Status
 
-**Version: v5.3 Nexus** (as of 2026-08-05)
+**Version: v6.0 Unified** (as of 2026-08-05)
 
 ## Live capabilities
 
@@ -11,7 +11,7 @@
 | CI Self-Heal (schedule + workflow_run) | ✅ |
 | Security audit (pip-audit / npm) | ✅ |
 | Multi-role consensus (Planner→…→Echo) | ✅ |
-| Consensus gate (`agent_hooks` / `NEXUS_CONSENSUS`) | ✅ |
+| Consensus gate in agent.py (`gate_with_consensus`) | ✅ |
 | Closed-loop ledger + human escalation | ✅ |
 | Multi-repo metadata scan | ✅ |
 | Nexus state export | ✅ |
@@ -19,7 +19,8 @@
 | Dependabot (npm / pip / actions) | ✅ |
 | Ruff + pre-commit | ✅ |
 | Dependency review on PRs | ✅ |
-| Groq SDK ≥1.6 pin (KNOWN_PY_PINS + singularity-operator v0.6) | ✅ |
+| Groq SDK ≥1.6 pin (KNOWN_PY_PINS + singularity-operator) | ✅ |
+| Version lineage consolidated (v4.x–v5.3 → v6.0) | ✅ |
 
 ## Env flags
 
@@ -32,11 +33,8 @@
 - [pre-commit](https://pre-commit.com)
 - [dependency-review-action](https://github.com/actions/dependency-review-action)
 - pip-audit
-- [Groq](https://console.groq.com/) (via singularity-operator v0.6)
+- [Groq](https://console.groq.com/) (via singularity-operator)
 
 ## Docs
 
-- `docs/v5.0-nexus.md`
-- `docs/v5.1-all-ideas.md`
-- `docs/v5.2-top-ideas.md`
-- `docs/v5.3-groq-pin-sync.md`
+- `docs/v6.0-unified.md` — single source of truth (prior v5.x docs retained for history)
