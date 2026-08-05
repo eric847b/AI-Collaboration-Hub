@@ -6,4 +6,6 @@ When generating requirements from imports, map:
 groq -> groq>=1.6.0
 ```
 
-(Previously `groq>=0.4.0`.)
+**Applied in v5.3** (`KNOWN_PY_PINS["groq"] = "groq>=1.6.0"`).
+
+Previously `groq>=0.4.0`.
