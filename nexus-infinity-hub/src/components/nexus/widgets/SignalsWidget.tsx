@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 export const SignalsWidget = () => {
-  const [data, setData] = useState<number[]>(Array.from({ length: 40 }, () => Math.random()));
+  const [data, setData] = useState<number[]>(() => Array.from({ length: 40 }, () => Math.random()));
   useEffect(() => {
     const t = setInterval(() => setData(d => [...d.slice(1), Math.random()]), 200);
     return () => clearInterval(t);

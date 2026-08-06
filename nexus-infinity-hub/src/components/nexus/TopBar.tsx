@@ -1,21 +1,26 @@
 import { useNexus } from "@/store/nexus";
 import { Download, Upload, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export const TopBar = () => {
   const { workspace, importWorkspace, resetWorkspace } = useNexus();
   const [time, setTime] = useState("");
-  const [saved, setSaved] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  const [saved, setSaved] = useState(() => Date.now());
+  const workspaceRef = useRef(workspace);
 
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date().toLocaleTimeString("en-GB")), 1000);
+    const t = setInterval(() => {
+      setTime(new Date().toLocaleTimeString("en-GB"));
+      setNow(Date.now());
+      if (workspaceRef.current !== workspace) {
+        workspaceRef.current = workspace;
+        setSaved(Date.now());
+      }
+    }, 1000);
     return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    setSaved(Date.now());
   }, [workspace]);
 
   const handleExport = () => {
@@ -55,7 +60,7 @@ export const TopBar = () => {
           <span className="text-xs mono uppercase tracking-widest text-neon-cyan">Kernel Online</span>
         </div>
         <div className="hidden md:flex items-center gap-1.5 text-[10px] mono text-muted-foreground">
-          <span className="text-neon-lime">●</span> AUTOSAVE {Math.floor((Date.now() - saved) / 1000)}s
+          <span className="text-neon-lime">●</span> AUTOSAVE {Math.floor((now - saved) / 1000)}s
         </div>
       </div>
       <div className="hidden md:block text-xs mono text-muted-foreground">

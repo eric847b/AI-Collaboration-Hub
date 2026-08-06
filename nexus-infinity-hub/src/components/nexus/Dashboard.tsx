@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useRef, type ReactElement } from "react";
 import { Rnd } from "react-rnd";
 import { useNexus, type Widget } from "@/store/nexus";
 import { KernelWidget } from "./widgets/KernelWidget";
@@ -20,23 +20,23 @@ const widgetMap: Record<string, { title: string; comp: () => ReactElement }> = {
 
 export const Dashboard = () => {
   const { workspace, setLayout } = useNexus();
-  const [layout, setLocal] = useState<Widget[]>(workspace.layout);
+  const layout = workspace.layout;
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setLocal(workspace.layout); }, [workspace.layout]);
+  const idCounter = useRef(0);
 
   const update = (w: Widget) => {
     const next = layout.map(x => x.id === w.id ? w : x);
-    setLocal(next); setLayout(next);
+    setLayout(next);
   };
   const remove = (id: string) => {
     const next = layout.filter(x => x.id !== id);
-    setLocal(next); setLayout(next);
+    setLayout(next);
   };
   const add = (type: string) => {
-    const w: Widget = { id: `w_${Date.now()}`, type, x: 40, y: 40, w: 380, h: 240 };
+    idCounter.current += 1;
+    const w: Widget = { id: `w_${idCounter.current}`, type, x: 40, y: 40, w: 380, h: 240 };
     const next = [...layout, w];
-    setLocal(next); setLayout(next);
+    setLayout(next);
   };
 
   return (
