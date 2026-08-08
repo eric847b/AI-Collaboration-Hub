@@ -2,6 +2,31 @@ import { useCallback } from "react";
 import ReactFlow, { Background, Controls, MiniMap, addEdge, useEdgesState, useNodesState, BackgroundVariant, MarkerType, Node, Edge, Connection } from "reactflow";
 import "reactflow/dist/style.css";
 
+const NODE_COLORS: Record<string, string> = { cyan: "180 100% 55%", violet: "270 90% 65%", magenta: "320 100% 60%", lime: "90 100% 55%", amber: "40 100% 60%" };
+
+function nodeStyle(c: keyof typeof NODE_COLORS): React.CSSProperties {
+  const hsl = NODE_COLORS[c];
+  return {
+    background: "hsl(230 35% 8% / 0.85)",
+    border: `1px solid hsl(${hsl} / 0.6)`,
+    color: `hsl(${hsl})`,
+    borderRadius: 10,
+    padding: "8px 14px",
+    fontSize: 12,
+    fontFamily: "JetBrains Mono, monospace",
+    boxShadow: `0 0 16px hsl(${hsl} / 0.3)`,
+    backdropFilter: "blur(8px)",
+  };
+}
+
+function e(s: string, t: string): Edge {
+  return {
+    id: `${s}-${t}`, source: s, target: t, animated: true,
+    style: { stroke: "hsl(180 100% 55% / 0.6)", strokeWidth: 1.5 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(180 100% 55%)" },
+  };
+}
+
 const initialNodes: Node[] = [
   { id: "1", position: { x: 0, y: 80 }, data: { label: "Kernel" }, style: nodeStyle("cyan") },
   { id: "2", position: { x: 220, y: 0 }, data: { label: "Prompt Engine" }, style: nodeStyle("violet") },
@@ -16,29 +41,6 @@ const initialEdges: Edge[] = [
   e("1", "2"), e("1", "3"), e("2", "4"), e("3", "4"),
   e("4", "5"), e("4", "6"), e("5", "7"), e("6", "7"),
 ];
-
-function nodeStyle(c: "cyan" | "violet" | "magenta" | "lime" | "amber"): React.CSSProperties {
-  const map: Record<string, string> = { cyan: "180 100% 55%", violet: "270 90% 65%", magenta: "320 100% 60%", lime: "90 100% 55%", amber: "40 100% 60%" };
-  return {
-    background: `hsl(230 35% 8% / 0.85)`,
-    border: `1px solid hsl(${map[c]} / 0.6)`,
-    color: `hsl(${map[c]})`,
-    borderRadius: 10,
-    padding: "8px 14px",
-    fontSize: 12,
-    fontFamily: "JetBrains Mono, monospace",
-    boxShadow: `0 0 16px hsl(${map[c]} / 0.3)`,
-    backdropFilter: "blur(8px)",
-  };
-}
-
-function e(s: string, t: string): Edge {
-  return {
-    id: `${s}-${t}`, source: s, target: t, animated: true,
-    style: { stroke: "hsl(180 100% 55% / 0.6)", strokeWidth: 1.5 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "hsl(180 100% 55%)" },
-  };
-}
 
 export const GraphView = () => {
   const [nodes, , onNodesChange] = useNodesState(initialNodes);

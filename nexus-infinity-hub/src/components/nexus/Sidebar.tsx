@@ -1,8 +1,10 @@
 import { useNexus } from "@/store/nexus";
-import { Activity, Boxes, Brain, Cpu, FileCode2, FolderArchive, GitBranch, LayoutDashboard, Radio, Sparkles, Zap } from "lucide-react";
+import { Activity, Boxes, Brain, Cpu, FileCode2, FolderArchive, GitBranch, LayoutDashboard, Radio, Sparkles, Zap, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const modules = [
+type ModuleDef = { id: string; label: string; icon: LucideIcon };
+
+const modules: ModuleDef[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "prompts", label: "Prompt Lab", icon: Sparkles },
   { id: "scripts", label: "Userscripts", icon: FileCode2 },

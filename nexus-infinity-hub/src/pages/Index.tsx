@@ -32,20 +32,9 @@ const Index = () => {
     );
   }
 
-  const renderModule = () => {
-    switch (activeModule) {
-      case "dashboard": return <Dashboard />;
-      case "prompts": return <PromptLab />;
-      case "scripts": return <ScriptLab />;
-      case "events": return <EventBus />;
-      case "graph": return <GraphView />;
-      case "binary": return <BinaryPlayground />;
-      case "remote": return <RemoteInterface />;
-      case "memory": return <MemoryVault />;
-      case "files": return <FileVault />;
-      default: return <Dashboard />;
-    }
-  };
+  const modules = { dashboard: Dashboard, prompts: PromptLab, scripts: ScriptLab, events: EventBus, graph: GraphView, binary: BinaryPlayground, remote: RemoteInterface, memory: MemoryVault, files: FileVault } as const;
+  const Module = modules[activeModule as keyof typeof modules] || Dashboard;
+  const renderModule = () => <Module />;
 
   return (
     <>
