@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 
 type Ev = { id: number; ts: number; ch: string; payload: string; node: string };
 
+const CHANNELS = ["kernel", "graph", "script", "prompt", "memory", "signal", "remote"];
+const NODES = ["α-7", "β-3", "γ-12", "δ-5", "ω-1"];
+const rand = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
 export const EventBus = () => {
   const [events, setEvents] = useState<Ev[]>([]);
   const [running, setRunning] = useState(true);
@@ -13,15 +17,12 @@ export const EventBus = () => {
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => {
-      const channels = ["kernel", "graph", "script", "prompt", "memory", "signal", "remote"];
-      const nodes = ["α-7", "β-3", "γ-12", "δ-5", "ω-1"];
-      const ch = channels[Math.floor(Math.random() * channels.length)];
       const ev: Ev = {
         id: idRef.current++,
         ts: Date.now(),
-        ch,
+        ch: rand(CHANNELS),
         payload: `0x${Math.random().toString(16).slice(2, 10)}`,
-        node: nodes[Math.floor(Math.random() * nodes.length)],
+        node: rand(NODES),
       };
       setEvents(prev => [ev, ...prev].slice(0, 200));
     }, 400 + Math.random() * 600);
@@ -78,7 +79,7 @@ export const EventBus = () => {
         <div className="glass-strong rounded-xl p-3 flex-1">
           <h4 className="text-[10px] mono uppercase text-neon-cyan mb-2">Node Activity</h4>
           <div className="space-y-2">
-            {["α-7", "β-3", "γ-12", "δ-5", "ω-1"].map((n) => {
+            {NODES.map((n) => {
               const count = events.filter(e => e.node === n).length;
               return (
                 <div key={n}>

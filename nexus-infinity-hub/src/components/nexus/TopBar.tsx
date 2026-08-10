@@ -1,7 +1,7 @@
 import { useNexus } from "@/store/nexus";
 import { Download, Upload, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const TopBar = () => {
@@ -10,17 +10,20 @@ export const TopBar = () => {
   const [now, setNow] = useState(() => Date.now());
   const [saved, setSaved] = useState(() => Date.now());
   const workspaceRef = useRef(workspace);
+  const { name } = workspace;
 
   useEffect(() => {
-    const t = setInterval(() => {
+    const tick = () => {
       setTime(new Date().toLocaleTimeString("en-GB"));
       setNow(Date.now());
       if (workspaceRef.current !== workspace) {
         workspaceRef.current = workspace;
         setSaved(Date.now());
       }
-    }, 1000);
-    return () => clearInterval(t);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, [workspace]);
 
   const handleExport = () => {

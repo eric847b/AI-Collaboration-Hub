@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeftRight } from "lucide-react";
 
-const toBin = (s: string) => s.split("").map(c => c.charCodeAt(0).toString(2).padStart(8, "0")).join(" ");
-const invertBin = (b: string) => b.split("").map(c => c === "1" ? "0" : c === "0" ? "1" : c).join("");
+const toBin = (s: string) => [...s].map(c => c.charCodeAt(0).toString(2).padStart(8, "0")).join(" ");
+const invertBin = (b: string) => [...b].map(c => c === "1" ? "0" : c === "0" ? "1" : c).join("");
 const fromBin = (b: string) => b.split(" ").map(x => String.fromCharCode(parseInt(x, 2))).join("");
 
 export const BinaryPlayground = () => {
@@ -14,7 +14,12 @@ export const BinaryPlayground = () => {
   const flipped = invertBin(original);
   const stream = inverted ? flipped : original;
   const decoded = inverted ? fromBin(flipped) : input;
-  const delta = original.split("").filter((c, i) => c !== flipped[i]).length;
+  const bitCount = original.replace(/ /g, "").length;
+  const delta = [...original].filter((c, i) => c !== flipped[i]).length;
+  const streams = [
+    { label: "A:", val: original, cls: "text-neon-cyan" },
+    { label: "¬A:", val: flipped, cls: "text-neon-magenta" },
+  ];
 
   return (
     <div className="grid grid-cols-12 gap-3 h-full">
@@ -35,7 +40,7 @@ export const BinaryPlayground = () => {
           <div className="mono text-[11px] bg-background/60 rounded p-2 break-all max-h-32 overflow-auto leading-relaxed">
             {stream.split(" ").map((byte, i) => (
               <span key={i} className="inline-block mr-2">
-                {byte.split("").map((b, j) => (
+                {[...byte].map((b, j) => (
                   <span key={j} className={b === "1" ? "text-neon-cyan" : "text-muted-foreground"}>{b}</span>
                 ))}
               </span>
@@ -53,14 +58,15 @@ export const BinaryPlayground = () => {
           </div>
           <div className="glass rounded-lg p-3">
             <div className="text-[10px] mono uppercase text-muted-foreground">Entropy</div>
-            <div className="text-2xl mono font-bold text-neon-violet">{(delta / (original.replace(/ /g, "").length || 1)).toFixed(3)}</div>
+            <div className="text-2xl mono font-bold text-neon-violet">{(delta / (bitCount || 1)).toFixed(3)}</div>
           </div>
         </div>
         <div>
           <h4 className="text-[10px] mono uppercase text-neon-violet mb-1">Stream Comparison</h4>
           <div className="space-y-1 mono text-[10px]">
-            <div className="flex gap-2"><span className="text-muted-foreground w-12">A:</span><span className="text-neon-cyan break-all">{original}</span></div>
-            <div className="flex gap-2"><span className="text-muted-foreground w-12">¬A:</span><span className="text-neon-magenta break-all">{flipped}</span></div>
+            {streams.map(({ label, val, cls }) => (
+              <div key={label} className="flex gap-2"><span className="text-muted-foreground w-12">{label}</span><span className={`${cls} break-all`}>{val}</span></div>
+            ))}
           </div>
         </div>
       </div>

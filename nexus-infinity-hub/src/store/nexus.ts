@@ -80,25 +80,25 @@ export const useNexus = create<State>()(
       init: () => set({ initialized: true }),
       resetWorkspace: () => set({ workspace: seed() }),
       importWorkspace: (w) => set({ workspace: w }),
-      addPrompt: (p) => set({ workspace: { ...get().workspace, prompts: [p, ...get().workspace.prompts] } }),
-      updatePrompt: (id, body) => set({
+  addPrompt: (p) => set(s => ({ workspace: { ...s.workspace, prompts: [p, ...s.workspace.prompts] } })),
+      updatePrompt: (id, body) => set(s => ({
         workspace: {
-          ...get().workspace,
-          prompts: get().workspace.prompts.map(p => p.id === id ? { ...p, versions: [{ ts: Date.now(), body: p.body }, ...p.versions].slice(0, 20), body } : p),
+          ...s.workspace,
+          prompts: s.workspace.prompts.map(p => p.id === id ? { ...p, versions: [{ ts: Date.now(), body: p.body }, ...p.versions].slice(0, 20), body } : p),
         },
-      }),
-      addScript: (s) => set({ workspace: { ...get().workspace, scripts: [s, ...get().workspace.scripts] } }),
-      updateScript: (id, code) => set({
+      })),
+      addScript: (s) => set(s => ({ workspace: { ...s.workspace, scripts: [s, ...s.workspace.scripts] } })),
+      updateScript: (id, code) => set(s => ({
         workspace: {
-          ...get().workspace,
-          scripts: get().workspace.scripts.map(s => s.id === id ? { ...s, code, updated: Date.now() } : s),
+          ...s.workspace,
+          scripts: s.workspace.scripts.map(sc => sc.id === id ? { ...sc, code, updated: Date.now() } : sc),
         },
-      }),
-      addNote: (n) => set({ workspace: { ...get().workspace, notes: [n, ...get().workspace.notes] } }),
-      removeNote: (id) => set({ workspace: { ...get().workspace, notes: get().workspace.notes.filter(n => n.id !== id) } }),
-      addFile: (f) => set({ workspace: { ...get().workspace, files: [f, ...get().workspace.files] } }),
-      removeFile: (id) => set({ workspace: { ...get().workspace, files: get().workspace.files.filter(f => f.id !== id) } }),
-      setLayout: (l) => set({ workspace: { ...get().workspace, layout: l } }),
+      })),
+      addNote: (n) => set(s => ({ workspace: { ...s.workspace, notes: [n, ...s.workspace.notes] } })),
+      removeNote: (id) => set(s => ({ workspace: { ...s.workspace, notes: s.workspace.notes.filter(n => n.id !== id) } })),
+      addFile: (f) => set(s => ({ workspace: { ...s.workspace, files: [f, ...s.workspace.files] } })),
+      removeFile: (id) => set(s => ({ workspace: { ...s.workspace, files: s.workspace.files.filter(f => f.id !== id) } })),
+      setLayout: (l) => set(s => ({ workspace: { ...s.workspace, layout: l } })),
     }),
     { name: "nexus-infinity-hub", storage: createJSONStorage(() => localStorage) }
   )
