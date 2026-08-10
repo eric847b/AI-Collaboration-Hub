@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useNexus } from "@/store/nexus";
 import { Activity, Database, HardDrive } from "lucide-react";
 
@@ -8,6 +9,10 @@ export const KernelWidget = () => {
     { label: "Scripts", val: workspace.scripts.length, color: "text-neon-violet" },
     { label: "Notes", val: workspace.notes.length, color: "text-neon-magenta" },
     { label: "Files", val: workspace.files.length, color: "text-neon-lime" },
+  ];
+  const storage = [
+    { icon: HardDrive, label: "LOCAL.STORAGE", status: "PERSISTED", color: "text-neon-cyan" },
+    { icon: Database, label: "SNAPSHOTS", status: "12 / 50", color: "text-neon-lime" },
   ];
   return (
     <div className="space-y-3">
@@ -23,17 +28,17 @@ export const KernelWidget = () => {
         ))}
       </div>
       <div className="space-y-1.5 mt-2">
-        <div className="flex items-center justify-between text-[10px] mono">
-          <span className="text-muted-foreground flex items-center gap-1"><HardDrive className="h-3 w-3" /> LOCAL.STORAGE</span>
-          <span className="text-neon-cyan">PERSISTED</span>
-        </div>
-        <div className="h-1 bg-muted rounded-full overflow-hidden">
-          <div className="h-full w-[34%] bg-gradient-to-r from-neon-cyan to-neon-violet animate-shimmer" />
-        </div>
-        <div className="flex items-center justify-between text-[10px] mono">
-          <span className="text-muted-foreground flex items-center gap-1"><Database className="h-3 w-3" /> SNAPSHOTS</span>
-          <span className="text-neon-lime">12 / 50</span>
-        </div>
+        {storage.map(({ icon: Icon, label, status, color }) => (
+          <Fragment key={label}>
+            <div className="flex items-center justify-between text-[10px] mono">
+              <span className="text-muted-foreground flex items-center gap-1"><Icon className="h-3 w-3" /> {label}</span>
+              <span className={color}>{status}</span>
+            </div>
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-full w-[34%] bg-gradient-to-r from-neon-cyan to-neon-violet animate-shimmer" />
+            </div>
+          </Fragment>
+        ))}
       </div>
     </div>
   );

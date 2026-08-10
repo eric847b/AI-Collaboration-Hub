@@ -47,7 +47,6 @@ export const FileVault = () => {
           onDragLeave={() => setDrag(false)}
           onDrop={handleDrop}
           className={`glass-strong rounded-xl p-6 border-dashed transition flex items-center justify-center gap-3 ${drag ? "border-neon-cyan shadow-[0_0_30px_hsl(var(--neon-cyan)/0.3)]" : ""}`}
-          style={{ borderStyle: "dashed" }}
         >
           <Upload className={`h-6 w-6 ${drag ? "text-neon-cyan" : "text-muted-foreground"}`} />
           <div>

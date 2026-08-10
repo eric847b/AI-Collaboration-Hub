@@ -2,13 +2,18 @@ import { useNexus } from "@/store/nexus";
 import { Boxes, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const FEATURES = ["Workspace Kernel","Modular Dashboard","Prompt Lab","Userscript IDE","Reactive Bus","AI Graph","Binary Inversion","Memory Vault"];
+const BLURS = [
+  "absolute -top-32 -right-32 w-96 h-96 rounded-full bg-neon-cyan/20 blur-3xl",
+  "absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-neon-violet/20 blur-3xl",
+];
+
 export const Landing = ({ onEnter }: { onEnter: () => void }) => {
   const { workspace, resetWorkspace } = useNexus();
   return (
     <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
       <div className="max-w-3xl w-full glass-strong rounded-3xl p-10 animate-fade-in relative overflow-hidden">
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-neon-cyan/20 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-neon-violet/20 blur-3xl" />
+        {BLURS.map(b => <div key={b} className={b} />)}
         <div className="relative">
           <div className="flex items-center gap-3 mb-6">
             <div className="relative">
@@ -24,7 +29,7 @@ export const Landing = ({ onEnter }: { onEnter: () => void }) => {
             A unified AI operating environment for <span className="text-neon-cyan">automation</span>, <span className="text-neon-violet">scripting</span>, <span className="text-neon-magenta">prompt evolution</span>, signal experimentation and persistent memory — local-first, offline-capable, alive.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 mono text-[10px] uppercase">
-            {["Workspace Kernel","Modular Dashboard","Prompt Lab","Userscript IDE","Reactive Bus","AI Graph","Binary Inversion","Memory Vault"].map(f => (
+            {FEATURES.map(f => (
               <div key={f} className="glass rounded-lg p-2 text-center text-neon-cyan/80">{f}</div>
             ))}
           </div>

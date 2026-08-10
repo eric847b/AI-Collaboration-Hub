@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+const Panel = "glass-strong rounded-xl p-3 flex flex-col col-span-2 lg:col-span-1";
+
 export const PromptLab = () => {
   const { workspace, addPrompt, updatePrompt } = useNexus();
   const [activeId, setActiveId] = useState(workspace.prompts[0]?.id);
@@ -49,7 +51,7 @@ export const PromptLab = () => {
       </div>
 
       <div className="col-span-9 grid grid-cols-2 gap-3">
-        <div className="glass-strong rounded-xl p-3 flex flex-col col-span-2 lg:col-span-1">
+        <div className={Panel}>
           <div className="flex items-center justify-between mb-2">
             <Input value={active?.title || ""} className="h-7 max-w-xs bg-transparent border-border/40 mono text-sm" readOnly />
             <div className="flex gap-2">
@@ -68,7 +70,7 @@ export const PromptLab = () => {
           </div>
         </div>
 
-        <div className="glass-strong rounded-xl p-3 flex flex-col col-span-2 lg:col-span-1">
+        <div className={Panel}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs mono uppercase text-neon-violet flex items-center gap-1"><Columns2 className="h-3.5 w-3.5" /> {compare ? compare.title : "Compare"}</h3>
             <select className="bg-transparent border border-border/40 rounded text-xs mono px-2 py-1" value={compareId || ""} onChange={(e) => setCompareId(e.target.value)}>
