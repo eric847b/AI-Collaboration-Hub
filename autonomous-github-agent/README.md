@@ -1,12 +1,12 @@
 # Autonomous GitHub Agent
 
-**v5.2 Nexus** — self-healing multi-LLM agent for GitHub + monorepo repair.
+**v6.0 Unified** — self-healing multi-LLM agent for GitHub + monorepo repair.
 
 > Living core of the AI-Collaboration-Hub / Singularity Operator ecosystem.
 
 ## Status
 
-See **[STATUS.md](./STATUS.md)** for the full capability matrix (v5.2).
+See **[STATUS.md](./STATUS.md)** for the full capability matrix (v6.0).
 
 ## What it does
 
@@ -15,8 +15,9 @@ See **[STATUS.md](./STATUS.md)** for the full capability matrix (v5.2).
 3. Auto-repairs via problem solvers (syntax, peers, requirements, GHA)
 4. Opens **draft** PRs; cleans duplicate drafts
 5. **CI Self-Heal** runs on a schedule and after failed workflows
-6. Optional **Nexus multi-role consensus** before risky issue/PR edits
+6. **Nexus multi-role consensus** gated in `agent.py` before risky issue/PR/todo edits
 7. Closed-loop ledger + escalate to `needs-human` when fixes reappear
+8. Optional multi-repo metadata scan (`MULTI_REPO=1`)
 
 ## Quick start
 
@@ -34,21 +35,21 @@ pre-commit install
 ruff check autonomous-github-agent --fix
 ```
 
-## Architecture (v5.2)
+## Architecture (v6.0)
 
 ```
 Triggers → GitHub Actions
   → problem_solvers_runner (deterministic repairs)
-  → agent.py (LLM + tools + optional consensus gate)
+  → agent.py (LLM + tools + consensus gate)
   → draft PRs + ledger + export
   → Self-Heal schedule / workflow_run
 ```
 
-Modules: `nexus_consensus.py`, `agent_hooks.py`, `closed_loop.py`, `escalate.py`, `multi_repo.py`, `collab_export.py`, `security_audit.py`
+Modules: `nexus_consensus.py`, `agent_hooks.py`, `agent_nexus_bridge.py`, `closed_loop.py`, `escalate.py`, `multi_repo.py`, `collab_export.py`, `security_audit.py`
 
 ## Security
 
-Draft PRs only · input sanitization · high-risk command block · path checks · depth limit · least-privilege workflow permissions.
+Draft PRs only · input sanitization · high-risk command block · path checks · depth limit · consensus veto · least-privilege workflow permissions.
 
 ## License / ecosystem
 
