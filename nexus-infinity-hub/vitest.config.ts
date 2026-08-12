@@ -3,11 +3,12 @@ import path from "path";
 
 export default defineConfig({
   test: {
-    environment: "node",
-    // globals disabled: tests import { describe,it,expect } from "vitest" explicitly.
-    // globals:true + vitest 4.1.10 triggers a flaky "reading 'config'" runtime-init race on Windows.
+    // happy-dom env supports both DOM component tests AND plain logic tests.
+    // jsdom/happy-dom envs require the threads pool — the forks pool times out
+    // spawning DOM-env workers on Windows (vitest 4.1.10).
+    environment: "happy-dom",
     globals: false,
-    pool: "forks",
+    pool: "threads",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
