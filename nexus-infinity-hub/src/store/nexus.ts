@@ -87,7 +87,7 @@ export const useNexus = create<State>()(
           prompts: s.workspace.prompts.map(p => p.id === id ? { ...p, versions: [{ ts: Date.now(), body: p.body }, ...p.versions].slice(0, 20), body } : p),
         },
       })),
-      addScript: (s) => set(s => ({ workspace: { ...s.workspace, scripts: [s, ...s.workspace.scripts] } })),
+      addScript: (sc) => set(s => ({ workspace: { ...s.workspace, scripts: [sc, ...s.workspace.scripts] } })),
       updateScript: (id, code) => set(s => ({
         workspace: {
           ...s.workspace,
