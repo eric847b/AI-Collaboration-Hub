@@ -23,12 +23,30 @@ Version: 2.8
 ## v2.9 Scope
 
 **Next priorities:**
-1. Restore jsdom environment for DOM testing (investigate vitest 4.1.10 jsdom bug)
-2. Add comprehensive component tests with proper DOM assertions
+1. ✅ Restore DOM testing — replaced jsdom with **happy-dom** (jsdom env worker-times-out on vitest 4.1.10 + Windows)
+2. ✅ Add comprehensive component tests with proper DOM assertions (KernelWidget + store + utils = 19 tests)
 3. Implement CI/CD pipeline with automated testing
 4. Performance monitoring and bundle size tracking
 5. Documentation for component densification patterns
 
-**Blockers:**
-- Vitest 4.1.10 jsdom environment incompatible with current setup (investigation needed)
-- Consider downgrading to vitest 1.x or upgrading to newer version
+**v2.9 Progress:**
+- Fixed real bug: `addScript` param shadowing (prepended whole state object instead of script) - bc99cbd
+- Stabilized vitest: `globals:false` + `pool:threads`; forks pool can't spawn DOM-env workers - bc99cbd, 474df79
+- Restored DOM testing via happy-dom (^20.11.2) — jsdom env hangs with "failed to start forks worker" - 474df79
+- Added real test coverage: 19 tests across 4 files (store CRUD/versioning/persistence, cn() util, KernelWidget DOM render), stable across consecutive runs - bc99cbd, 474df79
+
+**Commits:**
+- bc99cbd test: add store + utils tests, fix addScript shadowing, stabilize vitest
+- 474df79 feat: restore DOM testing via happy-dom + add component tests
+
+**Resolved blockers:**
+- ~~Vitest 4.1.10 jsdom incompatibility~~ → solved with happy-dom + threads pool
+- ~~"reading 'config'" runtime race~~ → solved with globals:false + explicit imports
+
+## v2.10 Candidate Remaining Items
+
+1. CI/CD: run `npm run check` (lint + test + build) in GitHub Actions (workflow exists; enrich with happy-dom + threads flags if needed)
+2. Performance monitoring + bundle size tracking (baseline 397.67kB index)
+3. More component tests (Dashboard, EventBus, PromptLab, Sidebar)
+4. Component densification documentation
+5. Node engine mismatch: package.json declares `>=26.0.0` but dev machine runs v24.14.0 (verify before relying on engine-gated features)
