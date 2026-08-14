@@ -3,8 +3,10 @@ import { cn } from "@/lib/utils";
 
 describe("cn (className utility)", () => {
   it("joins truthy class values", () => {
+    const maybeFalse = false;
+    const maybeNull = null;
     expect(cn("a", "b")).toBe("a b");
-    expect(cn("a", false && "b", "c", null, undefined, 0 as unknown as string)).toBe("a c");
+    expect(cn("a", maybeFalse && "b", "c", maybeNull, undefined, 0 as unknown as string)).toBe("a c");
   });
 
   it("merges tailwind conflicts keeping the later class", () => {
