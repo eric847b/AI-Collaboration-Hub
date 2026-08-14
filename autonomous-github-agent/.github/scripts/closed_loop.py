@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Closed-loop ledger (v5.0)
+Closed-loop ledger (v6.0)
 
 After auto-fix PRs merge, record problem type + merge SHA.
 On later runs, re-check that the problem class is gone; if it returns,
@@ -24,11 +24,12 @@ def load_ledger(path: str = LEDGER_PATH) -> Dict[str, Any]:
                 return json.load(fh)
         except Exception:
             pass
-    return {"version": "5.0", "entries": []}
+    return {"version": "6.0", "entries": []}
 
 
 def save_ledger(data: Dict[str, Any], path: str = LEDGER_PATH) -> None:
     data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    data["version"] = data.get("version") or "6.0"
     with open(path, "w") as fh:
         json.dump(data, fh, indent=2)
 
@@ -50,7 +51,6 @@ def record_fix(
         "status": "pending_verify",
         "reappear_count": 0,
     })
-    # keep last 200
     data["entries"] = data["entries"][-200:]
     save_ledger(data, path)
 

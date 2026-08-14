@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-v5.1 Multi-repo awareness
+v6.0 Multi-repo awareness
 
 When MULTI_REPO=1, list sibling repos owned by the authenticated user
 and optionally run a lightweight scan (lockfile/requirements presence).
@@ -56,7 +56,7 @@ def scan_siblings_metadata(limit: int = 15) -> Dict[str, Any]:
     """Metadata-only scan (no clone) — safe and cheap."""
     enabled = os.getenv("MULTI_REPO", "0") == "1"
     report: Dict[str, Any] = {
-        "version": "5.1",
+        "version": "6.0",
         "enabled": enabled,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "repos": [],
@@ -74,7 +74,6 @@ def scan_siblings_metadata(limit: int = 15) -> Dict[str, Any]:
         report["notes"].append(
             f"Discovered {len(repos)} sibling repos (metadata only; no clone)."
         )
-        # Flag high open-issue counts as candidates for future deep scans
         hot = [r for r in repos if (r.get("open_issues") or 0) > 10]
         if hot:
             report["notes"].append(

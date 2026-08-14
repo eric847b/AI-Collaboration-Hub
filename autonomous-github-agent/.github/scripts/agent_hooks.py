@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-v5.2 agent hooks — inject Nexus consensus into issue/PR task execution.
+v6.0 agent hooks — inject Nexus consensus into issue/PR/todo task execution.
 
 Import from agent.py (or call before high-impact edits):
 
@@ -31,7 +31,7 @@ def gate_with_consensus(
 ) -> bool:
     """
     Return True if the agent should proceed with an automated fix.
-    For issue / pr_review tasks, runs multi-role consensus when enabled.
+    For issue / pr_review / todo tasks, runs multi-role consensus when enabled.
     """
     ttype = task.get("type", "")
     if ttype not in ("issue", "pr_review", "todo"):
