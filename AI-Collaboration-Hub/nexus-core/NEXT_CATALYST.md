@@ -48,8 +48,16 @@ Version: 2.8
 
 ## v2.10 Candidate Remaining Items
 
-1. ✅ CI/CD: `npm run check` verified — lint (0 errors) + 19/19 tests + build all pass
+1. ✅ CI/CD: `npm run check` verified — lint (0 errors) + 27/27 tests + build all pass
 2. Performance monitoring + bundle size tracking (baseline 397.67kB index)
-3. More component tests (Dashboard, EventBus, PromptLab, Sidebar)
+3. ⏳ More component tests — added Sidebar + TopBar (0e547fa); remaining: Dashboard, EventBus, PromptLab, GraphView, MemoryVault, FileVault, RemoteInterface, ScriptLab
 4. Component densification documentation
 5. Node engine mismatch: package.json declares `>=26.0.0` but dev machine runs v24.14.0 (verify before relying on engine-gated features)
+
+**v2.10 Progress:**
+- Expanded test suite to **27 tests across 6 files** (0e547fa): store CRUD/versioning/persistence, cn() util, KernelWidget DOM render, Sidebar (branding/modules/active-state/module switch/summary), TopBar (controls/reset/export download)
+- Full-repo ESLint: 0 errors (10 pre-existing react-refresh + coverage warnings only)
+- Verified suite stable across consecutive runs
+
+**Commits:**
+- 0e547fa test: add Sidebar + TopBar component tests (27 tests total)
