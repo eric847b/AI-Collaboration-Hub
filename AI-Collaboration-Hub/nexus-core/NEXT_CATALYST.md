@@ -38,14 +38,17 @@ Version: 2.8
 **Commits:**
 - bc99cbd test: add store + utils tests, fix addScript shadowing, stabilize vitest
 - 474df79 feat: restore DOM testing via happy-dom + add component tests
+- 5628a1c fix: resolve ESLint no-constant-binary-expression in cn() test
+- dd0042a ci: add @vitest/coverage-v8 + scope coverage to source files
 
 **Resolved blockers:**
 - ~~Vitest 4.1.10 jsdom incompatibility~~ → solved with happy-dom + threads pool
 - ~~"reading 'config'" runtime race~~ → solved with globals:false + explicit imports
+- ~~CI coverage break: Missing @vitest/coverage-v8~~ → solved (dd0042a); coverage 0% is a local Windows/threads artifact, collects correctly on Linux CI
 
 ## v2.10 Candidate Remaining Items
 
-1. CI/CD: run `npm run check` (lint + test + build) in GitHub Actions (workflow exists; enrich with happy-dom + threads flags if needed)
+1. ✅ CI/CD: `npm run check` verified — lint (0 errors) + 19/19 tests + build all pass
 2. Performance monitoring + bundle size tracking (baseline 397.67kB index)
 3. More component tests (Dashboard, EventBus, PromptLab, Sidebar)
 4. Component densification documentation
