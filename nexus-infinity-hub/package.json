@@ -11,6 +11,8 @@
     "dev": "vite",
     "dev:host": "vite --host 0.0.0.0",
     "build": "vite build",
+    "build:analyze": "vite build && node scripts/report-bundle-size.mjs",
+    "analyze": "node scripts/report-bundle-size.mjs",
     "buildDev": "vite build --mode development",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix || true",
