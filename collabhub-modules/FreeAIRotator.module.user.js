@@ -6,6 +6,7 @@
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_setClipboard
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @connect      api.groq.com
@@ -13,7 +14,7 @@
 // @connect      api.together.xyz
 // @connect      openrouter.ai
 // ==/UserScript==
-/* globals GM_getValue, GM_setValue, GM_registerMenuCommand, GM_xmlhttpRequest */
+/* globals GM_getValue, GM_setValue, GM_setClipboard, GM_registerMenuCommand, GM_xmlhttpRequest */
 (function () {
   'use strict';
   const NS = 'freeai_rot_';
@@ -155,6 +156,94 @@
     },
   };
 
+  // ---- Page injection: floating button -> docked result card ----
+  function attachUI() {
+    if (document.getElementById('freeai-rotator-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'freeai-rotator-btn';
+    btn.textContent = '💬 FreeAI';
+    Object.assign(btn.style, {
+      position: 'fixed',
+      right: '16px',
+      bottom: '16px',
+      zIndex: 2147483647,
+      padding: '8px 10px',
+      borderRadius: '8px',
+      border: 'none',
+      background: '#2563eb',
+      color: '#fff',
+      font: '600 13px/1 sans-serif',
+      cursor: 'pointer',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+    });
+    btn.addEventListener('click', () => askAndRender());
+    document.body.appendChild(btn);
+  }
+  function selectedText() {
+    const sel = window.getSelection ? window.getSelection().toString().trim() : '';
+    return sel || 'Summarize the selected text, or answer anything.';
+  }
+  function askAndRender(promptText) {
+    const text = promptText != null ? promptText : window.prompt('FreeAI prompt:', selectedText());
+    if (!text) return;
+    btnBusy(true);
+    hideCard();
+    rotator
+      .complete(text)
+      .then((r) => {
+        GM_setValue(NS + 'last', '[' + r.provider + '] ' + r.text);
+        showCard(r.text, r.provider, r.tally);
+      })
+      .catch((e) => showCard('✗ ' + e.message, '—', null))
+      .finally(() => btnBusy(false));
+  }
+  function btnBusy(on) {
+    const btn = document.getElementById('freeai-rotator-btn');
+    if (btn) {
+      btn.textContent = on ? '⏳...' : '💬 FreeAI';
+      btn.disabled = on;
+    }
+  }
+  function hideCard() {
+    const c = document.getElementById('freeai-rotator-card');
+    if (c) c.remove();
+  }
+  function showCard(text, provider, tally) {
+    hideCard();
+    const card = document.createElement('div');
+    card.id = 'freeai-rotator-card';
+    card.style.cssText = 'position:fixed;right:16px;bottom:56px;z-index:2147483647;';
+    const inner = document.createElement('div');
+    inner.style.cssText =
+      'font:inherit;padding:10px 12px;border-radius:10px;background:#fff;' +
+      'border:1px solid #d1d5db;max-width:90%;max-height:40vh;overflow:auto;';
+    const title = document.createElement('div');
+    title.style.cssText = 'font:700 12px/1.4 sans-serif;color:#1e40af;';
+    title.textContent = 'FreeAI · ' + provider;
+    inner.appendChild(title);
+    const body = document.createElement('div');
+    body.style.cssText =
+      'font:400 12px/1.5 sans-serif;margin-top:4px;white-space:pre-wrap;word-break:break-word;';
+    body.textContent = text;
+    inner.appendChild(body);
+    if (tally) {
+      const meta = document.createElement('div');
+      meta.style.cssText = 'font:400 11px/1 sans-serif;color:#6b7280;margin-top:4px;';
+      meta.textContent = 'calls=' + tally.calls + ' rotations=' + tally.rotations;
+      inner.appendChild(meta);
+    }
+    const copy = document.createElement('button');
+    copy.id = 'freeai-copy';
+    copy.textContent = 'Copy';
+    copy.style.cssText =
+      'float:right;margin-top:6px;padding:4px 8px;border:none;border-radius:6px;' +
+      'background:#2563eb;color:#fff;cursor:pointer;font:inherit;';
+    copy.addEventListener('click', () => GM_setClipboard(text, true));
+    inner.appendChild(copy);
+    card.appendChild(inner);
+    document.body.appendChild(card);
+  }
+
   // ---- Menu: set key, run prompt ----
   function runPrompt() {
     const p = prompt('Prompt (TypeScript. Empty = default):', 'State what you are, in one line.');
@@ -186,5 +275,10 @@
   });
   GM_registerMenuCommand('🤖 Run prompt (seamless rotation)', runPrompt);
 
+  attachUI();
+
+  console.log(
+    '[FreeAI Rotator] ready. 💬 button injected; set a free key via the menu, then click it.'
+  );
   console.log('[FreeAI Rotator] ready. Use the userscript menu (⚙ / 🤖).');
 })();
