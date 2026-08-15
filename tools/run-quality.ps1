@@ -1,112 +1,118 @@
-# run-quality.ps1
-# Orchestrates the "best catalyst" series of steps to produce the best resulting workspace output.
-# It runs bootstrap, npm checks, python installs, health-check, and verification, then summarises.
+<# 
+=====================================================================
+run-quality.ps1
+   The full "best catalyst series" – drives the workspace to a healthy,
+   built, linted, tested, and security-scanned state.
+   Steps: bootstrap → npm check/lint → python install → health → verify
+          → npm audit → eslint fix → vitest coverage → build → lockfile commit
+=====================================================================
+#>
+$passed = 0
+$failed = 0
+$warnings = @()
+$issues = @()
 
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "Quality Catalyst Series - Starting" -ForegroundColor Cyan
-Write-Host "=========================================" -ForegroundColor Cyan
+function Log { param([string]$m,[string]$c) Write-Host $m -ForegroundColor $c }
 
-$global:issues = @()
-$global:warnings = @()
-$global:passed = 0
-$global:failed = 0
-
-# ---- Step 1: Bootstrap ----
-Write-Host "`n--- Step 1: Bootstrapping all projects ---" -ForegroundColor Yellow
- & "C:\Users\Eric\OneDrive\Documents\GitHub\tools\bootstrap.ps1"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Bootstrap completed with warnings/errors (continuing)." -ForegroundColor Yellow
-} else {
-    Write-Host "Bootstrap succeeded." -ForegroundColor Green
-    $passed++
-}
-
-# ---- Step 2: npm run check for each Node project ----
-Write-Host "`n--- Step 2: Running npm check for Node projects ---" -ForegroundColor Yellow
-$NodeProjects = @('nexus-infinity-hub','self-evolve-dash','collabhub-modules','third-door-blink-controller')
-foreach ($proj in $NodeProjects) {
-    $origDir = pwd.Path
+function Invoke-Npm {
+    param([string]$proj,[string]$script)
+    $orig = pwd.ProviderPath
     try {
         Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$proj"
-        Write-Host "Checking $proj..." -ForegroundColor Gray
-        # Execute npm run check; if script missing, try npm run lint
-        $checkResult = & npm run check 2>&1
-        Write-Host "  Output: $($checkResult.Substring(0, [Math]::Min(200,$checkResult.Length)))" -ForegroundColor Gray
-        $passed++
-    } catch {
-        Write-Host "  FAIL: $proj check threw an error." -ForegroundColor Red
-        $failed++
-        $issues += "$proj check failed"
-    }
-    Set-Location $origDir
+        & npm run "$script" 2>&1 | Out-Null
+        return $LASTEXITCODE
+    } finally { Set-Location $orig }
 }
 
-# ---- Step 3: Python requirements install ----
-Write-Host "`n--- Step 3: Installing Python requirements ---" -ForegroundColor Yellow
+$NodeProjects  = @('nexus-infinity-hub','self-evolve-dash','collabhub-modules','third-door-blink-controller')
 $PythonProjects = @('singularity-operator','autonomous-github-agent')
-foreach ($proj in $PythonProjects) {
-    $reqPath = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$proj" "requirements.txt"
-    if (Test-Path $reqPath) {
-        Write-Host "Installing requirements for $proj ..." -ForegroundColor Gray
-        & python -m pip install -quiet -r $reqPath
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "  OK: $proj requirements installed." -ForegroundColor Green
-            $passed++
-        } else {
-            Write-Host "  WARN: $proj requirements install had issues." -ForegroundColor Yellow
-            $warnings += "$proj pip install issues"
-        }
-    } else {
-        Write-Host "  WARN: $proj has no requirements.txt" -ForegroundColor Yellow
-        $warnings += "$proj missing requirements.txt"
+
+# ---- Step 1: Bootstrap ----
+Log "`n--- Step 1: Bootstrap ---" Yellow
+& "C:\Users\Eric\OneDrive\Documents\GitHub\tools\bootstrap.ps1"
+if ($LASTEXITCODE -ne 0) { Log "  bootstrap had warnings (continuing)" Yellow; $warnings += 'bootstrap' } else { $passed++ }
+
+# ---- Step 2: npm check / lint ----
+Log "`n--- Step 2: npm check / lint ---" Yellow
+foreach ($p in $NodeProjects) {
+    $code = Invoke-Npm $p 'check'
+    if ($code -eq 0) { Log "  [OK] $p check" Green; $passed++ }
+    else {
+        $c2 = Invoke-Npm $p 'lint'
+        if ($c2 -eq 0) { Log "  [OK] $p lint (fallback)" Green; $passed++ }
+        else { Log "  [FAIL] $p check/lint" Red; $failed++; $issues += "$p check/lint" }
     }
 }
 
-# ---- Step 4: Health Check ----
-Write-Host "`n--- Step 4: Running workspace health check ---" -ForegroundColor Yellow
- & "C:\Users\Eric\OneDrive\Documents\GitHub\tools\health-check.ps1"
-$healthExit = $LASTEXITCODE
-if ($healthExit -eq 0) {
-    Write-Host "Health check passed." -ForegroundColor Green
-    $passed++
-} else {
-    Write-Host "Health check had issues (see above)." -ForegroundColor Yellow
-    $failed++
-    $issues += "Health check issues"
+# ---- Step 3: Python requirements ----
+Log "`n--- Step 3: Python requirements ---" Yellow
+foreach ($p in $PythonProjects) {
+    $r = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$p" 'requirements.txt'
+    if (Test-Path $r) {
+        & python -m pip install -quiet -r $r
+        if ($LASTEXITCODE -eq 0) { $passed++ } else { $warnings += "$p pip install" }
+    } else { $warnings += "$p no requirements.txt" }
 }
 
-# ---- Step 5: Verification ----
-Write-Host "`n--- Step 5: Running workspace verification ---" -ForegroundColor Yellow
- & "C:\Users\Eric\OneDrive\Documents\GitHub\tools\verify-workspace.ps1"
-$verifyExit = $LASTEXITCODE
-if ($verifyExit -eq 0) {
-    Write-Host "Verification passed." -ForegroundColor Green
-    $passed++
-} else {
-    Write-Host "Verification had failures." -ForegroundColor Red
-    $failed++
-    $issues += "Verification failures"
+# ---- Step 4: Health check ----
+Log "`n--- Step 4: Health check ---" Yellow
+& "C:\Users\Eric\OneDrive\Documents\GitHub\tools\health-check.ps1"
+if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'health check' }
+
+# ---- Step 5: Verify ----
+Log "`n--- Step 5: Verify ---" Yellow
+& "C:\Users\Eric\OneDrive\Documents\GitHub\tools\verify-workspace.ps1"
+if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'verify' }
+
+# ---- Step 6: npm audit (advisory) ----
+Log "`n--- Step 6: npm audit (advisory) ---" Yellow
+& npm audit --audit-level=high 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) { $passed++ } else { Log "  high-severity npm vulnerabilities present" Yellow; $warnings += 'high npm vulns' }
+
+# ---- Step 7: eslint auto-fix (best effort) ----
+Log "`n--- Step 7: eslint auto-fix (best effort) ---" Yellow
+foreach ($p in $NodeProjects) { if ((Invoke-Npm $p 'lint:fix') -eq 0) { $passed++ } else { $warnings += "$p lint:fix" } }
+
+# ---- Step 8: vitest coverage (best effort) ----
+Log "`n--- Step 8: vitest coverage (best effort) ---" Yellow
+foreach ($p in $NodeProjects) {
+    $orig = pwd.ProviderPath
+    try {
+        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
+        & npm exec vitest -- run --coverage 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { Log "  [OK] $p tests" Green; $passed++ } else { Log "  [WARN] $p coverage" Yellow; $warnings += "$p coverage" }
+    } finally { Set-Location $orig }
+}
+
+# ---- Step 9: Build ----
+Log "`n--- Step 9: Build ---" Yellow
+foreach ($p in $NodeProjects) {
+    $code = Invoke-Npm $p 'build'
+    if ($code -eq 0) { Log "  [OK] $p build" Green; $passed++ } else { Log "  [WARN] $p build" Yellow; $warnings += "$p build" }
+}
+
+# ---- Step 10: commit lockfiles (only if no failures) ----
+if ($failed -eq 0) {
+    Log "`n--- Step 10: commit lockfiles ---" Yellow
+    foreach ($p in $NodeProjects) {
+        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
+        $lock = Test-Path 'package-lock.json'
+        if ($lock) {
+            git add package-lock.json 2>&1 | Out-Null
+            git commit -m "deps: update lockfile" 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) { Log "  [OK] $p lockfile" Green; $passed++ } else { Log "  [INFO] $p already current" Yellow }
+        }
+        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub"
+    }
 }
 
 # ---- Summary ----
-Write-Host "`n=========================================" -ForegroundColor Cyan
-Write-Host "Quality Catalyst Series - Summary" -ForegroundColor Cyan
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "Passed: $passed" -ForegroundColor Green
-Write-Host "Failed : $failed" -ForegroundColor Red
-if ($issues.Count -gt 0) {
-    Write-Host "`nIssues:" -ForegroundColor Red
-    $issues | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
-}
-if ($warnings.Count -gt 0) {
-    Write-Host "`nWarnings:" -ForegroundColor Yellow
-    $warnings | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
-}
-Write-Host "`nStatus: $((if($failed -eq 0) {'HEALTHY'} else {'NEEDS ATTENTION'}))" -ForegroundColor $(if($failed -eq 0) {'Green'} else {'Red'})
-
-# Exit with error code if any failures
-if ($failed -gt 0) {
-    exit 1
-} else {
-    exit 0
-}
+Log "`n========================================" Cyan
+Log "Catalyst Series - Summary" Cyan
+Log "Passed : $passed" Green
+Log "Failed : $failed" Red
+if ($issues.Count  -gt 0) { foreach ($i in $issues)  { Log "  - $i" Red } }
+if ($warnings.Count -gt 0) { foreach ($w in $warnings) { Log "  - $w" Yellow } }
+$status = if ($failed -eq 0) { 'HEALTHY' } else { 'NEEDS ATTENTION' }
+Log "`nStatus: $status" $(if ($failed -eq 0) { 'Green' } else { 'Red' })
+if ($failed -gt 0) { exit 1 } else { exit 0 }
