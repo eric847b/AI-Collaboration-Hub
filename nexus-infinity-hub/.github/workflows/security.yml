@@ -8,22 +8,86 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   security:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 26
+          node-version: 22
           cache: 'npm'
-          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --progress=false
+        run: npm ci --prefer-offline --progress=false
+        continue-on-error: false
 
       - name: Run npm audit
-        run: npm audit --audit-level=high || true
+        continue-on-error: true
+        run: npm audit --audit-level=high --json > audit-results.json || true
+
+      - name: Parse npm audit results
+        if: always()
+        run: |
+          if [ -f audit-results.json ]; then
+            echo "## npm Audit Results" >> $GITHUB_STEP_SUMMARY
+            jq -r '.summary | "- Vulnerabilities: \(.vulnerabilities)\n- Packages audited: \(.packages)"' audit-results.json >> $GITHUB_STEP_SUMMARY || true
+          fi
 
       - name: Check outdated dependencies
-        run: npm outdated || true
+        continue-on-error: true
+        run: |
+          echo "## Outdated Dependencies" >> $GITHUB_STEP_SUMMARY
+          npm outdated --json | jq -r '.[] | "- \(.name): \(.current) → \(.latest)"' >> $GITHUB_STEP_SUMMARY || echo "All dependencies up to date" >> $GITHUB_STEP_SUMMARY
+
+      - name: Dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        continue-on-error: true
+        with:
+          path: '.'
+          format: 'JSON'
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-${{ github.run_id }}
+          path: |
+            audit-results.json
+            dependency-check-report.json
+          retention-days: 30
+
+      - name: Comment PR with security summary
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🔒 Security Scan Results\n';
+            
+            if (fs.existsSync('audit-results.json')) {
+              try {
+                const audit = JSON.parse(fs.readFileSync('audit-results.json', 'utf8'));
+                comment += `- **Vulnerabilities Found**: ${audit.metadata?.vulnerabilities?.total || 0}\n`;
+              } catch(e) {
+                comment += '- **Audit Result**: Check logs\n';
+              }
+            }
+            
+            comment += '\n_Run \`npm audit\` locally for details._';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

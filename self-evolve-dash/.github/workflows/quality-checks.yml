@@ -32,6 +32,21 @@ jobs:
       - name: Run tests with coverage
         run: npm run test -- --coverage || true
 
+      - name: Check coverage (informational)
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+            echo "📊 Line coverage: $COVERAGE%"
+          fi
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          flags: javascript
+          fail_ci_if_error: false
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

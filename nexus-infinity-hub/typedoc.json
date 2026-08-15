@@ -1,0 +1,22 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src"],
+  "out": "docs/api",
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/node_modules/**"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+  "includeVersion": true,
+  "readme": "README.md",
+  "navigation": {
+    "includeCategories": true,
+    "includeFolders": true
+  },
+  "theme": "default",
+  "titleLink": "https://github.com/eric847b/ai-collaboration-hub",
+  "hideGenerator": false
+}

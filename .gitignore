@@ -54,6 +54,9 @@ Thumbs.db
 tmp/
 temp/.git_disabled/
 
+# Local machine data (never commit)
+AppData/
+Roaming/
 # Stray / disabled git repos (should never be tracked)
 .husky/
 **/.git_disabled/
