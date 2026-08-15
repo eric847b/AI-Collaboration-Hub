@@ -36,6 +36,51 @@ function defaultProviders() {
       }),
       extract: (body) => body.choices?.[0]?.message?.content || '',
     },
+    {
+      name: 'gemini-free',
+      free: true,
+      endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-1.5-flash'}:generateContent?key=${process.env.GOOGLE_API_KEY || ''}`,
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      headers: () => ({ 'Content-Type': 'application/json' }),
+      body: (text) => ({ contents: [{ role: 'user', parts: [{ text }] }] }),
+      extract: (body) => body.candidates?.[0]?.content?.parts?.[0]?.text || '',
+    },
+    {
+      name: 'together-free',
+      free: true,
+      endpoint: 'https://api.together.xyz/v1/chat/completions',
+      model: process.env.TOGETHER_MODEL || 'meta-llama/Meta-Llama-3.1-8b-instruct-turbo',
+      headers: () => ({
+        Authorization: `Bearer ${process.env.TOGETHER_API_KEY || ''}`,
+        'Content-Type': 'application/json',
+      }),
+      body: (text, model) => ({
+        model: model || process.env.TOGETHER_MODEL || 'meta-llama/Meta-Llama-3.1-8b-instruct-turbo',
+        messages: [{ role: 'user', content: text }],
+        temperature: 0.7,
+        max_tokens: 512,
+      }),
+      extract: (body) => body.choices?.[0]?.message?.content || '',
+    },
+    {
+      name: 'openrouter-free',
+      free: true,
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3-8b:free',
+      headers: () => ({
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY || ''}`,
+        'HTTP-Referer': 'https://collabhub.local',
+        'X-Title': 'CollabHub',
+        'Content-Type': 'application/json',
+      }),
+      body: (text, model) => ({
+        model: model || process.env.OPENROUTER_MODEL || 'meta-llama/llama-3-8b:free',
+        messages: [{ role: 'user', content: text }],
+        temperature: 0.7,
+        max_tokens: 512,
+      }),
+      extract: (body) => body.choices?.[0]?.message?.content || '',
+    },
     // Add more free endpoints below (same shape) — the rotator will round-robin
     // and fail over between all of them seamlessly.
   ];

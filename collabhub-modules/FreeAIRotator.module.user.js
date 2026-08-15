@@ -9,6 +9,9 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @connect      api.groq.com
+// @connect      generativelanguage.googleapis.com
+// @connect      api.together.xyz
+// @connect      openrouter.ai
 // ==/UserScript==
 /* globals GM_getValue, GM_setValue, GM_registerMenuCommand, GM_xmlhttpRequest */
 (function () {
@@ -30,7 +33,56 @@
         }),
         extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
       },
-      // Add more free endpoints with the same shape below.
+      {
+        name: 'gemini-free',
+        endpoint:
+          'https://generativelanguage.googleapis.com/v1beta/models/' +
+          'gemini-1.5-flash:generateContent?key=' +
+          (GM_getValue(NS + 'google', '') || ''),
+        model: 'gemini-1.5-flash',
+        headers: () => ({ 'Content-Type': 'application/json' }),
+        body: (text) => ({ contents: [{ role: 'user', parts: [{ text }] }] }),
+        extract: (o) =>
+          (o.candidates &&
+            o.candidates[0] &&
+            o.candidates[0].content.parts[0] &&
+            o.candidates[0].content.parts[0].text) ||
+          '',
+      },
+      {
+        name: 'together-free',
+        endpoint: 'https://api.together.xyz/v1/chat/completions',
+        model: 'meta-llama/Meta-Llama-3.1-8b-instruct-turbo',
+        headers: () => ({
+          Authorization: 'Bearer ' + (GM_getValue(NS + 'together', '') || ''),
+          'Content-Type': 'application/json',
+        }),
+        body: (text) => ({
+          model: 'meta-llama/Meta-Llama-3.1-8b-instruct-turbo',
+          messages: [{ role: 'user', content: text }],
+          temperature: 0.7,
+          max_tokens: 512,
+        }),
+        extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
+      },
+      {
+        name: 'openrouter-free',
+        endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        model: 'meta-llama/llama-3-8b:free',
+        headers: () => ({
+          Authorization: 'Bearer ' + (GM_getValue(NS + 'openrouter', '') || ''),
+          'HTTP-Referer': 'https://collabhub.local',
+          'X-Title': 'CollabHub',
+          'Content-Type': 'application/json',
+        }),
+        body: (text) => ({
+          model: 'meta-llama/llama-3-8b:free',
+          messages: [{ role: 'user', content: text }],
+          temperature: 0.7,
+          max_tokens: 512,
+        }),
+        extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
+      },
     ];
   }
 
@@ -119,6 +171,18 @@
   GM_registerMenuCommand('⚙ Set Groq Free API Key', () => {
     const k = prompt('Groq API key:', GM_getValue(NS + 'groq', ''));
     if (k) GM_setValue(NS + 'groq', k);
+  });
+  GM_registerMenuCommand('⚙ Set Google (Gemini) Free API Key', () => {
+    const k = prompt('Google API key:', GM_getValue(NS + 'google', ''));
+    if (k) GM_setValue(NS + 'google', k);
+  });
+  GM_registerMenuCommand('⚙ Set Together Free API Key', () => {
+    const k = prompt('Together API key:', GM_getValue(NS + 'together', ''));
+    if (k) GM_setValue(NS + 'together', k);
+  });
+  GM_registerMenuCommand('⚙ Set OpenRouter Free API Key', () => {
+    const k = prompt('OpenRouter API key:', GM_getValue(NS + 'openrouter', ''));
+    if (k) GM_setValue(NS + 'openrouter', k);
   });
   GM_registerMenuCommand('🤖 Run prompt (seamless rotation)', runPrompt);
 

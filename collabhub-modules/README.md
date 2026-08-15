@@ -13,4 +13,13 @@ CollabHub Userscript Modules and Tools
 - `test/rotator.test.js` — off-line failover test (no network).
   Run with: `npm test` (asserts `429 → 500 → 200` rotation in <1 ms).
 
-Ready to use: `npm test` — then set a free key (e.g. `GROQ_API_KEY`) and run `npm run ai`.
+### Free providers in the default pool (keys via env, never hardcoded)
+
+| Provider          | Env var              | Model                                         |
+| ----------------- | -------------------- | --------------------------------------------- |
+| Groq (free)       | `GROQ_API_KEY`       | `llama-3.3-70b-versatile`                     |
+| Google Gemini     | `GOOGLE_API_KEY`     | `gemini-1.5-flash`                            |
+| Together          | `TOGETHER_API_KEY`   | `meta-llama/Meta-Llama-3.1-8b-instruct-turbo` |
+| OpenRouter (free) | `OPENROUTER_API_KEY` | `meta-llama/llama-3-8b:free`                  |
+
+Ready to use: `npm test` — then set at least one free key, e.g. `export GROQ_API_KEY=...`, and run `npm run ai`. The rotator round‑robins across all configured providers and skips any that 429/5xx/throw, so work keeps moving.
