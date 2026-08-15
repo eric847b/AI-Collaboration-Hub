@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-"""nexus-core v2.8 — minimal permanent successor
+"""nexus-core v2.9 — minimal permanent successor
 Free, quiet, cron, self-audit, full lifecycle, optional release, runtime-fail safe.
+
+Catalyst cycle:
+  scope   → write scope.json + refresh NEXT_CATALYST.md prompt (preserves notes)
+  improve → live self-audit (health + git dirty + TODO scan)
+  cron    → scope → improve → agent (one self-improvement tick)
+  check   → print rules summary
+  graph   → print module dependency graph
+  agent   → run the autonomous GitHub agent (quiet, free)
 """
-import json, sys, datetime, subprocess, os, re
+import json, sys, datetime, subprocess, os, re, time
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -13,6 +21,9 @@ CORE = Path(__file__).resolve().parent
 ROOT = CORE.parents[1]
 REG, NEXT, SCOPE_JSON = CORE/"registry.json", CORE/"NEXT_CATALYST.md", CORE/"scope.json"
 AGENT = ROOT/"autonomous-github-agent"/".github"/"scripts"/"agent.py"
+
+SCAN_BUDGET_S = 3.0   # max seconds to spend scanning one module for TODOs
+SCAN_FILE_LIMIT = 400 # max files to read per module scan
 
 def load():
     return json.loads(REG.read_text())
@@ -33,7 +44,7 @@ def scope(json_only=False):
             "unhealthy":[m["name"] for m in mods if m["status"]!="HEALTHY"],"rules":r["rules"],
             "canonical":"AI-Collaboration-Hub/nexus-core","executor":"autonomous-github-agent",
             "cost":"zero","user_time":"zero"}
-    SCOPE_JSON.write_text(json.dumps(data, indent=2))
+            SCOPE_JSON.write_text(json.dumps(data, indent=2))
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
@@ -44,8 +55,16 @@ def scope(json_only=False):
               "Stronger pattern found? Replace orchestrator and bump version. "
               "Always finish with scope + update NEXT_CATALYST.md. "
               "Minimal. Runtime fails absorbed. Free cron. Zero user time.")
-    NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {now}\nVersion: {data['version']}\n")
-    print("\n## Next Catalyst\n```\n"+prompt+"\n```\n## scope.json written")
+    # Preserve accumulated progress notes: don't wipe content after the
+    # basic prompt header (## v sections with accumulated notes).
+    progress = ""
+    if NEXT.exists():
+        existing = NEXT.read_text()
+        idx = existing.find("\n## ")
+        if idx > 0:
+            progress = existing[idx:]
+    NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {now}\nVersion: {data['version']}\n{progress}")
+    print("\n## Next Catalyst\n```\n"+prompt+"\n```\n## scope.json written" + (" · notes preserved" if progress else ""))
     if data["unhealthy"]: print(f"## Health note: {len(data['unhealthy'])} not fully HEALTHY")
     return data
 
@@ -72,13 +91,20 @@ def _strip_strings(text):
     return _STR_RE.sub(" ", text)
 
 def _scan_todos(name):
-    """Count actual TODO/FIXME comments in a module's source files (skipping heavy dirs)."""
+        """    """Count actual TODO/FIXME comments in a module's source files (skipping heavy dirs).
+    Time-budgeted (SCAN_BUDGET_S) and file-limited (SCAN_FILE_LIMIT) to avoid
+    hanging on large repos like VectorFS.""""""
     for base in (ROOT, ROOT/"AI-Collaboration-Hub"):
         p = base/name
         if not p.exists(): continue
         count = 0
+        deadline = time.monotonic() + SCAN_BUDGET_S
         try:
-            for f in p.rglob("*"):
+            for i, f in enumerate(p.rglob("*")):
+                if i > SCAN_FILE_LIMIT:
+                    break
+                if time.monotonic() > deadline:
+                    break
                 if f.is_file() and f.suffix in {".py",".ts",".tsx",".js",".jsx",".md",".json"} and not any(part in SKIP_DIRS for part in f.parts):
                     try:
                         count += len(_TODO_RE.findall(_strip_strings(f.read_text(errors="ignore"))))
