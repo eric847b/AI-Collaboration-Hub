@@ -9,8 +9,13 @@ const { FreeAIRotator } = require('../src/rotator');
 let failures = 0;
 let passed = 0;
 function ok(cond, msg) {
-  if (cond) { console.log('  ✓ ' + msg); passed++; }
-  else { console.log('  ✗ FAIL: ' + msg); failures++; }
+  if (cond) {
+    console.log('  ✓ ' + msg);
+    passed++;
+  } else {
+    console.log('  ✗ FAIL: ' + msg);
+    failures++;
+  }
 }
 
 const fakeProviders = [
@@ -55,7 +60,10 @@ const fakeProviders = [
   const out = await rotator.complete('ping');
   ok(out.provider === 'C', `used provider C (got: ${out.provider})`);
   ok(out.text === 'OK from C', `returned expected output (got: ${out.text})`);
-  ok(rotator.tally.rotations === 2, `rotated through A and B (rotations=${rotator.tally.rotations})`);
+  ok(
+    rotator.tally.rotations === 2,
+    `rotated through A and B (rotations=${rotator.tally.rotations})`
+  );
   ok(elapsed < 1000, `completed without meaningful pause (${elapsed}ms)`);
 
   // Second call should skip the (now cooling) A and B and go straight to C.

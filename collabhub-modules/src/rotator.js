@@ -49,7 +49,12 @@ class FreeAIRotator {
    * @param {number} opts.collectionPeriodMs cooldown after a provider fails (default 60s)
    * @param {number} opts.maxAttempts        max attempts before throwing (default 3 * providers count)
    */
-  constructor({ providers = defaultProviders(), request, collectionPeriodMs = 60000, maxAttempts } = {}) {
+  constructor({
+    providers = defaultProviders(),
+    request,
+    collectionPeriodMs = 60000,
+    maxAttempts,
+  } = {}) {
     if (typeof request !== 'function') {
       throw new Error('FreeAIRotator requires `request` (url, opts) => Promise<response>');
     }
@@ -65,7 +70,7 @@ class FreeAIRotator {
   // Round-robin next provider that is not cooling down (skip without waste).
   _next() {
     for (let i = 0; i < this.providers.length; i++) {
-      const p = this.providers[(this.idx++) % this.providers.length];
+      const p = this.providers[this.idx++ % this.providers.length];
       if (!p || p.enabled === false) continue;
       const cooldownUntil = this.failCooldowns.get(p.name) || 0;
       if (Date.now() < cooldownUntil) continue; // still cooling → rotate on
@@ -100,16 +105,24 @@ class FreeAIRotator {
         const res = await this.request(p.endpoint, {
           method: 'POST',
           headers: p.headers ? p.headers() : {},
-          body: p.body ? JSON.stringify(p.body(text, model || p.model)) : JSON.stringify({ prompt: text }),
+          body: p.body
+            ? JSON.stringify(p.body(text, model || p.model))
+            : JSON.stringify({ prompt: text }),
         });
         const json =
           typeof res.json === 'function'
             ? res.json()
             : res.text
-              ? (() => { try { return JSON.parse(res.text); } catch { return {}; } })()
+              ? (() => {
+                  try {
+                    return JSON.parse(res.text);
+                  } catch {
+                    return {};
+                  }
+                })()
               : {};
-        if (res.status !== undefined ? (res.status >= 200 && res.status < 300) : true) {
-          const out = p.extract ? p.extract(json) : (json.text || json.output || '');
+        if (res.status !== undefined ? res.status >= 200 && res.status < 300 : true) {
+          const out = p.extract ? p.extract(json) : json.text || json.output || '';
           if (out) return { text: out, provider: p.name, tally: { ...this.tally } };
         }
         this._markFailed(p); // non-2xx or empty → fail over NOW

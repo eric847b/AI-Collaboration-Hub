@@ -16,21 +16,33 @@ async function nodeRequest(url, { method, headers, body }) {
   const res = await fetch(url, { method, headers, body });
   const text = await res.text();
   let json = {};
-  try { json = JSON.parse(text); } catch { /* keep {} */ }
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* keep {} */
+  }
   return { status: res.status, json, text };
 }
 
 async function main() {
   const rotator = new FreeAIRotator({ request: nodeRequest });
   const steps = process.argv.slice(2).filter(Boolean);
-  const task = { steps: steps.length ? steps : ['State in one line: what is the most useful thing you can do for me right now?'] };
+  const task = {
+    steps: steps.length
+      ? steps
+      : ['State in one line: what is the most useful thing you can do for me right now?'],
+  };
 
   const started = Date.now();
   const results = await rotator.run(task, (r, i) => {
-    console.log(`\n[🔄 step ${i + 1}] provider=${r.provider} (calls=${r.tally.calls}, rotations=${r.tally.rotations})`);
+    console.log(
+      `\n[🔄 step ${i + 1}] provider=${r.provider} (calls=${r.tally.calls}, rotations=${r.tally.rotations})`
+    );
     console.log('  ' + (r.text || '(empty)'));
   });
-  console.log(`\nDone in ${Date.now() - started}ms → ${results.length} step(s), ${rotator.tally.calls} call(s), ${rotator.tally.rotations} rotation(s).`);
+  console.log(
+    `\nDone in ${Date.now() - started}ms → ${results.length} step(s), ${rotator.tally.calls} call(s), ${rotator.tally.rotations} rotation(s).`
+  );
 }
 
 main().catch((e) => {
