@@ -5,17 +5,20 @@ Multi-project workspace containing AI agents, dashboards, userscript modules, an
 ## Projects
 
 ### Node/React Projects
+
 - **nexus-infinity-hub** — Self-evolving AI collaboration hub with UI components
 - **self-evolve-dash** — Dashboard for self-evolution workflows
 - **collabhub-modules** — Userscript modules for enhanced collaboration
 - **third-door-blink-controller** — Expo React Native app
 
 ### Python Projects
+
 - **singularity-operator** — Multi-AI orchestrator (Groq-based)
 - **autonomous-github-agent** — AI-driven GitHub automation
 - **AI-Collaboration-Hub** — AI collaboration registry and workflows
 
 ### Systems
+
 - **VectorFS** — C++ vector file system implementation
 - **third-door-system** — Smart home/IoT framework
 
@@ -119,6 +122,7 @@ npm run health
 ```
 
 This validates:
+
 - ✓ All Node projects have lockfiles
 - ✓ All Python projects have `requirements.txt`
 - ✓ CI workflows are configured
@@ -133,6 +137,27 @@ npm run verify    # Checks shared configs, projects, workflows
 npm run health    # Checks lockfiles and dependencies
 npm run ci        # Runs both verify and health
 ```
+
+## Tooling & Automation
+
+The workspace ships with PowerShell tooling under `tools/`:
+
+| Script                | Purpose                                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run-quality.ps1`     | **Catalyst series**: bootstrap → npm check/lint → Python install → health → verify → npm audit → eslint fix → vitest coverage → build → lockfile commit, then a colour‑coded summary + exit code. |
+| `review-repos.ps1`    | Inventories the monorepo + project subfolders (git info, key files, file counts) and writes `LocalRepoReview.txt`.                                                                                |
+| `analyze-freedom.ps1` | Scores each project against freedom goals (Financial / Biological / Chores) and writes `FreedomReport.txt`.                                                                                       |
+
+Run them from the root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-quality.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\review-repos.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\analyze-freedom.ps1
+```
+
+> **Node version:** the projects require **Node ≥ 26** (see `engines` and `.nvmrc`). Install via `nvm use 26` (or `nvm install 26`).
+> **Pre‑commit:** the Husky hook runs `lint-staged` (eslint + prettier). Ensure dev dependencies are installed (`npm install`) before committing.
 
 ## Support
 
