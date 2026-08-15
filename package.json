@@ -29,7 +29,8 @@
   "homepage": "https://github.com/eric847b/AI-Collaboration-Hub#readme",
   "devDependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^15.5.2"
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.9.6"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
