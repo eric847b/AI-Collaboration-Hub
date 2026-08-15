@@ -6,7 +6,8 @@
   },
   "scripts": {
     "evolve": "node evolve.js",
-    "test": "echo \"Tests passed\"",
+    "ai": "node run-ai.js",
+    "test": "node test/rotator.test.js",
     "build": "echo \"Build complete\"",
     "check": "npm run test && npm run build"
   }
