@@ -235,12 +235,20 @@
     btn.addEventListener('click', () => askAndRender());
     document.body.appendChild(btn);
   }
-  function selectedText() {
+  function pageContext() {
+    const title = document.title || '';
     const sel = window.getSelection ? window.getSelection().toString().trim() : '';
-    return sel || 'Summarize the selected text, or answer anything.';
+    const head = title ? 'Page: ' + title : '';
+    if (sel) {
+      return (head + '\nSelected text:\n' + sel).trim();
+    }
+    return (
+      (head + '\nSummarize the selected text, or answer anything.').trim() ||
+      'Summarize the selected text, or answer anything.'
+    );
   }
   function askAndRender(promptText) {
-    const text = promptText != null ? promptText : window.prompt('FreeAI prompt:', selectedText());
+    const text = promptText != null ? promptText : window.prompt('FreeAI prompt:', pageContext());
     if (!text) return;
     btnBusy(true);
     hideCard();
