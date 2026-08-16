@@ -80,7 +80,7 @@ export function sandboxExec(code: string, input?: unknown): ExecResult {
   let error: string | undefined;
   let result: unknown = undefined;
   try {
-    // eslint-disable-next-line no-new-func
+     
     const fn = new Function("console", "input", `"use strict";\n${code}\n;return typeof __main==='function'?__main(input):undefined;`);
     result = fn(fakeConsole, input);
   } catch (e) {

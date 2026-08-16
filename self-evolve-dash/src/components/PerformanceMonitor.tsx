@@ -108,7 +108,7 @@ export const PerformanceMonitor = () => {
   useEffect(() => {
     if (!isVisible) return;
 
-    let interval = setInterval(async () => {
+    const interval = setInterval(async () => {
       const start = performance.now();
       try {
         await fetch("/api/health").catch(() => null);

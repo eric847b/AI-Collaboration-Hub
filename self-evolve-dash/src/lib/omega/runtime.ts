@@ -63,7 +63,7 @@ function fnv1a(str: string): string {
 // Strips comments, whitespace, and renames identifiers to detect logic
 // equivalence across cosmetic differences.
 function normalizeFnSource(src: string): string {
-  let s = src
+  const s = src
     // strip block comments
     .replace(/\/\*[\s\S]*?\*\//g, "")
     // strip line comments
@@ -135,7 +135,7 @@ function reconstruct(src: string): Function {
   const trimmed = src.trim();
   // Arrow or function expression
   // Wrap in parens and return.
-  // eslint-disable-next-line no-new-func
+   
   return new Function(`"use strict"; return (${trimmed});`)();
 }
 
