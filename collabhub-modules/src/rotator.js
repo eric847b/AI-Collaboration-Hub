@@ -21,10 +21,85 @@ function delay(ms) {
 
 // Default free-tier provider shapes. Keys should come from env/secure storage,
 // never hardcoded. `free: true` marks endpoints that rotate (best-effort).
+//
+// Two classes of "free" providers so progress never stops:
+//   1. Permanent-free LOCAL endpoints (Ollama, LM Studio, LocalAI) — your own
+//      hardware: no key, quota that never expires and never runs out. If the
+//      local server is off, the rotator failovers instantly to the next lane.
+//   2. Cloud free tiers (Groq, Gemini, Together, OpenRouter) — rotated among all
+//      of them so a rate-limited key never pauses work.
+//
+// Need more (e.g. up to 25)? Set FREE_AI_PROVIDERS_JSON to a JSON array of
+// provider objects and it *replaces* this pool entirely.
 function defaultProviders() {
+  if (process.env.FREE_AI_PROVIDERS_JSON) {
+    try {
+      return JSON.parse(process.env.FREE_AI_PROVIDERS_JSON);
+    } catch {
+      /* malformed JSON -> fall through to the built-in pool */
+    }
+  }
   return [
+    // Permanent-free LOCAL providers (your own hardware, no key, never expires).
     {
-      name: 'groq-free',
+      name: 'ollama',
+      free: true,
+      endpoint: process.env.OLLAMA_URL || 'http://127.0.0.1:11434/v1/chat/completions',
+      model: process.env.OLLAMA_MODEL || 'phi3:mini',
+      headers: () => ({ 'Content-Type': 'application/json' }),
+      body: (text, model) => ({
+        model: model || process.env.OLLAMA_MODEL || 'phi3:mini',
+        messages: [{ role: 'user', content: text }],
+        temperature: 0.7,
+      }),
+      extract: (body) => body.choices?.[0]?.message?.content || '',
+    },
+    {
+      name: 'lmstudio',
+      free: true,
+      endpoint: process.env.LMSTUDIO_URL || 'http://127.0.0.1:1234/v1/chat/completions',
+      model: process.env.LMSTUDIO_MODEL || 'phi-3-mini-4k',
+      headers: () => ({ 'Content-Type': 'application/json' }),
+      body: (text, model) => ({
+        model: model || process.env.LMSTUDIO_MODEL || 'phi-3-mini-4k',
+        messages: [{ role: 'user', content: text }],
+        temperature: 0.7,
+      }),
+      extract: (body) => body.choices?.[0]?.message?.content || '',
+    },
+    {
+      name: 'localai',
+      free: true,
+      endpoint: process.env.LOCALAI_URL || 'http://127.0.0.1:8080/v1/chat/completions',
+      model: process.env.LOCALAI_MODEL || 'phi-3-mini-4k',
+      headers: () => ({ 'Content-Type': 'application/json' }),
+      body: (text, model) => ({
+        model: model || process.env.LOCALAI_MODEL || 'phi-3-mini-4k',
+        messages: [{ role: 'user', content: text }],
+        temperature: 0.7,
+      }),
+      extract: (body) => body.choices?.[0]?.message?.content || '',
+    },
+    // Hugging Face Inference API — free public models (needs a free HF_API_KEY).
+    {
+      name: 'hf-free',
+      free: true,
+      endpoint: `https://api-inference.huggingface.co/models/${process.env.HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.2'}`,
+      model: process.env.HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.2',
+      headers: () => ({
+        Authorization: `Bearer ${process.env.HF_API_KEY || ''}`,
+        'Content-Type': 'application/json',
+      }),
+      body: (text) => ({
+        inputs: text,
+        parameters: { max_new_tokens: 512, return_full_text: false },
+      }),
+      extract: (body) =>
+        (Array.isArray(body) ? body[0]?.generated_text : body.generated_text) || '',
+    },
+    // Add more free endpoints below (same shape) — the rotator will round-robin
+    // and fail over between all of them seamlessly.
+    {
       free: true,
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',

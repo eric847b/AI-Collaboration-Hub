@@ -13,6 +13,7 @@
 // @connect      generativelanguage.googleapis.com
 // @connect      api.together.xyz
 // @connect      openrouter.ai
+// @connect      huggingface.co
 // ==/UserScript==
 /* globals GM_getValue, GM_setValue, GM_setClipboard, GM_registerMenuCommand, GM_xmlhttpRequest */
 (function () {
@@ -21,7 +22,62 @@
 
   // ---- Provider pool (free tiers). Keys per provider in GM storage, never hardcoded. ----
   function providers() {
+    // Permanent-free LOCAL providers (your own hardware, no key, never expires).
+    // If a local server is off, failover is instant to the next lane.
     return [
+      {
+        name: 'ollama',
+        endpoint: 'http://127.0.0.1:11434/v1/chat/completions',
+        model: 'phi3:mini',
+        headers: () => ({ 'Content-Type': 'application/json' }),
+        body: (text) => ({
+          model: 'phi3:mini',
+          messages: [{ role: 'user', content: text }],
+          temperature: 0.7,
+        }),
+        extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
+      },
+      {
+        name: 'lmstudio',
+        endpoint: 'http://127.0.0.1:1234/v1/chat/completions',
+        model: 'phi-3-mini-4k',
+        headers: () => ({ 'Content-Type': 'application/json' }),
+        body: (text) => ({
+          model: 'phi-3-mini-4k',
+          messages: [{ role: 'user', content: text }],
+          temperature: 0.7,
+        }),
+        extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
+      },
+      {
+        name: 'localai',
+        endpoint: 'http://127.0.0.1:8080/v1/chat/completions',
+        model: 'phi-3-mini-4k',
+        headers: () => ({ 'Content-Type': 'application/json' }),
+        body: (text) => ({
+          model: 'phi-3-mini-4k',
+          messages: [{ role: 'user', content: text }],
+          temperature: 0.7,
+        }),
+        extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
+      },
+      // Hugging Face Inference API (free public models; needs a free HF_API_KEY).
+      {
+        name: 'hf-free',
+        endpoint:
+          'https://api-inference.huggingface.co/models/' +
+          (GM_getValue(NS + 'hf_model', '') || 'mistralai/Mistral-7B-Instruct-v0.2'),
+        model: 'mistralai/Mistral-7B-Instruct-v0.2',
+        headers: () => ({
+          Authorization: 'Bearer ' + (GM_getValue(NS + 'hf', '') || ''),
+          'Content-Type': 'application/json',
+        }),
+        body: (text) => ({
+          inputs: text,
+          parameters: { max_new_tokens: 512, return_full_text: false },
+        }),
+        extract: (o) => (Array.isArray(o) ? o[0] && o[0].generated_text : o.generated_text) || '',
+      },
       {
         name: 'groq-free',
         endpoint: 'https://api.groq.com/openai/v1/chat/completions',
@@ -272,6 +328,14 @@
   GM_registerMenuCommand('⚙ Set OpenRouter Free API Key', () => {
     const k = prompt('OpenRouter API key:', GM_getValue(NS + 'openrouter', ''));
     if (k) GM_setValue(NS + 'openrouter', k);
+  });
+  GM_registerMenuCommand('⚙ Set Hugging Face API Key', () => {
+    const k = prompt('Hugging Face API key:', GM_getValue(NS + 'hf', ''));
+    if (k) GM_setValue(NS + 'hf', k);
+  });
+  GM_registerMenuCommand('⚙ Set Hugging Face Model', () => {
+    const m = prompt('HF model (optional):', GM_getValue(NS + 'hf_model', ''));
+    if (m) GM_setValue(NS + 'hf_model', m);
   });
   GM_registerMenuCommand('🤖 Run prompt (seamless rotation)', runPrompt);
 
