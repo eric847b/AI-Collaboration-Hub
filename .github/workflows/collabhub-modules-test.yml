@@ -1,0 +1,22 @@
+name: CollabHub Modules — FreeAI Rotator
+
+# Protects the free-AI rotator (core + userscript) with the same offline gate
+# used locally: `npm test` => 8 core checks + 10 userscript DOM checks (18 total).
+on:
+  push:
+    paths:
+      - 'collabhub-modules/**'
+  pull_request:
+    paths:
+      - 'collabhub-modules/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - name: Run FreeAI rotator test gate (core + userscript)
+        run: npm --prefix collabhub-modules test
