@@ -66,9 +66,47 @@ const fakeProviders = [
   );
   ok(elapsed < 1000, `completed without meaningful pause (${elapsed}ms)`);
 
-  // Second call should skip the (now cooling) A and B and go straight to C.
+    // Second call should skip the (now cooling) A and B and go straight to C.
   const out2 = await rotator.complete('ping, again');
   ok(out2.provider === 'C', 'subsequent call used healthy C immediately');
+
+  // ---- Multi-step run(): step accumulation + rotation on failover ----
+  const stepProviders = [
+    {
+      name: 'A',
+      endpoint: 'https://a.local',
+      request_behavior: 429, // always fails -> failover to B
+      extract: (b) => b.text || '',
+    },
+    {
+      name: 'B',
+      endpoint: 'https://b.local',
+      request_behavior: 200,
+      extract: (b) => b.text || '',
+    },
+  ];
+  const steps = new FreeAIRotator({
+    providers: stepProviders,
+    collectionPeriodMs: 5,
+    maxAttempts: 4,
+    request: async (url) => {
+      const p = stepProviders.find((x) => x.endpoint === url);
+      if (p.request_behavior === 200) {
+        return { status: 200, json: () => ({ text: 'OK from B' }), text: '' };
+      }
+      return { status: p.request_behavior, json: () => ({}), text: '' };
+    },
+  });
+    const results = await steps.run({ steps: ['s1', 's2', 's3'] });
+  ok(results.length === 3, `run() accumulated ${results.length}/3 steps`);
+  ok(
+    results.every((r) => r.provider === 'B' && r.text === 'OK from B'),
+    'all steps returned B (failover rotated through A)'
+  );
+  ok(
+    steps.tally.rotations > 0 && steps.tally.calls >= 3,
+    `steps rotated/calls=rotations=${steps.tally.rotations} calls=${steps.tally.calls}`
+  );
 
   console.log('\nSummary: passed=' + passed + ' failures=' + failures);
   process.exit(failures === 0 ? 0 : 1);
