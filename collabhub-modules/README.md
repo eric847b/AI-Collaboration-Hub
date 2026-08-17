@@ -14,6 +14,27 @@ CollabHub Userscript Modules and Tools
 - `test/rotator.test.js` — off-line failover test (no network).
   Run with: `npm test` (asserts `429 → 500 → 200` rotation in <1 ms).
 
+### Use on any page — not just AI chat sites
+
+The Tampermonkey script matches **all `http(s)://*/*` pages**, so the `💬 FreeAI`
+assistant is available on docs, code, email, GitHub PRs — anywhere.
+
+- **Injected on every page:** a floating `💬 FreeAI` button appears in the page
+  corner. Click it, accept/edit the prompt, and the result docks in a floating
+  card with a **Copy** button.
+- **Auto‑prompt from context (no retyping):**
+  - On ChatGPT / Claude / Gemini / etc. — reads the chat textarea and pre‑fills
+    the prompt.
+  - On **any other page** — builds the prompt from the **page title + your text
+    selection** (select some text first, then click). Nothing selected? It
+    summarizes the page.
+- **Seamless failover:** each call round‑robins across the pool; a `429`/`5xx`/
+  throw on one provider instantly tries the next, so a rate‑limited or down key
+  never blocks you.
+
+> Example (GitHub): select a code snippet or a PR diff → click `💬 FreeAI` → get
+> a summary/explanation docked inline, rotated through your free lane.
+
 ### Free providers in the default pool (keys via env / GM, never hardcoded)
 
 | Provider          | Env / GM key         | Model                                         |
