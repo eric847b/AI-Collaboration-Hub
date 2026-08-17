@@ -9,6 +9,7 @@
     "bootstrap": "powershell -ExecutionPolicy Bypass -File ./tools/bootstrap.ps1",
     "verify": "powershell -ExecutionPolicy Bypass -File ./tools/verify-workspace.ps1",
     "health": "powershell -ExecutionPolicy Bypass -File ./tools/health-check.ps1",
+    "ai": "node collabhub-modules/run-ai.js",
     "lint": "echo 'Use: npm run lint:fix to auto-fix all projects (requires PowerShell)'",
     "ci": "npm run verify && npm run health",
     "prepare": "husky"

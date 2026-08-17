@@ -52,6 +52,23 @@ npm run test     # Run tests
 npm run build    # Production build
 ```
 
+### 4. Free AI CLI — runs anywhere, never pauses
+
+From the **workspace root**:
+
+```powershell
+npm run ai -- "summarize this"
+npm run ai -- "step one" "step two"   # multi-step rotation, results accumulate
+```
+
+Delegates to `collabhub-modules/run-ai.js`: rotates through the permanent‑free
+pool (local Ollama/LM Studio/LocalAI → cloud free tiers). Missing keys or a down
+endpoint are skipped instantly, so work keeps moving. Set any free key or start a
+local server (e.g. `ollama serve`) to get live results; with none configured it
+fails over the whole pool and exits gracefully instead of hanging.
+
+
+
 ## Workspace Conventions
 
 - **`.editorconfig`** — Standardizes indentation, line endings, and formatting
