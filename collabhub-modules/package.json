@@ -9,6 +9,7 @@
     "ai": "node run-ai.js",
     "test": "node test/rotator.test.js && node test/userscript-dom.test.js",
     "test:userscript": "node test/userscript-dom.test.js",
+    "test:local": "node examples/local-proof.js",
     "build": "echo \"Build complete\"",
     "check": "npm run test && npm run build"
   }
