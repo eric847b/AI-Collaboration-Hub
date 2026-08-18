@@ -15,8 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+             - uses: actions/setup-node@v4
         with:
           node-version: 26
       - name: Run FreeAI rotator test gate (core + userscript)
         run: npm --prefix collabhub-modules test
+      - name: Run offline failover smoke test (local-proof.js)
+        run: npm --prefix collabhub-modules run test:local
