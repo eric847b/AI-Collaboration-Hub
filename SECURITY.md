@@ -41,7 +41,7 @@ Out of scope:
 
 | Version | Supported |
 | ------- | --------- |
-| main / 26.x | ✅ |
+| main (latest release) | ✅ |
 | < 26.0 | ❌ (upgrade; only the latest `main` is patched) |
 
 ## Known Third‑Party Vulnerabilities
