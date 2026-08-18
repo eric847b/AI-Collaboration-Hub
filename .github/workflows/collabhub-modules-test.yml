@@ -1,7 +1,8 @@
 name: CollabHub Modules — FreeAI Rotator
 
-# Protects the free-AI rotator (core + userscript) with the same offline gate
-# used locally: `npm test` => 8 core checks + 10 userscript DOM checks (18 total).
+# Protects the free-AI rotator (core + userscript + ESM façade) with the same
+# offline gate used locally: `npm test` => 8 core + 10 userscript DOM + 13 ESM
+# checks (31 total).
 on:
   push:
     paths:
@@ -15,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-             - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 26
-      - name: Run FreeAI rotator test gate (core + userscript)
+      - name: Run FreeAI rotator test gate (core + userscript + ESM façade)
         run: npm --prefix collabhub-modules test
       - name: Run offline failover smoke test (local-proof.js)
         run: npm --prefix collabhub-modules run test:local

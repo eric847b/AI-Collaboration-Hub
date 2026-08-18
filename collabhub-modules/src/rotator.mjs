@@ -2,8 +2,8 @@
 /**
  * ESM facade for the FreeAI rotator core (src/rotator.js is CommonJS).
  *
- * ESM consumers (Svelte/Next/Vite, etc.) can now do a real named import:
- *   import { FreeAirRotator, defaultProviders, delay } from 'collabhub-modules/src/rotator.mjs';
+  * ESM consumers (Svelte/Next/Vite, etc.) can now do a real named import:
+ *   import { FreeAIRotator, defaultProviders, delay } from 'collabhub-modules/src/rotator.mjs';
  * or a default import:
  *   import FreeAI from 'collabhub-modules/src/rotator.mjs';
  *
@@ -15,12 +15,12 @@
  */
 import cjs from './rotator.js';
 
-export const FreeAirRotator = cjs.FreeAirRotator;
+export const FreeAIRotator = cjs.FreeAIRotator;
 export const defaultProviders = cjs.defaultProviders;
 export const delay = cjs.delay;
 
 export default {
-  FreeAirRotator: cjs.FreeAirRotator,
+  FreeAIRotator: cjs.FreeAIRotator,
   defaultProviders: cjs.defaultProviders,
   delay: cjs.delay,
 };

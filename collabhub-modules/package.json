@@ -1,15 +1,16 @@
 {
   "name": "collabhub-modules",
   "version": "25.0",
-  "engines": {
+    "engines": {
     "node": ">=26.0.0"
   },
   "scripts": {
     "evolve": "node evolve.js",
     "ai": "node run-ai.js",
-    "test": "node test/rotator.test.js && node test/userscript-dom.test.js",
+    "test": "node test/rotator.test.js && node test/userscript-dom.test.js && node src/__esm_smoke.mjs",
     "test:userscript": "node test/userscript-dom.test.js",
     "test:local": "node examples/local-proof.js",
+    "test:esm": "node src/__esm_smoke.mjs",
     "build": "echo \"Build complete\"",
     "check": "npm run test && npm run build"
   }
