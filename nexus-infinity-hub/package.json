@@ -18,7 +18,8 @@
     "lint:fix": "eslint . --fix || true",
     "test": "vitest run",
     "check": "npm run lint && npm run test && npm run build",
-    "ci": "npm run check"
+    "ci": "npm run check",
+    "ai": "node ..\\collabhub-modules\\run-ai.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.0",
