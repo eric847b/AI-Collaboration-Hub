@@ -1,0 +1,72 @@
+name: Fleet Maintenance
+
+# Nested-mirror note (autonomous-github-agent v6.0 catalyst sync, per
+# tools/sync_fleet_catalysts.md rule #4): the standalone
+# `.github/fleet_maintenance.py` + workflow are mirrored under
+# `autonomous-github-agent/.github/`. The `working-directory` on the job
+# below keeps the verbatim `python .github/fleet_maintenance.py` invocations
+# resolving to the nested module when this workflow runs from the
+# AI-Collaboration-Hub repository root.
+
+on:
+  schedule:
+    # Weekly Sunday 04:00 UTC — low-noise hygiene scan
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "plan (default) or apply_safe"
+        required: false
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply_safe
+      dry_run:
+        description: "Keep dry-run true for apply_safe"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    working-directory: autonomous-github-agent
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Run fleet maintenance (plan)
+        if: ${{ github.event_name == 'schedule' || inputs.mode == 'plan' || inputs.mode == '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_FULL_PAT: ${{ secrets.GH_FULL_PAT }}
+        run: |
+          python .github/fleet_maintenance.py --mode plan
+
+      - name: Run fleet maintenance (apply_safe)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'apply_safe' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_FULL_PAT: ${{ secrets.GH_FULL_PAT }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python .github/fleet_maintenance.py --mode apply_safe --dry-run
+          else
+            python .github/fleet_maintenance.py --mode apply_safe --no-dry-run
+          fi

@@ -13,6 +13,7 @@
 | Draft-ext | `.github/failure_solver_draft_ext.py` | same | ✅ |
 | Profile IO | `.github/profile_io.py` | same | ✅ |
 | Completed dataset | `docs/completed_catalyst_dataset.md` | nested docs + root SYNC | ✅ |
+| Fleet Maintenance v1.0 | `.github/fleet_maintenance.py` + `.github/workflows/fleet-maintenance.yml` | `autonomous-github-agent/.github/fleet_maintenance.py` + `workflows/fleet-maintenance.yml` | ✅ (`autonomous-github-agent#322` mirrored) |
 
 ## Singularity-operator nested parity (project unlock after #225)
 
