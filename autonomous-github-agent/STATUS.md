@@ -21,6 +21,7 @@
 | Dependency review on PRs | ✅ |
 | Groq SDK ≥1.6 pin (KNOWN_PY_PINS + singularity-operator) | ✅ |
 | Version lineage consolidated (v4.x–v5.3 → v6.0) | ✅ |
+| Fleet Maintenance v1.0 (cross-repo root-file audit; mirrored from standalone #322) | ✅ |
 
 ## Env flags
 

@@ -18,6 +18,7 @@ See **[STATUS.md](./STATUS.md)** for the full capability matrix (v6.0).
 6. **Nexus multi-role consensus** gated in `agent.py` before risky issue/PR/todo edits
 7. Closed-loop ledger + escalate to `needs-human` when fixes reappear
 8. Optional multi-repo metadata scan (`MULTI_REPO=1`)
+9. **Fleet Maintenance v1.0** — cross-repo audit of required root files (README, LICENSE, SECURITY.md, .gitignore); plan-only by default, fail-closed `apply_safe`
 
 ## Quick start
 
@@ -45,7 +46,7 @@ Triggers → GitHub Actions
   → Self-Heal schedule / workflow_run
 ```
 
-Modules: `nexus_consensus.py`, `agent_hooks.py`, `agent_nexus_bridge.py`, `closed_loop.py`, `escalate.py`, `multi_repo.py`, `collab_export.py`, `security_audit.py`
+Modules: `nexus_consensus.py`, `agent_hooks.py`, `agent_nexus_bridge.py`, `closed_loop.py`, `escalate.py`, `multi_repo.py`, `collab_export.py`, `security_audit.py`, `fleet_maintenance.py`
 
 ## Security
 

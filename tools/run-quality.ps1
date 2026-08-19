@@ -4,7 +4,7 @@ run-quality.ps1
    The full "best catalyst series" – drives the workspace to a healthy,
    built, linted, tested, and security-scanned state.
    Steps: bootstrap → npm check/lint → python install → health → verify
-          → npm audit → eslint fix → vitest coverage → build → lockfile commit
+          → npm audit → eslint fix → vitest coverage → build → lockfile commit → fleet audit
 =====================================================================
 #>
 $passed = 0
@@ -49,7 +49,7 @@ Log "`n--- Step 3: Python requirements ---" Yellow
 foreach ($p in $PythonProjects) {
     $r = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$p" 'requirements.txt'
     if (Test-Path $r) {
-        & python -m pip install -quiet -r $r
+        & python -m pip install -q -r $r
         if ($LASTEXITCODE -eq 0) { $passed++ } else { $warnings += "$p pip install" }
     } else { $warnings += "$p no requirements.txt" }
 }
@@ -73,9 +73,19 @@ if ($LASTEXITCODE -eq 0) { $passed++ } else { Log "  high-severity npm vulnerabi
 Log "`n--- Step 7: eslint auto-fix (best effort) ---" Yellow
 foreach ($p in $NodeProjects) { if ((Invoke-Npm $p 'lint:fix') -eq 0) { $passed++ } else { $warnings += "$p lint:fix" } }
 
-# ---- Step 8: vitest coverage (best effort) ----
+# ---- Step 8: vitest coverage (best effort, only where configured) ----
 Log "`n--- Step 8: vitest coverage (best effort) ---" Yellow
 foreach ($p in $NodeProjects) {
+    $pkg = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$p" 'package.json'
+    $hasVitest = $false
+    if (Test-Path $pkg) {
+        $raw = Get-Content $pkg -Raw
+        $hasVitest = ($raw -match '"vitest"\s*:')
+    }
+    if (-not $hasVitest) {
+        Log "  [SKIP] $p (vitest not configured; uses its own test runner)" Yellow
+        continue
+    }
     $orig = pwd.ProviderPath
     try {
         Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
@@ -105,6 +115,11 @@ if ($failed -eq 0) {
         Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub"
     }
 }
+
+# ---- Step 11: Fleet maintenance audit (plan, best effort) ----
+Log "`n--- Step 11: Fleet maintenance audit (plan) ---" Yellow
+& python "C:\Users\Eric\OneDrive\Documents\GitHub\autonomous-github-agent\.github\fleet_maintenance.py" --mode plan 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) { $passed++ } else { $warnings += 'fleet maintenance plan' }
 
 # ---- Summary ----
 Log "`n========================================" Cyan
