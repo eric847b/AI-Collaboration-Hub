@@ -22,8 +22,8 @@ ROOT = CORE.parents[1]
 REG, NEXT, SCOPE_JSON = CORE/"registry.json", CORE/"NEXT_CATALYST.md", CORE/"scope.json"
 AGENT = ROOT/"autonomous-github-agent"/".github"/"scripts"/"agent.py"
 
-SCAN_BUDGET_S = 3.0   # max seconds to spend scanning one module for TODOs
-SCAN_FILE_LIMIT = 400 # max files to read per module scan
+SCAN_BUDGET_S = 3.0
+SCAN_FILE_LIMIT = 400
 
 def load():
     return json.loads(REG.read_text())
@@ -44,7 +44,7 @@ def scope(json_only=False):
             "unhealthy":[m["name"] for m in mods if m["status"]!="HEALTHY"],"rules":r["rules"],
             "canonical":"AI-Collaboration-Hub/nexus-core","executor":"autonomous-github-agent",
             "cost":"zero","user_time":"zero"}
-            SCOPE_JSON.write_text(json.dumps(data, indent=2))
+    SCOPE_JSON.write_text(json.dumps(data, indent=2))
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
@@ -55,8 +55,6 @@ def scope(json_only=False):
               "Stronger pattern found? Replace orchestrator and bump version. "
               "Always finish with scope + update NEXT_CATALYST.md. "
               "Minimal. Runtime fails absorbed. Free cron. Zero user time.")
-    # Preserve accumulated progress notes: don't wipe content after the
-    # basic prompt header (## v sections with accumulated notes).
     progress = ""
     if NEXT.exists():
         existing = NEXT.read_text()
@@ -76,7 +74,6 @@ def _git_status(name):
         p = base/name
         if not p.exists(): continue
         try:
-            # Run from git root, scope output to this module's path (avoids parent-repo bleed)
             out = subprocess.run(["git","-C",str(ROOT),"status","--porcelain","--",name], capture_output=True, text=True, timeout=10)
             return len(out.stdout.splitlines()) if out.returncode == 0 else -1
         except Exception:
@@ -91,9 +88,9 @@ def _strip_strings(text):
     return _STR_RE.sub(" ", text)
 
 def _scan_todos(name):
-        """    """Count actual TODO/FIXME comments in a module's source files (skipping heavy dirs).
+    """Count actual TODO/FIXME comments in a module's source files (skipping heavy dirs).
     Time-budgeted (SCAN_BUDGET_S) and file-limited (SCAN_FILE_LIMIT) to avoid
-    hanging on large repos like VectorFS.""""""
+    hanging on large repos like VectorFS."""
     for base in (ROOT, ROOT/"AI-Collaboration-Hub"):
         p = base/name
         if not p.exists(): continue
@@ -119,17 +116,14 @@ def improve():
     r = load()
     print("# IMPROVE PROPOSALS (live self-audit)")
     issues = []
-    # 1. Missing/unhealthy modules
     for m in r["modules"]:
         h = health(m)
         if h != "HEALTHY":
             issues.append(f"[{h}] {m['name']} — module not fully healthy")
-    # 2. Uncommitted changes
     for m in r["modules"]:
         dirty = _git_status(m["name"])
         if dirty > 0:
             issues.append(f"[DIRTY] {m['name']} — {dirty} uncommitted change(s)")
-    # 3. TODO/FIXME density
     for m in r["modules"]:
         todos = _scan_todos(m["name"])
         if todos > 0:
@@ -148,7 +142,7 @@ def run_agent():
     try:
         subprocess.run([sys.executable, str(AGENT)], cwd=str(ROOT), timeout=300)
     except Exception as e:
-        print(f"agent runtime absorbed: {e}")  # never bomb user
+        print(f"agent runtime absorbed: {e}")
 
 def check():
     r = load()
