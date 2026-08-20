@@ -24,6 +24,16 @@ function Invoke-Npm {
     } finally { Set-Location $orig }
 }
 
+# True when the project's package.json declares the given script (guards steps
+# that only make sense for projects that actually expose the command).
+function Has-Script {
+    param([string]$proj,[string]$script)
+    $pkg = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$proj" 'package.json'
+    if (-not (Test-Path $pkg)) { return $false }
+    $raw = Get-Content $pkg -Raw
+    return ($raw -match ('"' + [regex]::Escape($script) + '"\s*:'))
+}
+
 $NodeProjects  = @('nexus-infinity-hub','self-evolve-dash','collabhub-modules','third-door-blink-controller')
 $PythonProjects = @('singularity-operator','autonomous-github-agent')
 
@@ -32,15 +42,20 @@ Log "`n--- Step 1: Bootstrap ---" Yellow
 & "C:\Users\Eric\OneDrive\Documents\GitHub\tools\bootstrap.ps1"
 if ($LASTEXITCODE -ne 0) { Log "  bootstrap had warnings (continuing)" Yellow; $warnings += 'bootstrap' } else { $passed++ }
 
-# ---- Step 2: npm check / lint ----
+# ---- Step 2: npm check / lint (skips projects without either script) ----
 Log "`n--- Step 2: npm check / lint ---" Yellow
 foreach ($p in $NodeProjects) {
-    $code = Invoke-Npm $p 'check'
-    if ($code -eq 0) { Log "  [OK] $p check" Green; $passed++ }
-    else {
-        $c2 = Invoke-Npm $p 'lint'
-        if ($c2 -eq 0) { Log "  [OK] $p lint (fallback)" Green; $passed++ }
+    $hasCheck = Has-Script $p 'check'
+    $hasLint  = Has-Script $p 'lint'
+    if (-not ($hasCheck -or $hasLint)) { Log "  [SKIP] $p (no check/lint script)" Yellow; continue }
+    if ($hasCheck) {
+        $code = Invoke-Npm $p 'check'
+        if ($code -eq 0) { Log "  [OK] $p check" Green; $passed++ }
+        elseif ($hasLint -and ((Invoke-Npm $p 'lint') -eq 0)) { Log "  [OK] $p lint (fallback)" Green; $passed++ }
         else { Log "  [FAIL] $p check/lint" Red; $failed++; $issues += "$p check/lint" }
+    } else {
+        if ((Invoke-Npm $p 'lint') -eq 0) { Log "  [OK] $p lint" Green; $passed++ }
+        else { Log "  [FAIL] $p lint" Red; $failed++; $issues += "$p lint" }
     }
 }
 
@@ -64,14 +79,24 @@ Log "`n--- Step 5: Verify ---" Yellow
 & "C:\Users\Eric\OneDrive\Documents\GitHub\tools\verify-workspace.ps1"
 if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'verify' }
 
-# ---- Step 6: npm audit (advisory) ----
-Log "`n--- Step 6: npm audit (advisory) ---" Yellow
-& npm audit --audit-level=high 2>&1 | Out-Null
-if ($LASTEXITCODE -eq 0) { $passed++ } else { Log "  high-severity npm vulnerabilities present" Yellow; $warnings += 'high npm vulns' }
+# ---- Step 6: npm audit (advisory) across every Node project ----
+Log "`n--- Step 6: npm audit (advisory, workspace-wide) ---" Yellow
+foreach ($p in $NodeProjects) {
+    $orig = pwd.ProviderPath
+    try {
+        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
+        & npm audit --audit-level=high 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { Log "  [OK] $p audit" Green; $passed++ }
+        else { Log "  [WARN] $p high-severity npm vulns" Yellow; $warnings += "$p high npm vulns" }
+    } finally { Set-Location $orig }
+}
 
-# ---- Step 7: eslint auto-fix (best effort) ----
+# ---- Step 7: eslint auto-fix (best effort, only where a lint:fix script exists) ----
 Log "`n--- Step 7: eslint auto-fix (best effort) ---" Yellow
-foreach ($p in $NodeProjects) { if ((Invoke-Npm $p 'lint:fix') -eq 0) { $passed++ } else { $warnings += "$p lint:fix" } }
+foreach ($p in $NodeProjects) {
+    if (-not (Has-Script $p 'lint:fix')) { Log "  [SKIP] $p (no lint:fix script)" Yellow; continue }
+    if ((Invoke-Npm $p 'lint:fix') -eq 0) { $passed++ } else { $warnings += "$p lint:fix" }
+}
 
 # ---- Step 8: vitest coverage (best effort, only where configured) ----
 Log "`n--- Step 8: vitest coverage (best effort) ---" Yellow
@@ -94,9 +119,10 @@ foreach ($p in $NodeProjects) {
     } finally { Set-Location $orig }
 }
 
-# ---- Step 9: Build ----
+# ---- Step 9: Build (best effort, only where a build script exists) ----
 Log "`n--- Step 9: Build ---" Yellow
 foreach ($p in $NodeProjects) {
+    if (-not (Has-Script $p 'build')) { Log "  [SKIP] $p (no build script)" Yellow; continue }
     $code = Invoke-Npm $p 'build'
     if ($code -eq 0) { Log "  [OK] $p build" Green; $passed++ } else { Log "  [WARN] $p build" Yellow; $warnings += "$p build" }
 }
