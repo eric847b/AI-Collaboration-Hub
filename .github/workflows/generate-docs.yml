@@ -14,11 +14,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 26
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --prefix nexus-infinity-hub
+        run: npm ci --prefix nexus-infinity-hub || npm install --prefix nexus-infinity-hub
 
       - name: Check for TypeDoc
         run: |
@@ -69,7 +69,8 @@ jobs:
 
       - name: Publish docs index
         run: |
-          cat > docs/index.md <<'EOF'
+          mkdir -p docs
+          cat > docs/index.md <<'IDX'
           # API Documentation
           
           Generated API documentation for all projects.
@@ -77,10 +78,10 @@ jobs:
           - [nexus-infinity-hub](./nexus-infinity-hub/index.html)
           - [singularity-operator](./singularity-operator/index.html)
           - [autonomous-github-agent](./autonomous-github-agent/index.html)
-          EOF
+          IDX
 
-      - name: Deploy to GitHub Pages
-        uses: actions/upload-pages-artifact@v2
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: 'docs/'
         continue-on-error: true
@@ -98,4 +99,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4

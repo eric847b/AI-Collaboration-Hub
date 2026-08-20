@@ -44,7 +44,7 @@ def scope(json_only=False):
             "unhealthy":[m["name"] for m in mods if m["status"]!="HEALTHY"],"rules":r["rules"],
             "canonical":"AI-Collaboration-Hub/nexus-core","executor":"autonomous-github-agent",
             "cost":"zero","user_time":"zero"}
-            SCOPE_JSON.write_text(json.dumps(data, indent=2))
+    SCOPE_JSON.write_text(json.dumps(data, indent=2))
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
@@ -91,9 +91,9 @@ def _strip_strings(text):
     return _STR_RE.sub(" ", text)
 
 def _scan_todos(name):
-        """    """Count actual TODO/FIXME comments in a module's source files (skipping heavy dirs).
+    """Count actual TODO/FIXME comments in a module's source files (skipping heavy dirs).
     Time-budgeted (SCAN_BUDGET_S) and file-limited (SCAN_FILE_LIMIT) to avoid
-    hanging on large repos like VectorFS.""""""
+    hanging on large repos like VectorFS."""
     for base in (ROOT, ROOT/"AI-Collaboration-Hub"):
         p = base/name
         if not p.exists(): continue
