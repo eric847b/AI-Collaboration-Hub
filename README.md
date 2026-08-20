@@ -161,13 +161,14 @@ The workspace ships with PowerShell tooling under `tools/`:
 
 | Script                | Purpose                                                                                                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run-quality.ps1`     | **Catalyst series**: bootstrap → npm check/lint → Python install → health → verify → npm audit → eslint fix → vitest coverage → build → lockfile commit, then a colour‑coded summary + exit code. |
+| `run-quality.ps1`     | **Catalyst series**: bootstrap → npm check/lint → Python install → health → verify → npm audit → eslint fix → vitest coverage → build → lockfile commit → fleet audit (Step 11), then a colour‑coded summary + exit code. |
 | `review-repos.ps1`    | Inventories the monorepo + project subfolders (git info, key files, file counts) and writes `LocalRepoReview.txt`.                                                                                |
 | `analyze-freedom.ps1` | Scores each project against freedom goals (Financial / Biological / Chores) and writes `FreedomReport.txt`.                                                                                       |
 
-Run them from the root:
+Run the full catalyst series in one command via `npm run quality`, or launch scripts individually from the root:
 
 ```powershell
+npm run quality                          # full catalyst series (run-quality.ps1)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-quality.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\review-repos.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\analyze-freedom.ps1
