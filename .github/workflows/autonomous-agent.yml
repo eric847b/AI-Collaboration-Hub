@@ -14,14 +14,13 @@ on:
   schedule:
     # Continuous autonomy — every 2 hours
     - cron: '0 */2 * * *'
+    - cron: '0 */6 * * *'
   push:
     branches: [main]
   issues:
     types: [opened, edited, reopened]
   pull_request:
     types: [opened, synchronize, reopened]
-  schedule:
-    - cron: '0 */6 * * *'
 
 permissions:
   contents: write

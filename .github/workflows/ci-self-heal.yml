@@ -69,12 +69,7 @@ jobs:
           if [ -f .github/run_failure_solver.py ]; then
             python .github/run_failure_solver.py || true
           elif [ -f autonomous-github-agent/.github/failure_solver.py ]; then
-            PYTHONPATH=autonomous-github-agent/.github python -c "
-from failure_solver import get_failure_solver
-import os
-s = get_failure_solver(os.getenv('GITHUB_REPOSITORY',''))
-print(s.run_proactive_pass(max_issues=3))
-" || true
+            PYTHONPATH=autonomous-github-agent/.github python -c "from failure_solver import get_failure_solver; import os; s = get_failure_solver(os.getenv('GITHUB_REPOSITORY','')); print(s.run_proactive_pass(max_issues=3))" || true
           else
             echo "FailureSolver not present — skip"
           fi

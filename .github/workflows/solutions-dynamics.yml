@@ -25,25 +25,12 @@ jobs:
       - name: Verify Solutions Dynamics
         run: |
           cd solutions-dynamics
-          python -c "
-from runtime_failure_handler import RuntimeFailureHandler, FailureType
-from extended_failure_handler import ExtendedRuntimeFailureHandler, ExtendedFailureType
-print(f'Base handler: {len(FailureType)} failure types')
-print(f'Extended handler: {len(ExtendedFailureType)} failure types')
-print(f'Total: {len(FailureType) + len(ExtendedFailureType)} failure types with recovery')
-handler = RuntimeFailureHandler()
-print('✓ Solutions Dynamics verified and operational')
-"
+          python -c "from runtime_failure_handler import RuntimeFailureHandler, FailureType; from extended_failure_handler import ExtendedRuntimeFailureHandler, ExtendedFailureType; print('Base handler:', len(FailureType), 'failure types'); print('Extended handler:', len(ExtendedFailureType), 'failure types'); print('Total:', len(FailureType) + len(ExtendedFailureType), 'failure types with recovery'); handler = RuntimeFailureHandler(); print('OK - Solutions Dynamics verified and operational')"
       
       - name: Verify Bridge Integration
         run: |
           cd autonomous-github-agent/.github/scripts
-          python -c "
-import sys
-sys.path.insert(0, '../../../')
-from solutions_dynamics.runtime_failure_handler import RuntimeFailureHandler
-print('✓ Bridge integration verified')
-"
+          python -c "import sys; sys.path.insert(0, '../../../'); from solutions_dynamics.runtime_failure_handler import RuntimeFailureHandler; print('OK - Bridge integration verified')"
 
   integrate:
     runs-on: ubuntu-latest
