@@ -22,3 +22,6 @@
 package-lock.json text
 pnpm-lock.yaml text
 yarn.lock text
+
+# Shell hooks must stay LF or sh refuses to run them
+.husky/pre-commit text eol=lf
