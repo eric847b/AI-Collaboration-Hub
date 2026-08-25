@@ -1,0 +1,7 @@
+# Fast path: skip entirely when nothing lintable is staged.
+# (Invoking lint-staged with an empty staged set stalls >30s in this env.)
+FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx|json|md|css)$' || true)
+if [ -z "$FILES" ]; then
+  exit 0
+fi
+npx --no-install lint-staged

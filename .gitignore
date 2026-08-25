@@ -57,8 +57,8 @@ temp/.git_disabled/
 # Local machine data (never commit)
 AppData/
 Roaming/
-# Stray / disabled git repos (should never be tracked)
-.husky/
+# Husky internals (machine-generated); user hooks like .husky/pre-commit ARE tracked
+.husky/_/
 **/.git_disabled/
 
 # Local AI-agent state dirs (never commit)
