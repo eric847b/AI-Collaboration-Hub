@@ -12,16 +12,13 @@ Write-Host ""
 Write-Host "Workspace Health Check" -ForegroundColor Cyan
 Write-Host "======================" -ForegroundColor Cyan
 
-# Expected Node projects with lockfiles
-$NodeProjects = @(
-    @{name = 'nexus-infinity-hub'; lockfile = 'package-lock.json'},
-    @{name = 'self-evolve-dash'; lockfile = 'package-lock.json'},
-    @{name = 'collabhub-modules'; lockfile = 'package-lock.json'},
-    @{name = 'third-door-blink-controller'; lockfile = 'package-lock.json'}
-)
-
+# Node projects (auto-discovered: any root-level folder with package.json)
 Write-Host ""
 Write-Host "Node Projects Lockfile Status:" -ForegroundColor Yellow
+$NodeProjects = @(Get-ChildItem -Directory |
+    Where-Object { $_.Name -notlike '.*' -and (Test-Path (Join-Path $_.FullName 'package.json')) }) |
+    ForEach-Object { @{name = $_.Name; lockfile = 'package-lock.json'} }
+if ($NodeProjects.Count -eq 0) { Write-Host "  [ERROR] no Node projects discovered" -ForegroundColor Red; $Issues += 'no Node projects discovered' }
 $NodeProjects | ForEach-Object {
     $proj = $_.name
     $lock = Join-Path $proj $_.lockfile
@@ -35,8 +32,11 @@ $NodeProjects | ForEach-Object {
     }
 }
 
-# Python projects
-$PythonProjects = @('singularity-operator', 'autonomous-github-agent')
+# Python projects (auto-discovered: any root-level folder with requirements.txt)
+$PythonProjects = @(Get-ChildItem -Directory |
+    Where-Object { $_.Name -notlike '.*' -and (Test-Path (Join-Path $_.FullName 'requirements.txt')) }) |
+    ForEach-Object { $_.Name }
+if ($PythonProjects.Count -eq 0) { Write-Host "  [ERROR] no Python projects discovered" -ForegroundColor Red; $Issues += 'no Python projects discovered' }
 Write-Host ""
 Write-Host "Python Projects:" -ForegroundColor Yellow
 $PythonProjects | ForEach-Object {

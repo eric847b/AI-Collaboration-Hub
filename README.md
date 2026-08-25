@@ -10,12 +10,21 @@ Multi-project workspace containing AI agents, dashboards, userscript modules, an
 - **self-evolve-dash** — Dashboard for self-evolution workflows
 - **collabhub-modules** — Userscript modules for enhanced collaboration
 - **third-door-blink-controller** — Expo React Native app
+- **ai-chat-websites** — Sovereign Singularity autonomous userscript suite (Jest + ESLint toolchain)
 
 ### Python Projects
 
 - **singularity-operator** — Multi-AI orchestrator (Groq-based)
 - **autonomous-github-agent** — AI-driven GitHub automation
 - **AI-Collaboration-Hub** — AI collaboration registry and workflows
+- **nexus-core** — Python orchestration core
+- **solutions-dynamics** — Dynamics solutions tooling
+
+> **Auto-discovery:** `bootstrap.ps1`, `health-check.ps1`, `verify-workspace.ps1`,
+> and `run-quality.ps1` no longer keep hardcoded project lists — they detect any
+> root-level folder containing a `package.json` (Node) or `requirements.txt`
+> (Python). Adding a new project directory automatically enrolls it in every
+> health/quality gate.
 
 ### Systems
 

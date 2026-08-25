@@ -34,8 +34,21 @@ function Has-Script {
     return ($raw -match ('"' + [regex]::Escape($script) + '"\s*:'))
 }
 
-$NodeProjects  = @('nexus-infinity-hub','self-evolve-dash','collabhub-modules','third-door-blink-controller')
-$PythonProjects = @('singularity-operator','autonomous-github-agent')
+# True when dependencies have been installed at least once (node_modules exists).
+# Fresh clones that skipped bootstrap are reported and skipped, not failed.
+function Has-NodeModules {
+    param([string]$proj)
+    return (Test-Path (Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$proj" 'node_modules'))
+}
+
+# Auto-discover projects: Node = root-level folder with package.json,
+# Python = root-level folder with requirements.txt (mirrors bootstrap.ps1).
+$NodeProjects = @(Get-ChildItem -Directory |
+    Where-Object { $_.Name -notlike '.*' -and (Test-Path (Join-Path $_.FullName 'package.json')) }) |
+    ForEach-Object { $_.Name }
+$PythonProjects = @(Get-ChildItem -Directory |
+    Where-Object { $_.Name -notlike '.*' -and (Test-Path (Join-Path $_.FullName 'requirements.txt')) }) |
+    ForEach-Object { $_.Name }
 
 # ---- Step 1: Bootstrap ----
 Log "`n--- Step 1: Bootstrap ---" Yellow
@@ -45,6 +58,7 @@ if ($LASTEXITCODE -ne 0) { Log "  bootstrap had warnings (continuing)" Yellow; $
 # ---- Step 2: npm check / lint (skips projects without either script) ----
 Log "`n--- Step 2: npm check / lint ---" Yellow
 foreach ($p in $NodeProjects) {
+    if (-not (Has-NodeModules $p)) { Log "  [SKIP] $p (node_modules missing - run bootstrap)" Yellow; continue }
     $hasCheck = Has-Script $p 'check'
     $hasLint  = Has-Script $p 'lint'
     if (-not ($hasCheck -or $hasLint)) { Log "  [SKIP] $p (no check/lint script)" Yellow; continue }
@@ -82,6 +96,7 @@ if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'verify' }
 # ---- Step 6: npm audit (advisory) across every Node project ----
 Log "`n--- Step 6: npm audit (advisory, workspace-wide) ---" Yellow
 foreach ($p in $NodeProjects) {
+    if (-not (Has-NodeModules $p)) { continue }
     $orig = pwd.ProviderPath
     try {
         Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
@@ -95,6 +110,7 @@ foreach ($p in $NodeProjects) {
 Log "`n--- Step 7: eslint auto-fix (best effort) ---" Yellow
 foreach ($p in $NodeProjects) {
     if (-not (Has-Script $p 'lint:fix')) { Log "  [SKIP] $p (no lint:fix script)" Yellow; continue }
+    if (-not (Has-NodeModules $p)) { Log "  [SKIP] $p (node_modules missing - run bootstrap)" Yellow; continue }
     if ((Invoke-Npm $p 'lint:fix') -eq 0) { $passed++ } else { $warnings += "$p lint:fix" }
 }
 
@@ -123,6 +139,7 @@ foreach ($p in $NodeProjects) {
 Log "`n--- Step 9: Build ---" Yellow
 foreach ($p in $NodeProjects) {
     if (-not (Has-Script $p 'build')) { Log "  [SKIP] $p (no build script)" Yellow; continue }
+    if (-not (Has-NodeModules $p)) { Log "  [SKIP] $p (node_modules missing - run bootstrap)" Yellow; continue }
     $code = Invoke-Npm $p 'build'
     if ($code -eq 0) { Log "  [OK] $p build" Green; $passed++ } else { Log "  [WARN] $p build" Yellow; $warnings += "$p build" }
 }

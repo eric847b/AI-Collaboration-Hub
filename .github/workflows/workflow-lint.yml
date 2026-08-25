@@ -1,0 +1,34 @@
+name: Workflow Lint
+
+# Enforces the workspace rule: every GitHub Actions workflow must pass
+# `actionlint` before it lands. Runs whenever any workflow file changes.
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install actionlint (pinned)
+        run: |
+          set -e
+          curl -sSfL "https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash" | bash -s -- 1.7.7
+
+      - name: Lint all workflow files
+        run: |
+          set -e
+          ./actionlint -color -oneline
+          echo "All workflows passed actionlint."
