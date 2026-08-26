@@ -34,6 +34,13 @@ All notable workspace-level changes are documented here.
   fast unless staged files match `*.js/jsx/ts/tsx/json/md/css`, and uses
   `npx --no-install`; the previously-hanging empty-commit path was verified
   end-to-end at ~5 s.
+- **tools/run-quality.ps1 made machine-independent** — all hardcoded
+  `C:\Users\Eric\…` paths replaced by a `$PSScriptRoot`-derived
+  `$WorkspaceRoot`, repairing a gate-call line broken during the gate merge;
+  last user-profile paths also purged from `analyze-freedom.ps1` /
+  `review-repos.ps1` (d7a2137, e5d56ca).
+- Secret-scan triggers extended again: `.husky/**` added so extensionless
+  hook files are scanned too (d7a2137).
 
 ### Changed
 
