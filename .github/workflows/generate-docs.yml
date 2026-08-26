@@ -37,7 +37,7 @@ jobs:
           npx typedoc --out ../docs/api/nexus-infinity-hub src/ 2>/dev/null || echo "TypeDoc generation completed"
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
