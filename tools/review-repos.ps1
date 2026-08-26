@@ -7,7 +7,7 @@ review-repos.ps1
 =====================================================================
 #>
 # Workspace root
-$WorkspaceRoot = 'C:\Users\Eric\OneDrive\Documents\GitHub'
+$WorkspaceRoot = Split-Path -Parent $PSScriptRoot
 
 # --- Parent repo info ---
 $remote = (git -C $WorkspaceRoot remote get-url origin 2>$null).Trim()

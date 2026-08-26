@@ -157,7 +157,7 @@ if ($failed -eq 0) {
             git commit -m "deps: update lockfile" 2>&1 | Out-Null
             if ($LASTEXITCODE -eq 0) { Log "  [OK] $p lockfile" Green; $passed++ } else { Log "  [INFO] $p already current" Yellow }
         }
-        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub"
+        Set-Location $WorkspaceRoot
     }
 }
 

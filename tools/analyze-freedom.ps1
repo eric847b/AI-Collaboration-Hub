@@ -5,7 +5,7 @@ analyze-freedom.ps1
 =====================================================================
 #>
 # Workspace root
-$WorkspaceRoot = 'C:\Users\Eric\OneDrive\Documents\GitHub'
+$WorkspaceRoot = Split-Path -Parent $PSScriptRoot
 # Repos to examine (top‑level folders we know)
 $Repos = @(
     'nexus-infinity-hub',
