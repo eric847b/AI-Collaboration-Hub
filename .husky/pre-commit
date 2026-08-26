@@ -1,7 +1,22 @@
 # Fast path: skip entirely when nothing lintable is staged.
 # (Invoking lint-staged with an empty staged set stalls >30s in this env.)
-FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx|json|md|css)$' || true)
-if [ -z "$FILES" ]; then
+FILES=$(git diff --cached --name-only --diff-filter=ACMR || true)
+LINTABLE=$(echo "$FILES" | grep -E '\.(js|jsx|ts|tsx|json|md|css)$' || true)
+if [ -z "$LINTABLE" ]; then
   exit 0
 fi
-npx --no-install lint-staged
+
+# Call project-local binaries directly: the npx layer stalls unreliably here.
+BIN=./node_modules/.bin
+JSFILES=$(echo "$LINTABLE" | grep -E '\.(js|jsx|ts|tsx)$' || true)
+DOCFILES=$(echo "$LINTABLE" | grep -E '\.(json|md|css)$' || true)
+
+if [ -n "$DOCFILES" ]; then
+  "$BIN/prettier" --write $DOCFILES || exit 1
+fi
+if [ -n "$JSFILES" ]; then
+  "$BIN/eslint" --fix --max-warnings=0 $JSFILES || exit 1
+fi
+
+# Re-stage any files the formatters touched so fixes land in this commit.
+git add -- $LINTABLE
