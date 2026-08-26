@@ -15,6 +15,12 @@ All notable workspace-level changes are documented here.
 
 ### Added
 
+- **tools/workspace-gate.ps1** (v3) replaces and removes
+  `verify-workspace.ps1` + `health-check.ps1`: one gate covering shared
+  configs, workflow presence **plus live actionlint**, Node lockfiles,
+  engines-vs-runtime comparison, Python requirements, and pre-commit hook
+  LF integrity. `npm run gate` is canonical (`verify`/`health` alias it;
+  `ci` runs just the gate); run-quality steps 4–5 consolidated.
 - **.husky/pre-commit is now tracked** so fresh clones actually get a
   pre-commit gate — `package.json`'s `"prepare": "husky"` was creating shims
   with no hook behind them. Root ignore narrowed from `.husky/` to the

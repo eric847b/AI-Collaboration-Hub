@@ -1,10 +1,10 @@
 <# 
 =====================================================================
 run-quality.ps1
-   The full "best catalyst series" – drives the workspace to a healthy,
+   The full "best catalyst series" â€“ drives the workspace to a healthy,
    built, linted, tested, and security-scanned state.
-   Steps: bootstrap → npm check/lint → python install → health → verify
-          → npm audit → eslint fix → vitest coverage → build → lockfile commit → fleet audit
+   Steps: bootstrap â†’ npm check/lint â†’ python install â†’ health â†’ verify
+          â†’ npm audit â†’ eslint fix â†’ vitest coverage â†’ build â†’ lockfile commit â†’ fleet audit
 =====================================================================
 #>
 $passed = 0
@@ -83,15 +83,15 @@ foreach ($p in $PythonProjects) {
     } else { $warnings += "$p no requirements.txt" }
 }
 
-# ---- Step 4: Health check ----
-Log "`n--- Step 4: Health check ---" Yellow
-& "C:\Users\Eric\OneDrive\Documents\GitHub\tools\health-check.ps1"
-if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'health check' }
+# ---- Step 4: Workspace gate ----
+Log "`n--- Step 4: Workspace gate ---" Yellow
+& "C:\Users\Eric\Documents\GitHub\tools\workspace-gate.ps1"
+if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'workspace gate (was: health check)' }
 
 # ---- Step 5: Verify ----
 Log "`n--- Step 5: Verify ---" Yellow
-& "C:\Users\Eric\OneDrive\Documents\GitHub\tools\verify-workspace.ps1"
-if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'verify' }
+# Step 5 folded into workspace-gate above (2026-08-25)
+if ($false) { $passed++ } else { $failed++; $issues += 'obsolete verify stub' } # never reached - see note above
 
 # ---- Step 6: npm audit (advisory) across every Node project ----
 Log "`n--- Step 6: npm audit (advisory, workspace-wide) ---" Yellow

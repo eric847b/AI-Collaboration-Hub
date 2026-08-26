@@ -41,8 +41,8 @@ GitHub/
 
   tools/
     bootstrap.ps1        # Install all deps
-    health-check.ps1     # Verify workspace health
-    verify-workspace.ps1 # Validate configs
+    workspace-gate.ps1   # Verify + health + actionlint + engines (v3)
+    # verify-workspace.ps1 / health-check.ps1 obsoleted by workspace-gate.ps1
 ```
 
 ---
@@ -72,6 +72,7 @@ git commit -m "feat: add new feature"
 ### What Happens Automatically
 
 When you commit:
+
 1. **Pre-commit hook** (`.husky/pre-commit`) runs
 2. **lint-staged** runs ESLint --fix on your staged files
 3. **Bad commits are prevented** — hook fails if serious issues remain
@@ -145,11 +146,13 @@ npm run ci
 ### Before Push
 
 1. **Ensure your branch is clean:**
+
    ```powershell
    git status  # Should show nothing except untracked files
    ```
 
 2. **Run local quality checks:**
+
    ```powershell
    npm run check      # Node project
    pytest --cov=.    # Python project
@@ -247,6 +250,7 @@ git push origin feat/my-feature
 ### Issue: TypeScript errors after strict mode
 
 **Solution:** The errors are real! Fix them:
+
 ```powershell
 npm run check  # See which files have errors
 # Fix each error in the editor, or use type guards
@@ -255,6 +259,7 @@ npm run check  # See which files have errors
 ### Issue: Test failure in CI but passes locally
 
 **Solution:**
+
 - Different Node version? Check `.node-version` or package.json `engines`
 - Different environment? Run full CI locally with `npm run ci`
 - Commit hash difference? Pull latest and retry
@@ -262,6 +267,7 @@ npm run check  # See which files have errors
 ### Issue: Dependabot PR fails CI
 
 **Solution:**
+
 - Check CI logs to see what failed
 - Usually compatibility issues between dep versions
 - Comment `@dependabot rebase` to resolve conflicts
@@ -269,6 +275,7 @@ npm run check  # See which files have errors
 ### Issue: Health check shows warnings
 
 **Solution:**
+
 ```powershell
 npm run health  # See what's warning
 npm run bootstrap  # Regenerate lockfiles
@@ -281,6 +288,7 @@ git commit -m "deps: fix lockfiles"
 ## 11. Useful VSCode Extensions
 
 Add to your VSCode:
+
 - **EditorConfig** (maintains formatting)
 - **ESLint** (linting feedback)
 - **Prettier** (code formatting)

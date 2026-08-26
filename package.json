@@ -7,12 +7,13 @@
   },
   "scripts": {
     "bootstrap": "powershell -ExecutionPolicy Bypass -File ./tools/bootstrap.ps1",
-    "verify": "powershell -ExecutionPolicy Bypass -File ./tools/verify-workspace.ps1",
-    "health": "powershell -ExecutionPolicy Bypass -File ./tools/health-check.ps1",
+    "gate": "powershell -ExecutionPolicy Bypass -File ./tools/workspace-gate.ps1",
+    "verify": "npm run gate",
+    "health": "npm run gate",
     "quality": "powershell -ExecutionPolicy Bypass -File ./tools/run-quality.ps1",
     "ai": "node collabhub-modules/run-ai.js",
     "lint": "echo 'Use: npm run lint:fix to auto-fix all projects (requires PowerShell)'",
-    "ci": "npm run verify && npm run health",
+    "ci": "npm run gate",
     "prepare": "husky"
   },
   "version": "1.0.0",

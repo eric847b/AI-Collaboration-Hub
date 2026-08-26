@@ -20,8 +20,8 @@ Multi-project workspace containing AI agents, dashboards, userscript modules, an
 - **nexus-core** — Python orchestration core
 - **solutions-dynamics** — Dynamics solutions tooling
 
-> **Auto-discovery:** `bootstrap.ps1`, `health-check.ps1`, `verify-workspace.ps1`,
-> and `run-quality.ps1` no longer keep hardcoded project lists — they detect any
+> **Auto-discovery:** `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1`
+> no longer keep hardcoded project lists — they detect any
 > root-level folder containing a `package.json` (Node) or `requirements.txt`
 > (Python). Adding a new project directory automatically enrolls it in every
 > health/quality gate.
@@ -75,8 +75,6 @@ pool (local Ollama/LM Studio/LocalAI → cloud free tiers). Missing keys or a do
 endpoint are skipped instantly, so work keeps moving. Set any free key or start a
 local server (e.g. `ollama serve`) to get live results; with none configured it
 fails over the whole pool and exits gracefully instead of hanging.
-
-
 
 ## Workspace Conventions
 
@@ -168,11 +166,11 @@ npm run ci        # Runs both verify and health
 
 The workspace ships with PowerShell tooling under `tools/`:
 
-| Script                | Purpose                                                                                                                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Script                | Purpose                                                                                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run-quality.ps1`     | **Catalyst series**: bootstrap → npm check/lint → Python install → health → verify → npm audit → eslint fix → vitest coverage → build → lockfile commit → fleet audit (Step 11), then a colour‑coded summary + exit code. |
-| `review-repos.ps1`    | Inventories the monorepo + project subfolders (git info, key files, file counts) and writes `LocalRepoReview.txt`.                                                                                |
-| `analyze-freedom.ps1` | Scores each project against freedom goals (Financial / Biological / Chores) and writes `FreedomReport.txt`.                                                                                       |
+| `review-repos.ps1`    | Inventories the monorepo + project subfolders (git info, key files, file counts) and writes `LocalRepoReview.txt`.                                                                                                        |
+| `analyze-freedom.ps1` | Scores each project against freedom goals (Financial / Biological / Chores) and writes `FreedomReport.txt`.                                                                                                               |
 
 Run the full catalyst series in one command via `npm run quality`, or launch scripts individually from the root:
 
