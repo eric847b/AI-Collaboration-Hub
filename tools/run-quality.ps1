@@ -1,12 +1,14 @@
 <# 
 =====================================================================
 run-quality.ps1
-   The full "best catalyst series" â€“ drives the workspace to a healthy,
+   The full "best catalyst series" ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ drives the workspace to a healthy,
    built, linted, tested, and security-scanned state.
-   Steps: bootstrap â†’ npm check/lint â†’ python install â†’ health â†’ verify
-          â†’ npm audit â†’ eslint fix â†’ vitest coverage â†’ build â†’ lockfile commit â†’ fleet audit
+   Steps: bootstrap ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ npm check/lint ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ python install ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ health ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ verify
+          ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ npm audit ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ eslint fix ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ vitest coverage ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ build ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ lockfile commit ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ fleet audit
 =====================================================================
 #>
+
+$WorkspaceRoot = Split-Path -Parent $PSScriptRoot
 $passed = 0
 $failed = 0
 $warnings = @()
@@ -18,7 +20,7 @@ function Invoke-Npm {
     param([string]$proj,[string]$script)
     $orig = pwd.ProviderPath
     try {
-        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$proj"
+        Set-Location "$WorkspaceRoot\$proj"
         & npm run "$script" 2>&1 | Out-Null
         return $LASTEXITCODE
     } finally { Set-Location $orig }
@@ -28,7 +30,7 @@ function Invoke-Npm {
 # that only make sense for projects that actually expose the command).
 function Has-Script {
     param([string]$proj,[string]$script)
-    $pkg = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$proj" 'package.json'
+    $pkg = Join-Path "$WorkspaceRoot\$proj" 'package.json'
     if (-not (Test-Path $pkg)) { return $false }
     $raw = Get-Content $pkg -Raw
     return ($raw -match ('"' + [regex]::Escape($script) + '"\s*:'))
@@ -38,7 +40,7 @@ function Has-Script {
 # Fresh clones that skipped bootstrap are reported and skipped, not failed.
 function Has-NodeModules {
     param([string]$proj)
-    return (Test-Path (Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$proj" 'node_modules'))
+    return (Test-Path (Join-Path "$WorkspaceRoot\$proj" 'node_modules'))
 }
 
 # Auto-discover projects: Node = root-level folder with package.json,
@@ -52,7 +54,7 @@ $PythonProjects = @(Get-ChildItem -Directory |
 
 # ---- Step 1: Bootstrap ----
 Log "`n--- Step 1: Bootstrap ---" Yellow
-& "C:\Users\Eric\OneDrive\Documents\GitHub\tools\bootstrap.ps1"
+& "$WorkspaceRoot\tools\bootstrap.ps1"
 if ($LASTEXITCODE -ne 0) { Log "  bootstrap had warnings (continuing)" Yellow; $warnings += 'bootstrap' } else { $passed++ }
 
 # ---- Step 2: npm check / lint (skips projects without either script) ----
@@ -76,7 +78,7 @@ foreach ($p in $NodeProjects) {
 # ---- Step 3: Python requirements ----
 Log "`n--- Step 3: Python requirements ---" Yellow
 foreach ($p in $PythonProjects) {
-    $r = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$p" 'requirements.txt'
+    $r = Join-Path "$WorkspaceRoot\$p" 'requirements.txt'
     if (Test-Path $r) {
         & python -m pip install -q -r $r
         if ($LASTEXITCODE -eq 0) { $passed++ } else { $warnings += "$p pip install" }
@@ -85,7 +87,7 @@ foreach ($p in $PythonProjects) {
 
 # ---- Step 4: Workspace gate ----
 Log "`n--- Step 4: Workspace gate ---" Yellow
-& "C:\Users\Eric\Documents\GitHub\tools\workspace-gate.ps1"
+& "$WorkspaceRoot\tools\workspace-gate.ps1"
 if ($LASTEXITCODE -eq 0) { $passed++ } else { $failed++; $issues += 'workspace gate (was: health check)' }
 
 # ---- Step 5: Verify ----
@@ -99,7 +101,7 @@ foreach ($p in $NodeProjects) {
     if (-not (Has-NodeModules $p)) { continue }
     $orig = pwd.ProviderPath
     try {
-        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
+        Set-Location "$WorkspaceRoot\$p"
         & npm audit --audit-level=high 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) { Log "  [OK] $p audit" Green; $passed++ }
         else { Log "  [WARN] $p high-severity npm vulns" Yellow; $warnings += "$p high npm vulns" }
@@ -117,7 +119,7 @@ foreach ($p in $NodeProjects) {
 # ---- Step 8: vitest coverage (best effort, only where configured) ----
 Log "`n--- Step 8: vitest coverage (best effort) ---" Yellow
 foreach ($p in $NodeProjects) {
-    $pkg = Join-Path "C:\Users\Eric\OneDrive\Documents\GitHub\$p" 'package.json'
+    $pkg = Join-Path "$WorkspaceRoot\$p" 'package.json'
     $hasVitest = $false
     if (Test-Path $pkg) {
         $raw = Get-Content $pkg -Raw
@@ -129,7 +131,7 @@ foreach ($p in $NodeProjects) {
     }
     $orig = pwd.ProviderPath
     try {
-        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
+        Set-Location "$WorkspaceRoot\$p"
         & npm exec vitest -- run --coverage 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) { Log "  [OK] $p tests" Green; $passed++ } else { Log "  [WARN] $p coverage" Yellow; $warnings += "$p coverage" }
     } finally { Set-Location $orig }
@@ -148,7 +150,7 @@ foreach ($p in $NodeProjects) {
 if ($failed -eq 0) {
     Log "`n--- Step 10: commit lockfiles ---" Yellow
     foreach ($p in $NodeProjects) {
-        Set-Location "C:\Users\Eric\OneDrive\Documents\GitHub\$p"
+        Set-Location "$WorkspaceRoot\$p"
         $lock = Test-Path 'package-lock.json'
         if ($lock) {
             git add package-lock.json 2>&1 | Out-Null
@@ -161,7 +163,7 @@ if ($failed -eq 0) {
 
 # ---- Step 11: Fleet maintenance audit (plan, best effort) ----
 Log "`n--- Step 11: Fleet maintenance audit (plan) ---" Yellow
-& python "C:\Users\Eric\OneDrive\Documents\GitHub\autonomous-github-agent\.github\fleet_maintenance.py" --mode plan 2>&1 | Out-Null
+& python "$WorkspaceRoot\autonomous-github-agent\.github\fleet_maintenance.py" --mode plan 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) { $passed++ } else { $warnings += 'fleet maintenance plan' }
 
 # ---- Summary ----
