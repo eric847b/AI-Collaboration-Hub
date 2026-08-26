@@ -2,6 +2,38 @@
 
 All notable workspace-level changes are documented here.
 
+## [Unreleased] — 2026-08-25
+
+### Security
+
+- **.github/workflows/secret-scan.yml** — hardcoded-secret detection widened
+  from 5 to 12 token families: adds OpenRouter (`sk-or-v1-…`), Groq (`gsk_…`),
+  GitHub fine-grained PATs (`github_pat_…`), AWS access keys (`AKIA…`),
+  Slack tokens (`xox[baprs]-…`) and PEM private-key blocks; the scan now also
+  triggers on `*.key` / `*.pem` changes for push and PR alike. Zero false
+  positives verified against the full tracked tree before shipping (f6f2ee3).
+
+### Added
+
+- **.husky/pre-commit is now tracked** so fresh clones actually get a
+  pre-commit gate — `package.json`'s `"prepare": "husky"` was creating shims
+  with no hook behind them. Root ignore narrowed from `.husky/` to the
+  generated `.husky/_/` internals only, and the hook is pinned to LF via
+  `.gitattributes` so sh can always run it (5d053f2, 0843a5e).
+
+### Fixed
+
+- Husky pre-commit stall (>30 s): root cause was lint-staged hanging when
+  invoked with an EMPTY staged set (not npx resolution). The hook now exits
+  fast unless staged files match `*.js/jsx/ts/tsx/json/md/css`, and uses
+  `npx --no-install`; the previously-hanging empty-commit path was verified
+  end-to-end at ~5 s.
+
+### Changed
+
+- **.gitignore** — local AI-agent state dirs (`.claude/`, `.clinerules/`,
+  `.renitor/`) are never tracked (f6f2ee3).
+
 ## [Unreleased] — 2026-08-24
 
 ### Changed
