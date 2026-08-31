@@ -14,7 +14,7 @@
     "ai": "node collabhub-modules/run-ai.js",
     "lint": "echo 'Use: npm run lint:fix to auto-fix all projects (requires PowerShell)'",
     "ci": "npm run gate",
-    "prepare": "husky"
+    "prepare": "git config core.hooksPath .husky"
   },
   "version": "1.0.0",
   "main": "index.js",
@@ -30,18 +30,5 @@
     "url": "https://github.com/eric847b/AI-Collaboration-Hub/issues"
   },
   "homepage": "https://github.com/eric847b/AI-Collaboration-Hub#readme",
-  "devDependencies": {
-    "eslint": "^8.57.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.5.2",
-    "prettier": "^3.9.6"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix --max-warnings=0"
-    ],
-    "*.{json,md,css}": [
-      "prettier --write"
-    ]
-  }
+  "devDependencies": {}
 }

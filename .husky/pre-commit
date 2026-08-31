@@ -1,3 +1,4 @@
+#!/bin/sh
 # Fast path: skip entirely when nothing lintable is staged.
 # (Invoking lint-staged with an empty staged set stalls >30s in this env.)
 FILES=$(git diff --cached --name-only --diff-filter=ACMR || true)
@@ -14,11 +15,10 @@ fi
 # piped one per line, never word-split through an unquoted for-loop.
 printf '%s\n' "$LINTABLE" | grep -E '\.(js|mjs|cjs)$' | node .husky/js-gate.mjs || exit 1
 
-# Optional formatting: only when the project-local prettier binary exists.
-BIN=./node_modules/.bin
-if [ -x "$BIN/prettier" ]; then
-  printf '%s\n' "$LINTABLE" | grep -E '\.(json|md|css)$' | tr '\n' '\0' | xargs -0 -r "$BIN/prettier" --write || exit 1
-fi
+# Fully dependency-free: no prettier/eslint/husky binaries are consulted.
+# JSON/MD/CSS staged sets pass through untouched; run `npm run lint`
+# out-of-band for deep linting on projects that still opt into it.
 
-# Re-stage anything the formatters touched so fixes land in this commit.
+# Defensive re-stage (no-op today) so any future formatter keeps its
+# fixes inside the same commit.
 printf '%s\n' "$LINTABLE" | git add --pathspec-from-file=-

@@ -46,4 +46,7 @@ Get-ChildItem -Path $root -Directory | ForEach-Object {
     }
 }
 
+# Activate the dependency-free git hooks without needing husky/node_modules.
+git config core.hooksPath .husky
+
 Write-Host "Bootstrap finished."
