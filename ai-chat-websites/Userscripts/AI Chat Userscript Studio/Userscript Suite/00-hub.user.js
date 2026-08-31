@@ -2,21 +2,11 @@
 // @name         0. Hub
 // @namespace    http://tampermonkey.net/
 // @version      2026.07.04.1
-// @description  ChatGPT - Central hub for managing ChatGPT userscript modules with enterprise-grade error handling, DI, performance monitoring, and modular architecture
+// @description  Universal Hub - Central hub for managing userscript modules on ANY webpage with enterprise-grade error handling, DI, performance monitoring, and modular architecture
 // @author       AI RMD
 // @license      MIT
-// @match        https://chat.openai.com/*
-// @match        https://chatgpt.com/*
-// @match        https://claude.ai/*
-// @match        https://poe.com/*
-// @match        https://perplexity.ai/*
-// @match        https://www.perplexity.ai/*
-// @match        https://pi.ai/*
-// @match        https://you.com/*
-// @match        https://gemini.google.com/*
-// @match        https://aistudio.google.com/*
-// @match        https://copilot.microsoft.com/*
-// @match        https://chat.mistral.ai/*
+// @match        *://*/*
+// @include      *
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -346,9 +336,27 @@ const ConfigManager = {
 window.ConfigManager = ConfigManager;
 window.ChatGPTConfig = ConfigManager;
 
-// Bridge ModuleRegistry legacy module notifications to ConfigManager
+// Bridge ModuleRegistry legacy module notifications to ConfigManager.
+// Accepts every registration convention so a module only has to call
+// register() once and BOTH ends (registry + ConfigManager) update
+// automatically:
+//   register(instance)
+//   register(name, version, moduleOrPayload [, dependencies])   (legacy/helper)
+function normalizeRegisterArgs(args) {
+  const first = args[0];
+  if (typeof first !== 'string') return first;
+  const payload = (args[2] && typeof args[2] === 'object') ? args[2] : {};
+  return Object.assign({}, payload, {
+    name: first,
+    version: args[1] || payload.version || '0.0.0',
+    dependencies: Array.isArray(args[3])
+      ? args[3]
+      : Array.isArray(payload.dependencies) ? payload.dependencies : []
+  });
+}
 const _originalRegister = ModuleRegistry.register.bind(ModuleRegistry);
-ModuleRegistry.register = function(instance) {
+ModuleRegistry.register = function() {
+  const instance = normalizeRegisterArgs(arguments);
   const result = _originalRegister(instance);
   if (result && instance && typeof instance.onConfigUpdate === 'function') {
     ConfigManager.registerLegacyModule(instance.name, instance);
