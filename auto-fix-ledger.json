@@ -18,7 +18,25 @@
       "recorded_at": "2026-08-31T12:22:55Z",
       "status": "pending_verify",
       "reappear_count": 0
+    },
+    {
+      "problem_type": "auto_pr",
+      "title": "\ud83e\udd16 Lockfile: .",
+      "pr_number": 322,
+      "merge_sha": null,
+      "recorded_at": "2026-08-31T12:22:59Z",
+      "status": "pending_verify",
+      "reappear_count": 0
+    },
+    {
+      "problem_type": "lockfile",
+      "title": "Generate missing Node lockfile for .",
+      "pr_number": null,
+      "merge_sha": null,
+      "recorded_at": "2026-08-31T12:22:59Z",
+      "status": "pending_verify",
+      "reappear_count": 0
     }
   ],
-  "updated_at": "2026-08-31T12:22:55Z"
+  "updated_at": "2026-08-31T12:22:59Z"
 }
