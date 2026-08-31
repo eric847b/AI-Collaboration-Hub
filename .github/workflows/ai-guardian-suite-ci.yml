@@ -1,0 +1,46 @@
+name: ai-guardian-suite-ci
+
+on:
+  push:
+    paths:
+      - 'ai-chat-websites/Userscripts/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ai-chat-websites/Userscripts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Suite CI — build:bundle → check:suite → validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: build:bundle (dense bundle contracts)
+        run: npm run build:bundle
+
+      - name: check:suite (all eight harnesses)
+        run: npm run check:suite
+
+      - name: validate (all userscripts parse)
+        run: npm run validate
+
+      - name: test (node:test runner, dependency-free)
+        run: npm test

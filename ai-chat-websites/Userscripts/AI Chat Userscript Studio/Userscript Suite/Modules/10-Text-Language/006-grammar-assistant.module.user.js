@@ -1,25 +1,31 @@
 // ==UserScript==
 // @name         Grammar Assistant
-// @version      2026.06.26.2
+// @version      2026.08.27.1
 // @description  AI Chat Userscript Suite - Module 176: Grammar Assistant
 // @author       AI Chat Userscript Studio
-// @match        https://chat.openai.com/*
-// @match        https://chatgpt.com/*
-// @match        https://claude.ai/*
-// @match        https://poe.com/*
-// @match        https://www.perplexity.ai/*
-// @match        https://perplexity.ai/*
-// @match        https://pi.ai/*
-// @match        https://you.com/*
-// @match        https://gemini.google.com/*
-// @match        https://aistudio.google.com/*
-// @match        https://copilot.microsoft.com/*
-// @match        https://chat.mistral.ai/*
+// @match        *://*/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_log
 // @run-at       document-idle
 // ==/UserScript==
+
+
+/* UniversalSite runtime guard (injected by universalize-modules.cjs) */
+(function(){
+  if (!window.UniversalSite) {
+    // Adapter not loaded on this page - nothing safe to do; bail out quietly.
+    return;
+  }
+  try {
+    if (!window.__UNIVERSALIZE_GUARDS) window.__UNIVERSALIZE_GUARDS = [];
+    window.__UNIVERSALIZE_GUARDS.push(function(){
+      const kind = window.UniversalSite.kind;
+      const ok = kind === "chat" || kind === "chat-like" || kind === "chat-domain";
+      return { run: ok, kind: kind, genericSafe: true };
+    });
+  } catch (e) { /* never break the page */ }
+})();
 
 var MODULE_ID = 'module-' + 176;
 var MODULE_NAME = 'Grammar Assistant';

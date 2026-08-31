@@ -1,12 +1,29 @@
 // ==UserScript==
 // @name         Theme Toggle Module
 // @namespace    AI-Chat-Userscript-Studio
-// @version      1.2.0
+// @version      2026.08.27.1
 // @description  Dark/light theme toggle with CSS variables and persistence
 // @match        *://*/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
+
+
+/* UniversalSite runtime guard (injected by universalize-modules.cjs) */
+(function(){
+  if (!window.UniversalSite) {
+    // Adapter not loaded on this page - nothing safe to do; bail out quietly.
+    return;
+  }
+  try {
+    if (!window.__UNIVERSALIZE_GUARDS) window.__UNIVERSALIZE_GUARDS = [];
+    window.__UNIVERSALIZE_GUARDS.push(function(){
+      const kind = window.UniversalSite.kind;
+      const ok = kind === "chat" || kind === "chat-like" || kind === "chat-domain";
+      return { run: ok, kind: kind, genericSafe: true };
+    });
+  } catch (e) { /* never break the page */ }
+})();
 
 /**
  * AI Chat Userscript Studio - Theme Toggle Module

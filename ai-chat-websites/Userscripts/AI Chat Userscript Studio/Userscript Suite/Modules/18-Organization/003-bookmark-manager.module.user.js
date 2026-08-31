@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bookmark Manager
 // @namespace   AI-Chat-Userscript-Studio
-// @version     1.1.0
+// @version     2026.08.27.1
 // @description Smart bookmarking with categories, tags, search, and floating panel UI
 // @match        *://*/*
 // @grant        GM_getValue
@@ -11,6 +11,23 @@
 // @grant        GM_notification
 // @run-at       document-idle
 // ==/UserScript==
+
+
+/* UniversalSite runtime guard (injected by universalize-modules.cjs) */
+(function(){
+  if (!window.UniversalSite) {
+    // Adapter not loaded on this page - nothing safe to do; bail out quietly.
+    return;
+  }
+  try {
+    if (!window.__UNIVERSALIZE_GUARDS) window.__UNIVERSALIZE_GUARDS = [];
+    window.__UNIVERSALIZE_GUARDS.push(function(){
+      const kind = window.UniversalSite.kind;
+      const ok = kind === "chat" || kind === "chat-like" || kind === "chat-domain";
+      return { run: ok, kind: kind, genericSafe: true };
+    });
+  } catch (e) { /* never break the page */ }
+})();
 
 /**
  * Bookmark Manager Module

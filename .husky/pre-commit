@@ -1,22 +1,24 @@
 # Fast path: skip entirely when nothing lintable is staged.
 # (Invoking lint-staged with an empty staged set stalls >30s in this env.)
 FILES=$(git diff --cached --name-only --diff-filter=ACMR || true)
-LINTABLE=$(echo "$FILES" | grep -E '\.(js|jsx|ts|tsx|json|md|css)$' || true)
+# Lockfiles are machine-generated; prettier on multi-MB package-lock.json
+# files stalls commits >30s. Exclude them unconditionally.
+LINTABLE=$(echo "$FILES" | grep -E '\.(js|mjs|cjs|jsx|ts|tsx|json|md|css)$' | grep -vE '(^|/)(package-lock|npm-shrinkwrap)\.json$' || true)
 if [ -z "$LINTABLE" ]; then
   exit 0
 fi
 
-# Call project-local binaries directly: the npx layer stalls unreliably here.
+# Dependency-free JS gate: ONE node process checks every staged JS file
+# (zero node_modules required). In-hook eslint stalls >30s on large staged
+# sets here — run `npm run lint` out-of-band instead. Space-safe: paths are
+# piped one per line, never word-split through an unquoted for-loop.
+printf '%s\n' "$LINTABLE" | grep -E '\.(js|mjs|cjs)$' | node .husky/js-gate.mjs || exit 1
+
+# Optional formatting: only when the project-local prettier binary exists.
 BIN=./node_modules/.bin
-JSFILES=$(echo "$LINTABLE" | grep -E '\.(js|jsx|ts|tsx)$' || true)
-DOCFILES=$(echo "$LINTABLE" | grep -E '\.(json|md|css)$' || true)
-
-if [ -n "$DOCFILES" ]; then
-  "$BIN/prettier" --write $DOCFILES || exit 1
-fi
-if [ -n "$JSFILES" ]; then
-  "$BIN/eslint" --fix --max-warnings=0 $JSFILES || exit 1
+if [ -x "$BIN/prettier" ]; then
+  printf '%s\n' "$LINTABLE" | grep -E '\.(json|md|css)$' | tr '\n' '\0' | xargs -0 -r "$BIN/prettier" --write || exit 1
 fi
 
-# Re-stage any files the formatters touched so fixes land in this commit.
-git add -- $LINTABLE
+# Re-stage anything the formatters touched so fixes land in this commit.
+printf '%s\n' "$LINTABLE" | git add --pathspec-from-file=-
