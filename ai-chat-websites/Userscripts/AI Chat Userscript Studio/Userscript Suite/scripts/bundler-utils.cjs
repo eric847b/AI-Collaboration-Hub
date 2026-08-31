@@ -248,12 +248,148 @@ const utils = {
   },
 
   minify(code) {
+    // Context-aware minifier: single-pass tokenizer that strips comments and
+    // collapses whitespace ONLY in normal (non-literal) state. String, template
+    // and regex literals are emitted verbatim, so 'https://…' URLs and similar
+    // content can never be corrupted (the old regex chain broke every URL and
+    // even edited punctuation inside strings). ASI-restricted statements
+    // (return/break/continue/yield) keep their ';' when a newline separated
+    // them from the next token. The suite-check parse gate re-verifies every
+    // minified artifact, so any regression fails the build loudly.
+    //
+    // ASI safety: restricted productions (return/break/continue/yield) keep
+    // their ';' when a newline separated them from the next token. Any OTHER
+    // load-bearing line terminator is preserved verbatim as '\n' — e.g.
+    // `}\n(function…` relies on ASI and becomes a syntax error if collapsed
+    // to `} (function…`. Only pure space/tab runs may collapse to ' '.
+    //
+    // Performance contract (learned on the 1.7 MB merged bundle): output is
+    // accumulated as chunks in an array and NEVER random-accessed. Trailing
+    // context is tracked incrementally in O(1) — `lastChar` (last emitted
+    // char) and `tail` (trailing identifier run). The previous version kept
+    // `out` as a growing string and inspected its tail per token; every
+    // charCodeAt/index access forced V8 to re-flatten the cons-string chain,
+    // an O(n²) trap that pushed minification past the 30 s harness ceiling.
     try {
-      let minified = code.replace(/\/\/[^\n]*/g, '');
-      minified = minified.replace(/\/\*[\s\S]*?\*\//g, '');
-      minified = minified.replace(/\s+/g, ' ');
-      minified = minified.replace(/\s*([{};,=+\-*/<>!&|?:])\s*/g, '$1');
-      return minified.trim();
+      const n = code.length;
+      const KEYWORDS_ASI = new Set(['return', 'break', 'continue', 'yield']);
+      const KEYWORDS_BEFORE_REGEX = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'case', 'do', 'else', 'yield', 'await']);
+      const PUNCT_BEFORE_REGEX = new Set(['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '~', '^']);
+      const parts = [];
+      let tail = '';
+      let lastChar = '';
+      let i = 0;
+      let pendingSpace = false;
+      let pendingNewline = false;
+      const isWord = (c) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 36 || c === 95;
+      const push = (s) => {
+        if (!s) return;
+        parts.push(s);
+        lastChar = s[s.length - 1];
+        for (let k = 0; k < s.length; k += 1) {
+          if (isWord(s.charCodeAt(k))) tail += s[k];
+          else tail = '';
+        }
+        if (tail.length > 96) tail = tail.slice(tail.length - 96);
+      };
+      const regexAllowed = () => {
+        if (parts.length === 0) return true;
+        const prev = lastChar;
+        if (PUNCT_BEFORE_REGEX.has(prev)) return true;
+        if (/[A-Za-z0-9_$)\]'"]/.test(prev)) return KEYWORDS_BEFORE_REGEX.has(tail);
+        return false;
+      };
+      const flushSpace = (nextCh) => {
+        if (!pendingSpace) return;
+        pendingSpace = false;
+        const nl = pendingNewline;
+        pendingNewline = false;
+        if (nl && KEYWORDS_ASI.has(tail)) { push(';'); return; }
+        if (nextCh === '}' || nextCh === ')' || nextCh === ';' || nextCh === ',') return;
+        const prev = lastChar;
+        if (prev === ';' || prev === '{' || prev === ',' || prev === '(' || prev === '[') return;
+        // Line terminator is load-bearing (see header comment): preserve '\n'
+        // whenever the run contained one and no drop-guard above applied.
+        if (nl) { push('\n'); return; }
+        push(' ');
+      };
+      const scanString = (quote) => {
+        // Verbatim scan to the closing quote; emitted as ONE chunk so literal
+        // interiors (URLs, punctuation, spaces) are untouchable by design.
+        let j = i + 1;
+        while (j < n) {
+          const c = code[j];
+          if (c === '\\') { j += 2; continue; }
+          if (c === quote) { j += 1; break; }
+          j += 1;
+        }
+        push(code.slice(i, Math.min(j, n)));
+        i = j;
+      };
+      while (i < n) {
+        const ch = code[i];
+        const next = i + 1 < n ? code[i + 1] : '';
+        if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') {
+          if (ch === '\n') pendingNewline = true;
+          pendingSpace = true; i += 1; continue;
+        }
+        if (ch === '/' && next === '/') {
+          while (i < n && code[i] !== '\n') i += 1;
+          pendingSpace = true; continue;
+        }
+        if (ch === '/' && next === '*') {
+          i += 2;
+          while (i < n && !(code[i] === '*' && code[i + 1] === '/')) {
+            if (code[i] === '\n') pendingNewline = true;
+            i += 1;
+          }
+          i = Math.min(n, i + 2);
+          pendingSpace = true; continue;
+        }
+        if (ch === '\'' || ch === '"') { flushSpace(ch); scanString(ch); continue; }
+        if (ch === '`') {
+          // Template literal: verbatim scan with escape support; ${…}
+          // interpolations keep brace depth so nested strings stay intact.
+          flushSpace('`');
+          push('`'); i += 1;
+          let depth = 0;
+          while (i < n) {
+            const c = code[i];
+            if (c === '\\') { push(c); i += 1; if (i < n) { push(code[i]); i += 1; } continue; }
+            if (depth === 0) {
+              if (c === '`') { push(c); i += 1; break; }
+              if (c === '$' && code[i + 1] === '{') { push('${'); i += 2; depth = 1; continue; }
+              push(c); i += 1; continue;
+            }
+            if (c === '\'' || c === '"') { scanString(c); continue; }
+            if (c === '`') { scanString('`'); continue; }
+            if (c === '{') { depth += 1; push(c); i += 1; continue; }
+            if (c === '}') { depth -= 1; push(c); i += 1; continue; }
+            push(c); i += 1;
+          }
+          continue;
+        }
+        if (ch === '/' && next !== '/' && next !== '*' && regexAllowed()) {
+          // Regex literal: verbatim scan honoring character classes.
+          flushSpace('/');
+          push('/'); i += 1;
+          let inClass = false;
+          while (i < n) {
+            const c = code[i];
+            push(c); i += 1;
+            if (c === '\\') { if (i < n) { push(code[i]); i += 1; } continue; }
+            if (c === '[') { inClass = true; continue; }
+            if (c === ']') { inClass = false; continue; }
+            if (c === '/' && !inClass) break;
+            if (c === '\n') break;
+          }
+          while (i < n && /[a-z]/i.test(code[i])) { push(code[i]); i += 1; }
+          continue;
+        }
+        flushSpace(ch);
+        push(ch); i += 1;
+      }
+      return parts.join('').trim();
     } catch (err) {
       this.warn(`Minification failed: ${err.message}`);
       return code;
