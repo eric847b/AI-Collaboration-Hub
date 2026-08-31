@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Autonomous GitHub Agent - LLM-powered self-improving agent for GitHub repos.
-Perfected v4.3 - Multi-task solve-all, hardened lockfiles, continuous monorepo development.
+Perfected v4.3.1 - Multi-task solve-all, hardened lockfiles, continuous monorepo development.
 
 Features:
 - Multi-LLM Orchestration with intelligent fallback
@@ -14,6 +14,7 @@ Features:
 - Remote auto-fix branch cleanup + stale draft PR close
 - Highest-ROI prioritization (issues, lockfiles, TODOs, CI gaps, docs)
 - Multi-task per run (top 3) for continuous autonomous development
+- v4.3.1: dedupe open bot lockfile PRs; skip nested Userscripts paths
 """
 
 import os
@@ -66,7 +67,9 @@ PAID_PROVIDERS = ['openai', 'anthropic', 'gemini']
 
 SKIP_DIRS = {
     '.git', 'node_modules', 'Archive', 'dist', 'build', '__pycache__',
-    '.venv', 'venv', '.tox', 'coverage', '.next', '.expo', '.cache'
+    '.venv', 'venv', '.tox', 'coverage', '.next', '.expo', '.cache',
+    # Nested userscript studio trees repeatedly produced truncated lockfile drafts
+    'Userscripts', 'Userscript Suite', 'AI Chat Userscript Studio'
 }
 
 KNOWN_PYTHON_PROJECTS = (
@@ -94,7 +97,7 @@ class AgentProfile:
             "retry_count": 3, "provider_stats": {},
             "branches_deleted": 0, "prs_closed": 0,
             "lockfiles_fixed": 0, "problems_solved": 0,
-            "tasks_attempted": 0, "version": "4.3"
+            "tasks_attempted": 0, "version": "4.3.1"
         }
         if os.path.exists(self.path):
             try:
@@ -142,7 +145,7 @@ def sanitize_input(text: str, profile: AgentProfile = None) -> str:
     sanitized = re.sub(r'<!--.*?-->', '', sanitized, flags=re.DOTALL)
     sanitized = re.sub(r'<!(--.*?--|.*?-->)', '', sanitized, flags=re.DOTALL)
     dangerous_patterns = [
-        r'ignore all previous', r'system:', r'\bsystem\s*:', r'override system',
+        r'ignore all previous', r'system:', r'\\bsystem\\s*:', r'override system',
         r'new instructions:', r'you are now', r'roleplay as', r'developer mode',
         r'jailbreak',
     ]
@@ -152,7 +155,7 @@ def sanitize_input(text: str, profile: AgentProfile = None) -> str:
             if profile:
                 profile.record_security_event("injection")
             return "[BLOCKED - Injection detected]"
-    sanitized = sanitized.replace('<', '&lt;').replace('>', '&gt;')
+    sanitized = sanitized.replace('<', '<').replace('>', '>')
     return sanitized
 
 
@@ -173,7 +176,7 @@ def get_depth() -> int:
     try:
         result = os.popen('git log -1 --pretty=format:"%s"').read()
         if 'DEPTH:' in result:
-            match = re.search(r'DEPTH:(\d+)', result)
+            match = re.search(r'DEPTH:(\\d+)', result)
             if match:
                 return int(match.group(1))
     except Exception as e:
@@ -342,7 +345,7 @@ def call_llm(prompt: str, provider: str = "auto", profile: AgentProfile = None) 
     return "[No LLM] Tip: Use DEEPSEEK_API_KEY or HF_TOKEN for free AI"
 
 
-# ==================== LOCKFILE HANDLING (v4.3 hardened) ====================
+# ==================== LOCKFILE HANDLING (v4.3.1) ====================
 
 def _has_node_lockfile(dir_path: str) -> bool:
     for name in ("package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "bun.lock"):
@@ -365,6 +368,16 @@ def _package_json_has_deps(dir_path: str) -> bool:
         return True  # assume needs lockfile if unreadable
 
 
+def _path_should_skip_lockfile_scan(rel: str) -> bool:
+    """Skip deep nested userscript / archive trees that produced PR spam."""
+    lower = rel.replace('\\', '/').lower()
+    skip_tokens = (
+        '/userscripts/', 'userscript suite', 'ai chat userscript studio',
+        '/archive/', '/archives/'
+    )
+    return any(t in lower for t in skip_tokens)
+
+
 def scan_lockfile_gaps() -> List[Dict]:
     """Find package.json projects missing lockfiles; high-ROI maintenance tasks."""
     tasks = []
@@ -375,10 +388,11 @@ def scan_lockfile_gaps() -> List[Dict]:
             continue
         if _has_node_lockfile(root):
             continue
-        # Root workspace with no deps: optional / lower priority
         has_deps = _package_json_has_deps(root)
         rel = root if root != "." else "."
         if rel in seen:
+            continue
+        if _path_should_skip_lockfile_scan(rel):
             continue
         seen.add(rel)
         impact = 2.4 if has_deps else 1.4
@@ -397,7 +411,6 @@ def scan_lockfile_gaps() -> List[Dict]:
             "risk": 0.12,
             "has_deps": has_deps,
         })
-    # Python advisory gaps
     for proj in KNOWN_PYTHON_PROJECTS:
         if not os.path.isdir(proj):
             continue
@@ -436,7 +449,6 @@ def try_generate_lockfile(project_dir: str, profile: AgentProfile = None) -> Dic
             result["error"] = "No package.json"
             return result
 
-        # Safe commands only — no network-heavy full install if possible
         commands = [
             f"cd {project_dir!r} && npm install --package-lock-only --ignore-scripts --no-audit --no-fund 2>&1",
             f"cd {project_dir!r} && pnpm install --lockfile-only --ignore-scripts 2>&1",
@@ -449,14 +461,13 @@ def try_generate_lockfile(project_dir: str, profile: AgentProfile = None) -> Dic
                 out = os.popen(cmd).read()
                 outputs.append(out[-800:] if out else "")
                 if _has_node_lockfile(project_dir):
-                    result = {"success": True, "output": "\n".join(outputs)[-2000:]}
+                    result = {"success": True, "output": "\\n".join(outputs)[-2000:]}
                     if profile:
                         profile.data["lockfiles_fixed"] = profile.data.get("lockfiles_fixed", 0) + 1
                     return result
             except Exception as e:
                 outputs.append(str(e))
 
-        # Minimal empty-ish lockfile for no-deps workspace root
         if not _package_json_has_deps(project_dir):
             lock_path = os.path.join(project_dir, "package-lock.json")
             try:
@@ -475,7 +486,7 @@ def try_generate_lockfile(project_dir: str, profile: AgentProfile = None) -> Dic
                 }
                 with open(lock_path, 'w') as f:
                     json.dump(minimal, f, indent=2)
-                    f.write("\n")
+                    f.write("\\n")
                 if _has_node_lockfile(project_dir):
                     result = {"success": True, "output": "Created minimal package-lock.json for no-deps workspace"}
                     if profile:
@@ -485,7 +496,7 @@ def try_generate_lockfile(project_dir: str, profile: AgentProfile = None) -> Dic
                 result["error"] = f"minimal lockfile failed: {e}"
 
         result["error"] = "Could not produce lockfile (network may be restricted in CI)"
-        result["output"] = "\n".join(outputs)[-1500:]
+        result["output"] = "\\n".join(outputs)[-1500:]
     except Exception as e:
         result["error"] = str(e)
     return result
@@ -517,14 +528,13 @@ def try_generate_python_requirements(project_dir: str, profile: AgentProfile = N
                 try:
                     with open(os.path.join(root, f), 'r', errors='ignore') as fh:
                         for line in fh:
-                            m = re.match(r'^\s*(?:from|import)\s+([a-zA-Z0-9_]+)', line)
+                            m = re.match(r'^\\s*(?:from|import)\\s+([a-zA-Z0-9_]+)', line)
                             if m:
                                 mod = m.group(1)
                                 if mod not in stdlibish and not mod.startswith('_'):
                                     imports.add(mod)
                 except Exception:
                     pass
-        # Map common packages
         pkg_map = {
             'github': 'PyGithub',
             'requests': 'requests',
@@ -549,7 +559,7 @@ def try_generate_python_requirements(project_dir: str, profile: AgentProfile = N
             lines.append(pkg_map.get(mod, mod))
         if not lines:
             lines = ["# Auto-generated placeholder — add project dependencies here", "requests>=2.28.0"]
-        content = "# Auto-generated by autonomous-github-agent v4.3\n" + "\n".join(lines) + "\n"
+        content = "# Auto-generated by autonomous-github-agent v4.3.1\\n" + "\\n".join(lines) + "\\n"
         with open(req_path, 'w') as f:
             f.write(content)
         result = {"success": True, "output": f"Wrote {req_path} with {len(lines)} entries"}
@@ -560,10 +570,9 @@ def try_generate_python_requirements(project_dir: str, profile: AgentProfile = N
     return result
 
 
-# ==================== BROADER PROBLEM SCANNERS (v4.3) ====================
+# ==================== BROADER PROBLEM SCANNERS ====================
 
 def scan_ci_gaps() -> List[Dict]:
-    """Projects missing basic CI / workflow coverage."""
     tasks = []
     workflows_dir = ".github/workflows"
     has_workflows = os.path.isdir(workflows_dir)
@@ -580,7 +589,6 @@ def scan_ci_gaps() -> List[Dict]:
     for proj in list(KNOWN_NODE_PROJECTS) + list(KNOWN_PYTHON_PROJECTS):
         if not os.path.isdir(proj):
             continue
-        # Missing README
         if not os.path.isfile(os.path.join(proj, "README.md")):
             tasks.append({
                 "type": "docs",
@@ -596,9 +604,7 @@ def scan_ci_gaps() -> List[Dict]:
 
 
 def scan_proactive_improvements() -> List[Dict]:
-    """When few urgent tasks exist, still drive continuous development."""
     tasks = []
-    # Health script presence
     if os.path.isdir("tools") and not os.path.isfile("tools/health-check.ps1"):
         tasks.append({
             "type": "agent_improvement",
@@ -609,7 +615,6 @@ def scan_proactive_improvements() -> List[Dict]:
             "impact": 1.7,
             "risk": 0.1,
         })
-    # Agent self-improvement: ensure profile version tracked
     tasks.append({
         "type": "agent_improvement",
         "id": "agent_v43_note",
@@ -674,13 +679,35 @@ def close_stale_draft_prs(profile: AgentProfile = None, days: int = STALE_PR_DAY
         g = Github(token)
         r = g.get_repo(repo)
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        # Track lockfile title prefixes so we keep only the newest of each
+        lockfile_seen = {}
         for pr in r.get_pulls(state="open"):
             try:
                 created = pr.created_at
                 if created.tzinfo is None:
                     created = created.replace(tzinfo=timezone.utc)
                 head = pr.head.ref if pr.head else ""
-                is_bot = pr.title.startswith("🤖") or (head or "").startswith("auto-fix-")
+                title = pr.title or ""
+                is_bot = title.startswith("🤖") or (head or "").startswith("auto-fix-")
+                is_lockfile = title.startswith("🤖 Lockfile") or title.startswith("🤖 Docs: lockfile")
+
+                if is_lockfile:
+                    # Normalize: keep first 60 chars as key so truncated titles match
+                    key = title[:60]
+                    if key in lockfile_seen:
+                        # Close the older one
+                        older = lockfile_seen[key]
+                        if created > older["created"]:
+                            older["pr"].edit(state="closed")
+                            result["closed"].append(older["number"])
+                            lockfile_seen[key] = {"pr": pr, "created": created, "number": pr.number}
+                        else:
+                            pr.edit(state="closed")
+                            result["closed"].append(pr.number)
+                        continue
+                    else:
+                        lockfile_seen[key] = {"pr": pr, "created": created, "number": pr.number}
+
                 if is_bot and created < cutoff:
                     pr.edit(state="closed")
                     result["closed"].append(pr.number)
@@ -688,10 +715,39 @@ def close_stale_draft_prs(profile: AgentProfile = None, days: int = STALE_PR_DAY
                 logger.debug(f"PR close skip: {e}")
         if profile and result["closed"]:
             profile.data["prs_closed"] = profile.data.get("prs_closed", 0) + len(result["closed"])
-        logger.info(f"Stale PR cleanup: closed {len(result['closed'])}")
+        logger.info(f"Stale/duplicate PR cleanup: closed {len(result['closed'])}")
     except Exception as e:
         result["error"] = str(e)
     return result
+
+
+def open_bot_pr_exists_for(title_or_proj: str) -> bool:
+    """Return True if an open bot draft PR already covers this lockfile/project."""
+    if not GITHUB_AVAILABLE or not title_or_proj:
+        return False
+    try:
+        token = os.getenv("GITHUB_TOKEN")
+        repo = os.getenv("REPO")
+        if not token or not repo:
+            return False
+        g = Github(token)
+        r = g.get_repo(repo)
+        needle = title_or_proj[:50].lower()
+        for pr in r.get_pulls(state="open"):
+            t = (pr.title or "").lower()
+            if not t.startswith("🤖") and not t.startswith("🤖".lower()):
+                # emoji may normalize differently; also match 'lockfile'
+                if "lockfile" not in t and "python deps" not in t:
+                    continue
+            if needle in t or t.startswith("🤖 lockfile") and needle in t:
+                return True
+            # Match project_dir fragment inside title
+            if needle and needle in t:
+                return True
+        return False
+    except Exception as e:
+        logger.debug(f"open_bot_pr_exists_for error: {e}")
+        return False
 
 
 # ==================== GITHUB + CODE SCAN ====================
@@ -796,7 +852,7 @@ def scan_code_todos() -> List[Dict]:
             try:
                 with open(path, 'r', errors='ignore') as file:
                     content = file.read()
-                for m in re.finditer(r'(TODO|FIXME|XXX|HACK):?\s*(.+?)(?:\n|$)', content):
+                for m in re.finditer(r'(TODO|FIXME|XXX|HACK):?\\s*(.+?)(?:\\n|$)', content):
                     match_text = m.group(0).lower()
                     impact = 2.2 if any(k in match_text for k in ("security", "bug", "critical", "fix", "broken")) else 1.6
                     tasks.append({
@@ -823,7 +879,6 @@ def scan_tasks() -> List[Dict]:
 
 
 def decide_tasks(tasks: List[Dict], profile: AgentProfile, limit: int = MAX_TASKS_PER_RUN) -> List[Dict]:
-    """v4.3: return top-N prioritized tasks for multi-problem solving."""
     if not tasks:
         return []
     type_boosts = {
@@ -841,7 +896,6 @@ def decide_tasks(tasks: List[Dict], profile: AgentProfile, limit: int = MAX_TASK
         base = task.get("impact", 1.0) / (1 + task.get("risk", 0.5))
         task["priority"] = base * type_boosts.get(task.get("type", ""), 1.0)
     ranked = sorted(tasks, key=lambda t: t.get("priority", 0), reverse=True)
-    # Deduplicate by id/title
     seen = set()
     out = []
     for t in ranked:
@@ -860,8 +914,8 @@ def decide_tasks(tasks: List[Dict], profile: AgentProfile, limit: int = MAX_TASK
 def merge_merged_branches(branch: str = "main") -> Dict:
     result = {"merged": [], "deleted": [], "error": ""}
     try:
-        output = os.popen(f"git branch --merged {branch} | grep -v '\\*\\|main\\|master'").read()
-        for b in output.strip().split('\n'):
+        output = os.popen(f"git branch --merged {branch} | grep -v '\\\\*\\\\|main\\\\|master'").read()
+        for b in output.strip().split('\\n'):
             b = b.strip()
             if b:
                 os.system(f"git branch -d {b} 2>/dev/null")
@@ -1030,8 +1084,8 @@ def evolve_agent_directives(profile: AgentProfile):
 def _strip_fences(text: str) -> str:
     cleaned = text.strip()
     if cleaned.startswith("```"):
-        cleaned = re.sub(r'^```[a-zA-Z0-9]*\n?', '', cleaned)
-        cleaned = re.sub(r'\n?```$', '', cleaned)
+        cleaned = re.sub(r'^```[a-zA-Z0-9]*\\n?', '', cleaned)
+        cleaned = re.sub(r'\\n?```$', '', cleaned)
     return cleaned
 
 
@@ -1040,6 +1094,15 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
     task_type = task.get("type", "unknown")
     branch_name = f"auto-fix-{int(time.time())}-{task.get('id', 'x')[:12]}"
     branch_name = re.sub(r'[^a-zA-Z0-9_-]', '-', branch_name)[:60]
+
+    # v4.3.1: skip lockfile work if an open bot PR already covers this project
+    if task_type == "lockfile":
+        proj = task.get("project_dir", ".")
+        title_hint = task.get("title", "") or proj
+        if open_bot_pr_exists_for(proj) or open_bot_pr_exists_for(title_hint):
+            logger.info(f"Skip lockfile task — open bot PR already exists for {proj}")
+            return False
+
     exec_tool("create_branch", {"branch": branch_name}, profile)
     sync_with_main()
     profile.data["tasks_attempted"] = profile.data.get("tasks_attempted", 0) + 1
@@ -1061,10 +1124,10 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
             exec_tool("create_pr", {
                 "title": title,
                 "body": (
-                    f"Autonomous dependency lock for `{proj}`.\n\n"
-                    f"Ensures reproducible installs.\n\n"
-                    f"Source: {task.get('title')}\n\n"
-                    f"Output:\n```\n{gen.get('output', '')[:600]}\n```"
+                    f"Autonomous dependency lock for `{proj}`.\\n\\n"
+                    f"Ensures reproducible installs.\\n\\n"
+                    f"Source: {task.get('title')}\\n\\n"
+                    f"Output:\\n```\\n{gen.get('output', '')[:600]}\\n```"
                 ),
                 "head": branch_name
             }, profile)
@@ -1072,10 +1135,10 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
         else:
             note_path = os.path.join(proj, "LOCKFILE_NEEDED.md") if proj != "." else "LOCKFILE_NEEDED.md"
             note = (
-                f"# Lockfile / requirements needed for `{proj}`\n\n"
-                f"Agent could not generate lockfile in CI (often no registry network).\n\n"
-                f"Run locally:\n```bash\ncd {proj}\nnpm install   # or pip freeze > requirements.txt\ngit add -A\n```\n\n"
-                f"Error:\n```\n{gen.get('error', '')}\n{gen.get('output', '')[:800]}\n```\n"
+                f"# Lockfile / requirements needed for `{proj}`\\n\\n"
+                f"Agent could not generate lockfile in CI (often no registry network).\\n\\n"
+                f"Run locally:\\n```bash\\ncd {proj}\\nnpm install   # or pip freeze > requirements.txt\\ngit add -A\\n```\\n\\n"
+                f"Error:\\n```\\n{gen.get('error', '')}\\n{gen.get('output', '')[:800]}\\n```\\n"
             )
             exec_tool("edit_file", {"path": note_path, "content": note}, profile)
             exec_tool("commit", {"message": f"docs: lockfile needed for {proj}", "depth": depth + 1}, profile)
@@ -1085,17 +1148,17 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
                 "body": task.get("body", ""),
                 "head": branch_name
             }, profile)
-            solved = True  # documented the gap
+            solved = True
     elif task_type in ("docs", "ci_gap", "agent_improvement"):
         path = task.get("path", "")
         prompt = (
-            f"Implement this improvement fully. If creating/editing a file, output ONLY the full file content.\n"
-            f"Task: {task.get('title')}\n\n{task.get('body', '')[:1500]}"
+            f"Implement this improvement fully. If creating/editing a file, output ONLY the full file content.\\n"
+            f"Task: {task.get('title')}\\n\\n{task.get('body', '')[:1500]}"
         )
         if path and os.path.isfile(path):
             try:
                 with open(path, 'r', errors='ignore') as f:
-                    prompt += f"\n\nCurrent content of {path}:\n{f.read()[:4000]}"
+                    prompt += f"\\n\\nCurrent content of {path}:\\n{f.read()[:4000]}"
             except Exception:
                 pass
         response = call_llm(prompt, profile=profile)
@@ -1110,28 +1173,27 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
             exec_tool("push", {"branch": branch_name}, profile)
             exec_tool("create_pr", {
                 "title": f"🤖 {task.get('title', 'Improvement')[:100]}",
-                "body": f"Autonomous development task.\n\n{task.get('body', '')[:500]}",
+                "body": f"Autonomous development task.\\n\\n{task.get('body', '')[:500]}",
                 "head": branch_name
             }, profile)
             solved = True
     else:
-        # issues, todos, pr_review, notifications
         if task_type == "pr_review":
             prompt = (
                 f"Review this PR and propose concrete code fixes if needed. "
-                f"If fixing a file, output the FULL fixed file content only.\n"
-                f"{task.get('title')}\n\n{task.get('body', '')[:1200]}"
+                f"If fixing a file, output the FULL fixed file content only.\\n"
+                f"{task.get('title')}\\n\\n{task.get('body', '')[:1200]}"
             )
         elif task_type == "issue":
             prompt = (
                 f"Solve this GitHub issue completely. Prefer minimal, correct changes. "
-                f"When editing code, provide the FULL fixed file content.\n"
-                f"Issue: {task.get('title')}\n\n{task.get('body', '')[:1800]}"
+                f"When editing code, provide the FULL fixed file content.\\n"
+                f"Issue: {task.get('title')}\\n\\n{task.get('body', '')[:1800]}"
             )
         else:
             prompt = (
-                f"Improve or fix the following. If changing a file, return full file content.\n"
-                f"{task.get('title')}\n\n{task.get('body', '')[:800]}"
+                f"Improve or fix the following. If changing a file, return full file content.\\n"
+                f"{task.get('title')}\\n\\n{task.get('body', '')[:800]}"
             )
 
         full_prompt = prompt
@@ -1139,7 +1201,7 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
             try:
                 with open(task["path"], 'r', errors='ignore') as f:
                     file_content = f.read()
-                full_prompt = f"{prompt}\n\nFile: {task['path']}\n\nCurrent content:\n{file_content[:4500]}"
+                full_prompt = f"{prompt}\\n\\nFile: {task['path']}\\n\\nCurrent content:\\n{file_content[:4500]}"
             except Exception:
                 pass
 
@@ -1156,14 +1218,13 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
             exec_tool("push", {"branch": branch_name}, profile)
             exec_tool("create_pr", {
                 "title": f"🤖 {task.get('title', 'Autonomous improvement')[:100]}",
-                "body": f"Autonomous improvement for: {task.get('title')}\n\nSource: {task.get('url', 'code scan')}",
+                "body": f"Autonomous improvement for: {task.get('title')}\\n\\nSource: {task.get('url', 'code scan')}",
                 "head": branch_name
             }, profile)
             solved = True
 
     if solved:
         profile.data["problems_solved"] = profile.data.get("problems_solved", 0) + 1
-    # Return to main for next task
     os.system("git checkout main 2>/dev/null || true")
     return solved
 
@@ -1171,13 +1232,12 @@ def execute_one_task(task: Dict, profile: AgentProfile, depth: int) -> bool:
 def main():
     profile = AgentProfile()
     depth = get_depth()
-    logger.info(f"Starting agent v4.3 - Depth: {depth} (multi-task solve-all + lockfiles)")
+    logger.info(f"Starting agent v4.3.1 - Depth: {depth} (multi-task + lockfile dedupe)")
 
     if depth >= MAX_DEPTH:
         logger.info("Max depth reached - exiting")
         return
 
-    # 1) Hygiene first
     try:
         local = merge_merged_branches()
         if local.get("deleted"):
@@ -1187,11 +1247,10 @@ def main():
             logger.info(f"Remote auto-fix deleted: {remote['deleted']}")
         closed = close_stale_draft_prs(profile)
         if closed.get("closed"):
-            logger.info(f"Stale PRs closed: {closed['closed']}")
+            logger.info(f"Stale/duplicate PRs closed: {closed['closed']}")
     except Exception as e:
         logger.debug(f"Hygiene skipped: {e}")
 
-    # 2) Scan everything
     tasks = scan_tasks()
     tasks.extend(run_self_audit(profile))
     if len([t for t in tasks if t.get("type") in ("issue", "lockfile", "todo")]) < 2:
@@ -1212,10 +1271,10 @@ def main():
 
     evolve_agent_directives(profile)
     profile.data["runs"] = profile.data.get("runs", 0) + 1
-    profile.data["version"] = "4.3"
+    profile.data["version"] = "4.3.1"
     profile.save()
     logger.info(
-        f"Agent v4.3 complete (runs={profile.data['runs']}, "
+        f"Agent v4.3.1 complete (runs={profile.data['runs']}, "
         f"branches_deleted={profile.data.get('branches_deleted', 0)}, "
         f"prs_closed={profile.data.get('prs_closed', 0)}, "
         f"lockfiles_fixed={profile.data.get('lockfiles_fixed', 0)}, "
