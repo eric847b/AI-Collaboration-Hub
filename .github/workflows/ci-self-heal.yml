@@ -174,13 +174,15 @@ jobs:
 
       - name: Summary
         run: |
-          echo "### CI Self-Heal v5.2 complete (FailureSolver wired)" >> $GITHUB_STEP_SUMMARY
-          for f in agent-report.json multi-repo-report.json nexus-export.json; do
-            if [ -f "$f" ]; then
-              echo "#### $f" >> $GITHUB_STEP_SUMMARY
-              echo '```json' >> $GITHUB_STEP_SUMMARY
-              head -c 4000 "$f" >> $GITHUB_STEP_SUMMARY
-              echo >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
-          done
+          {
+            echo "### CI Self-Heal v5.2 complete (FailureSolver wired)"
+            for f in agent-report.json multi-repo-report.json nexus-export.json; do
+              if [ -f "$f" ]; then
+                echo "#### $f"
+                echo '```json'
+                head -c 4000 "$f"
+                echo
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
