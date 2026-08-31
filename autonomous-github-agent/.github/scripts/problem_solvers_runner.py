@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Agent v6.0.1 Unified — problem-solvers runner.
+Agent v6.1 Unified — problem-solvers runner + auto_ops.
 
 Scans + auto-fixes:
+  0) auto_ops: duplicate draft spam, Dependabot patches, stale branches, actionlint
   1) Python SyntaxError
   2) npm peer conflicts (typescript vs typescript-eslint)
-  3) Missing lockfiles
+  3) Missing lockfiles (skip Userscripts / root-policy paths)
   4) Missing requirements.txt
   5) Outdated GitHub Actions
-  6) Duplicate draft auto-PR cleanup
-  7) Closed-loop ledger updates
+  6) Closed-loop ledger updates
 
 Supports DRY_RUN=1, MAX_SOLVER_TASKS (default 8), writes agent-report.json.
-v6.0.1: lockfile PR dedupe + skip Userscripts paths
 """
 
 from __future__ import annotations
@@ -46,6 +45,12 @@ try:
 except ImportError:
     CLOSED_LOOP = False
 
+try:
+    import auto_ops
+    AUTO_OPS = True
+except ImportError:
+    AUTO_OPS = False
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("problem_solvers_runner")
 
@@ -57,7 +62,7 @@ except ImportError:
 
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 MAX_SOLVER_TASKS = int(os.getenv("MAX_SOLVER_TASKS", "8"))
-VERSION = "6.0.1"
+VERSION = "6.1"
 
 SKIP_LOCKFILE_PATH_TOKENS = (
     "userscripts",
@@ -74,11 +79,13 @@ def _git(cmd: str) -> str:
 
 def _should_skip_lockfile_path(proj: str) -> bool:
     lower = (proj or ".").replace("\\", "/").lower()
+    if lower in (".", "") or lower.endswith("/.") or lower == "./":
+        # Root package.json is empty-deps; never open lockfile PRs for "."
+        return True
     return any(t in lower for t in SKIP_LOCKFILE_PATH_TOKENS)
 
 
 def open_bot_pr_exists_for(needle: str) -> bool:
-    """True if an open bot/lockfile draft PR already covers this project."""
     if not GITHUB_AVAILABLE or not needle:
         return False
     token = os.getenv("GITHUB_TOKEN")
@@ -111,7 +118,6 @@ def _branch_and_pr(title: str, body: str, branch: str) -> bool:
     if DRY_RUN:
         log.info(f"[DRY_RUN] would open PR: {title}")
         return True
-    # Dedupe: never open another 🤖 Lockfile PR if one already covers the same title prefix
     if title.startswith("🤖 Lockfile") and open_bot_pr_exists_for(title.replace("🤖 Lockfile:", "").strip()):
         log.info(f"Skip PR — open bot lockfile PR already exists for: {title}")
         return False
@@ -139,53 +145,6 @@ def _branch_and_pr(title: str, body: str, branch: str) -> bool:
     except Exception as e:
         log.warning(f"PR create failed: {e}")
         return False
-
-
-def cleanup_duplicate_draft_prs() -> int:
-    """Close older open draft auto-fix PRs that share the same normalized title prefix."""
-    if not GITHUB_AVAILABLE or DRY_RUN:
-        return 0
-    token = os.getenv("GITHUB_TOKEN")
-    repo = os.getenv("REPO")
-    if not token or not repo:
-        return 0
-    closed = 0
-    try:
-        g = Github(token)
-        r = g.get_repo(repo)
-        groups: dict = {}
-        for pr in r.get_pulls(state="open"):
-            title = pr.title or ""
-            head = ""
-            try:
-                head = pr.head.ref if pr.head else ""
-            except Exception:
-                pass
-            is_bot = title.startswith("🤖") or (head or "").startswith("auto-fix")
-            if not is_bot:
-                continue
-            # Normalize lockfile titles aggressively so "." and truncated paths group
-            if title.startswith("🤖 Lockfile"):
-                key = title[:50]
-            elif " in " in title:
-                key = title.split(" in ")[0].strip()
-            else:
-                key = title[:60]
-            groups.setdefault(key, []).append(pr)
-        for key, prs in groups.items():
-            if len(prs) < 2:
-                continue
-            prs_sorted = sorted(prs, key=lambda p: p.number, reverse=True)
-            for old in prs_sorted[1:]:
-                try:
-                    old.edit(state="closed")
-                    closed += 1
-                    log.info(f"Closed duplicate draft PR #{old.number}")
-                except Exception as e:
-                    log.debug(f"close skip {old.number}: {e}")
-    except Exception as e:
-        log.warning(f"duplicate cleanup error: {e}")
-    return closed
 
 
 def handle_python_syntax(task: dict) -> bool:
@@ -228,7 +187,7 @@ def handle_peer_conflict(task: dict) -> bool:
 def handle_lockfile(task: dict) -> bool:
     proj = task.get("project_dir", ".")
     if _should_skip_lockfile_path(proj):
-        log.info(f"Skip lockfile task for nested path: {proj}")
+        log.info(f"Skip lockfile task for nested/root path: {proj}")
         return False
     if open_bot_pr_exists_for(proj):
         log.info(f"Skip lockfile task — open bot PR already exists for {proj}")
@@ -294,8 +253,16 @@ def main():
     _git("git config user.name 'github-actions[bot]'")
     _git("git config user.email 'github-actions[bot]@users.noreply.github.com'")
 
-    dup_closed = cleanup_duplicate_draft_prs()
-    log.info("Duplicate draft PRs closed: %s", dup_closed)
+    auto_ops_report = {}
+    if AUTO_OPS:
+        try:
+            auto_ops_report = auto_ops.run_all()
+            log.info("auto_ops complete")
+        except Exception as e:
+            log.warning("auto_ops failed: %s", e)
+            auto_ops_report = {"error": str(e)}
+    else:
+        log.info("auto_ops module not available — skip")
 
     tasks = []
     tasks.extend(scan_python_syntax("."))
@@ -304,7 +271,6 @@ def main():
     tasks.extend(scan_missing_requirements("."))
     tasks.extend(scan_gha_deprecations("."))
 
-    # Drop lockfile tasks for nested userscript paths before prioritization
     tasks = [
         t for t in tasks
         if not (t.get("type") == "lockfile" and _should_skip_lockfile_path(t.get("project_dir", "")))
@@ -338,7 +304,12 @@ def main():
         "version": VERSION,
         "dry_run": DRY_RUN,
         "max_tasks": MAX_SOLVER_TASKS,
-        "duplicates_closed": dup_closed,
+        "auto_ops": {
+            "merged_deps": len((auto_ops_report.get("dependabot_merges") or {}).get("merged") or []),
+            "closed_spam": len((auto_ops_report.get("duplicate_drafts") or {}).get("closed") or [])
+            + len((auto_ops_report.get("policy_lockfile_spam") or {}).get("closed") or []),
+            "deleted_branches": len((auto_ops_report.get("stale_branches") or {}).get("deleted") or []),
+        },
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "tasks": [],
         "counts_by_type": {},
