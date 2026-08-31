@@ -72,5 +72,5 @@ jobs:
       - name: Summary
         run: |
           echo "Workflow YAML files:"
-          ls -1 .github/workflows/*.yml 2>/dev/null | wc -l
+          find .github/workflows -maxdepth 1 -name '*.yml' -printf '%f\n' 2>/dev/null | wc -l
           echo "Lockfile validation complete."
