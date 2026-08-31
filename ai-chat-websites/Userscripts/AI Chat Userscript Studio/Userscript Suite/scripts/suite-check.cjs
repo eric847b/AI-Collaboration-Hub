@@ -99,7 +99,9 @@ function main() {
   // Parse gate — every shippable source must be syntactically valid JavaScript.
   // Catches undeclared private fields, truncated concatenations, and other
   // fatal-parse defects no functional harness covers: parse (never execute)
-  // the hub, every Modules/** userscript, and the dist bundle when present.
+  // the hub, every Modules/** userscript, every dist artifact when present
+  // (plain, merged, and minified — proving the vendored minifier never emits
+  // un-parseable output), and the vendored production-chain scripts.
   const vm = require('vm');
   let parseFail = false;
   const parseTargets = [path.join(ROOT, '00-hub.user.js')];
@@ -119,14 +121,24 @@ function main() {
     results.push({ label: 'Parse: ' + path.relative(ROOT, f), exit: ok ? 0 : 1, summary: msg });
     console.log('  ' + (ok ? '✓' : '✗') + ' Parse: ' + path.relative(ROOT, f) + '  [' + msg + ']');
   }
-  const distBundle = path.join(ROOT, 'dist', 'ai-chat-userscript-suite.bundle.user.js');
-  if (fs.existsSync(distBundle)) {
+  const parseExtra = [
+    // dist artifacts: optional (only checked when present on disk)
+    ...['ai-chat-userscript-suite.bundle.user.js',
+        'ai-chat-userscript-suite.bundle.merged.user.js',
+        'ai-chat-userscript-suite.bundle.merged.min.user.js']
+        .map(f => ({ abs: path.join(ROOT, 'dist', f), rel: 'dist/' + f, opt: true })),
+    // vendored production-chain tooling: always required to parse
+    ...['bundle.cjs', 'bundle-merge.cjs', 'bundle-minify.cjs', 'bundler-utils.cjs']
+        .map(f => ({ abs: path.join(ROOT, 'scripts', f), rel: 'scripts/' + f, opt: false }))
+  ];
+  for (const t of parseExtra) {
+    if (t.opt && !fs.existsSync(t.abs)) continue;
     let ok = true, msg = 'parsed';
-    try { new vm.Script(fs.readFileSync(distBundle, 'utf8'), { filename: 'dist bundle' }); }
+    try { new vm.Script(fs.readFileSync(t.abs, 'utf8'), { filename: t.rel }); }
     catch (e) { ok = false; msg = e.message.split('\n')[0]; }
     if (!ok) parseFail = true;
-    results.push({ label: 'Parse: dist bundle', exit: ok ? 0 : 1, summary: msg });
-    console.log('  ' + (ok ? '✓' : '✗') + ' Parse: dist bundle  [' + msg + ']');
+    results.push({ label: 'Parse: ' + t.rel, exit: ok ? 0 : 1, summary: msg });
+    console.log('  ' + (ok ? '✓' : '✗') + ' Parse: ' + t.rel + '  [' + msg + ']');
   }
 
   console.log('  total harnesses: ' + results.length);
