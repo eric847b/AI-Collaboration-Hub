@@ -1,6 +1,6 @@
 name: CI Self-Heal
 
-# v5.2 — full autonomous repair + multi-repo + escalation + export + FailureSolver v3.4
+# v5.3 — auto_ops + full autonomous repair + multi-repo + escalation + export + FailureSolver
 on:
   schedule:
     - cron: '15 */3 * * *'
@@ -18,6 +18,10 @@ on:
         description: 'MULTI_REPO=1 metadata scan'
         required: false
         default: '0'
+      auto_merge_dependabot:
+        description: 'AUTO_MERGE_DEPENDABOT (1=patch merges)'
+        required: false
+        default: '1'
   workflow_run:
     workflows:
       - "Autonomous Agent"
@@ -74,48 +78,28 @@ jobs:
             echo "FailureSolver not present — skip"
           fi
 
-      - name: Cleanup stale auto-fix branches
+      - name: auto_ops (spam / Dependabot patches / branches / actionlint)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          AUTO_MERGE_DEPENDABOT: ${{ github.event.inputs.auto_merge_dependabot || '1' }}
+          MAX_DEP_MERGES: '8'
         run: |
-          python << 'PY'
-          import os
-          try:
-              from github import Github
-          except ImportError:
-              raise SystemExit(0)
-          token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("REPO")
-          if not token or not repo:
-              raise SystemExit(0)
-          g = Github(token)
-          r = g.get_repo(repo)
-          main_sha = r.get_branch("main").commit.sha
-          for b in r.get_branches():
-              if b.name in ("main", "master") or b.protected:
-                  continue
-              if not b.name.startswith(("auto-fix-", "auto-fix/")):
-                  continue
-              try:
-                  if b.commit.sha == main_sha:
-                      r.get_git_ref(f"heads/{b.name}").delete()
-                      print("deleted", b.name)
-                      continue
-                  cmp = r.compare("main", b.name)
-                  if cmp.ahead_by == 0:
-                      r.get_git_ref(f"heads/{b.name}").delete()
-                      print("deleted-merged", b.name)
-              except Exception as e:
-                  print("skip", b.name, e)
-          PY
+          if [ -f autonomous-github-agent/.github/scripts/auto_ops.py ]; then
+            python autonomous-github-agent/.github/scripts/auto_ops.py || true
+          else
+            echo "auto_ops.py not present — skip"
+          fi
 
-      - name: Run problem solvers v5+
+      - name: Run problem solvers v6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           AGENT_OWNS_GITHUB: '1'
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
           MAX_SOLVER_TASKS: ${{ github.event.inputs.max_tasks || '8' }}
+          AUTO_MERGE_DEPENDABOT: ${{ github.event.inputs.auto_merge_dependabot || '1' }}
         run: |
           if [ -f autonomous-github-agent/.github/scripts/problem_solvers_runner.py ]; then
             python autonomous-github-agent/.github/scripts/problem_solvers_runner.py || true
@@ -164,6 +148,7 @@ jobs:
           name: agent-report
           path: |
             agent-report.json
+            auto-ops-report.json
             security-audit-report.json
             multi-repo-report.json
             auto-fix-ledger.json
@@ -175,8 +160,8 @@ jobs:
       - name: Summary
         run: |
           {
-            echo "### CI Self-Heal v5.2 complete (FailureSolver wired)"
-            for f in agent-report.json multi-repo-report.json nexus-export.json; do
+            echo "### CI Self-Heal v5.3 complete (auto_ops + FailureSolver)"
+            for f in auto-ops-report.json agent-report.json multi-repo-report.json nexus-export.json; do
               if [ -f "$f" ]; then
                 echo "#### $f"
                 echo '```json'
