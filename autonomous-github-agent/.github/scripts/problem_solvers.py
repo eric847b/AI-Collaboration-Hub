@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Autonomous agent problem solvers v5.3 Nexus
+Autonomous agent problem solvers v5.4 Nexus
 Handles CI failure classes:
   - npm ERESOLVE / peer dependency conflicts
   - Python syntax errors (py_compile)
-  - Missing lockfiles (deps-aware)
+  - Missing lockfiles (deps-aware, skip Userscripts)
   - Missing requirements.txt / pyproject.toml for Python projects with 3rd-party imports
   - Outdated GitHub Actions versions (common deprecations)
-Works with problem_solvers_runner v5.0 (duplicate cleanup + closed-loop ledger).
+Works with problem_solvers_runner v6.1 + auto_ops.
 """
 
 from __future__ import annotations
@@ -22,17 +22,24 @@ from typing import Dict, List, Optional, Set
 SKIP_DIRS = {
     ".git", "node_modules", "Archive", "dist", "build", "__pycache__",
     ".venv", "venv", ".tox", "coverage", ".next", ".expo", ".cache", "archive",
+    "Userscripts", "userscripts",
 }
+
+SKIP_PATH_TOKENS = (
+    "userscripts",
+    "userscript suite",
+    "ai chat userscript studio",
+    "/archive/",
+    "/archives/",
+)
 
 # Known peer ranges that commonly break CI
 PEER_RULES = [
-    # (package_needing_peer, peer_name, max_exclusive_major_hint, fix_pin)
     ("typescript-eslint", "typescript", 6, "~5.9.3"),
     ("@typescript-eslint/eslint-plugin", "typescript", 6, "~5.9.3"),
     ("@typescript-eslint/parser", "typescript", 6, "~5.9.3"),
 ]
 
-# Common 3rd-party Python packages we can safely pin when detected
 KNOWN_PY_PINS = {
     "requests": "requests>=2.28.0",
     "httpx": "httpx>=0.24.0",
@@ -63,7 +70,6 @@ KNOWN_PY_PINS = {
     "PyGithub": "PyGithub>=1.59.0",
 }
 
-# GitHub Actions known-good majors (surgical bump targets)
 GHA_KNOWN_GOOD = {
     "actions/checkout": "v4",
     "actions/setup-node": "v4",
@@ -79,10 +85,18 @@ GHA_KNOWN_GOOD = {
 }
 
 
+def _path_skipped(path: str) -> bool:
+    lower = path.replace("\\", "/").lower()
+    return any(t in lower for t in SKIP_PATH_TOKENS)
+
+
 def _walk_files(root: str, suffixes: tuple) -> List[str]:
     out = []
     for r, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        if _path_skipped(r):
+            dirs[:] = []
+            continue
         for f in files:
             if f.endswith(suffixes):
                 out.append(os.path.join(r, f))
@@ -110,7 +124,6 @@ def has_node_lockfile(dir_path: str) -> bool:
 
 
 def scan_python_syntax(root: str = ".") -> List[Dict]:
-    """Find Python files that fail to parse (SyntaxError). High ROI."""
     tasks = []
     for path in _walk_files(root, (".py",)):
         try:
@@ -141,7 +154,6 @@ def scan_python_syntax(root: str = ".") -> List[Dict]:
 
 
 def _parse_semver_major(spec: str) -> Optional[int]:
-    """Extract leading major from a version range like ^7.0.2 or ~5.9.3."""
     if not spec:
         return None
     m = re.search(r"(\d+)", str(spec))
@@ -149,7 +161,6 @@ def _parse_semver_major(spec: str) -> Optional[int]:
 
 
 def scan_peer_dependency_conflicts(root: str = ".") -> List[Dict]:
-    """Detect typescript vs typescript-eslint style peer mismatches in package.json."""
     tasks = []
     for path in _walk_files(root, ("package.json",)):
         if "node_modules" in path:
@@ -195,7 +206,6 @@ def scan_peer_dependency_conflicts(root: str = ".") -> List[Dict]:
 
 
 def fix_peer_conflict_in_package_json(pkg_path: str, peer: str, pin: str) -> Dict:
-    """Rewrite package.json pinning peer version. Returns success dict."""
     result = {"success": False, "output": "", "error": ""}
     try:
         with open(pkg_path, "r", errors="ignore") as fh:
@@ -222,10 +232,6 @@ def fix_peer_conflict_in_package_json(pkg_path: str, peer: str, pin: str) -> Dic
 
 
 def fix_python_syntax_file(path: str, content_hint: str = "") -> Dict:
-    """
-    Best-effort local check for Python syntax errors.
-    Complex rewrites are handled by problem_solvers_runner / LLM agent.
-    """
     result = {"success": False, "output": "", "error": ""}
     try:
         with open(path, "r", errors="ignore") as fh:
@@ -250,6 +256,9 @@ def scan_lockfile_gaps_smart(root: str = ".") -> List[Dict]:
     seen = set()
     for r, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        if _path_skipped(r):
+            dirs[:] = []
+            continue
         if "package.json" not in files:
             continue
         pkg = os.path.join(r, "package.json")
@@ -257,6 +266,9 @@ def scan_lockfile_gaps_smart(root: str = ".") -> List[Dict]:
         if rel in seen:
             continue
         seen.add(rel)
+        # Skip empty root workspace package — no useful lockfile PR
+        if rel in (".", "") and not package_has_deps(pkg):
+            continue
         if has_node_lockfile(r):
             continue
         has_deps = package_has_deps(pkg)
@@ -279,7 +291,6 @@ def scan_lockfile_gaps_smart(root: str = ".") -> List[Dict]:
 
 
 def create_minimal_lockfile(project_dir: str) -> Dict:
-    """Write a valid lockfileVersion 3 stub for no-deps packages."""
     result = {"success": False, "output": "", "error": ""}
     try:
         pkg = os.path.join(project_dir, "package.json")
@@ -318,7 +329,6 @@ def create_minimal_lockfile(project_dir: str) -> Dict:
 
 
 def _collect_third_party_imports(py_path: str) -> Set[str]:
-    """Return set of top-level third-party module names imported in a file."""
     found: Set[str] = set()
     try:
         with open(py_path, "r", errors="ignore") as fh:
@@ -356,7 +366,6 @@ def _collect_third_party_imports(py_path: str) -> Set[str]:
 
 
 def scan_missing_requirements(root: str = ".") -> List[Dict]:
-    """Find Python project dirs that import 3rd-party packages but lack requirements.txt / pyproject.toml."""
     tasks = []
     candidates: Dict[str, Set[str]] = {}
     for path in _walk_files(root, (".py",)):
@@ -404,11 +413,10 @@ def scan_missing_requirements(root: str = ".") -> List[Dict]:
 
 
 def fix_missing_requirements(project_dir: str, pins: List[str]) -> Dict:
-    """Write a minimal requirements.txt."""
     result = {"success": False, "output": "", "error": ""}
     try:
         path = os.path.join(project_dir, "requirements.txt")
-        lines = ["# Auto-generated by autonomous-github-agent v5.3"] + list(pins)
+        lines = ["# Auto-generated by autonomous-github-agent v5.4"] + list(pins)
         with open(path, "w") as fh:
             fh.write("\n".join(lines) + "\n")
         result = {"success": True, "output": f"Wrote {path} with {len(pins)} entries"}
@@ -418,7 +426,6 @@ def fix_missing_requirements(project_dir: str, pins: List[str]) -> Dict:
 
 
 def scan_gha_deprecations(root: str = ".") -> List[Dict]:
-    """Find workflow uses: actions/*@vN that are behind known-good majors."""
     tasks = []
     workflow_dirs = []
     for r, dirs, files in os.walk(root):
@@ -461,7 +468,6 @@ def scan_gha_deprecations(root: str = ".") -> List[Dict]:
 
 
 def fix_gha_version(path: str, action: str, new_ref: str) -> Dict:
-    """Replace uses: action@vN with known-good ref."""
     result = {"success": False, "output": "", "error": ""}
     try:
         with open(path, "r", errors="ignore") as fh:
