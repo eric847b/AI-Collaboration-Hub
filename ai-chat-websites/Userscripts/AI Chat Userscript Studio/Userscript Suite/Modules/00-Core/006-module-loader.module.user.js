@@ -84,6 +84,7 @@
         const FETCH_TIMEOUT = 30000;
 
         class ModuleLoader {
+            #container = null;
             #loadedModules = new Map();
             #moduleStates = new Map();
             #abortController = null;

@@ -96,10 +96,43 @@ function main() {
     console.log('  ' + (ok ? '✓' : '✗') + ' Toolchain: ' + label + '  [' + (ok ? 'guaranteed' : 'regression detected') + ']');
   }
 
+  // Parse gate — every shippable source must be syntactically valid JavaScript.
+  // Catches undeclared private fields, truncated concatenations, and other
+  // fatal-parse defects no functional harness covers: parse (never execute)
+  // the hub, every Modules/** userscript, and the dist bundle when present.
+  const vm = require('vm');
+  let parseFail = false;
+  const parseTargets = [path.join(ROOT, '00-hub.user.js')];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.user.js')) parseTargets.push(p);
+    }
+  };
+  walk(path.join(ROOT, 'Modules'));
+  for (const f of parseTargets) {
+    let ok = true, msg = 'parsed';
+    try { new vm.Script(fs.readFileSync(f, 'utf8'), { filename: path.relative(ROOT, f) }); }
+    catch (e) { ok = false; msg = e.message.split('\n')[0]; }
+    if (!ok) parseFail = true;
+    results.push({ label: 'Parse: ' + path.relative(ROOT, f), exit: ok ? 0 : 1, summary: msg });
+    console.log('  ' + (ok ? '✓' : '✗') + ' Parse: ' + path.relative(ROOT, f) + '  [' + msg + ']');
+  }
+  const distBundle = path.join(ROOT, 'dist', 'ai-chat-userscript-suite.bundle.user.js');
+  if (fs.existsSync(distBundle)) {
+    let ok = true, msg = 'parsed';
+    try { new vm.Script(fs.readFileSync(distBundle, 'utf8'), { filename: 'dist bundle' }); }
+    catch (e) { ok = false; msg = e.message.split('\n')[0]; }
+    if (!ok) parseFail = true;
+    results.push({ label: 'Parse: dist bundle', exit: ok ? 0 : 1, summary: msg });
+    console.log('  ' + (ok ? '✓' : '✗') + ' Parse: dist bundle  [' + msg + ']');
+  }
+
   console.log('  total harnesses: ' + results.length);
   console.log('  passing:         ' + results.filter(r => r.exit === 0).length);
   console.log('  failing:         ' + results.filter(r => r.exit !== 0).length);
-    if (anyFail || toolchainFail) {
+    if (anyFail || toolchainFail || parseFail) {
     console.log('\n  ✗ SUITE HEALTH FAILED — see failing harness(es) above.\n');
     process.exit(1);
   }
