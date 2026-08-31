@@ -71,10 +71,35 @@ function main() {
   }
 
   console.log('\n  ── summary ──');
+    // Toolchain regression guard — locks the zero-node_modules guarantee.
+  // Fails the gate if any future change re-introduces node_modules refs in the
+  // pre-commit hook, an npm-install lifecycle, or non-empty devDependencies.
+  let toolchainFail = false;
+  const hubPkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  const repoRoot = (() => { let d = ROOT; while (d !== path.dirname(d) && !fs.existsSync(path.join(d, '.git'))) d = path.dirname(d); return d; })();
+  const rootPkg = fs.existsSync(path.join(repoRoot, 'package.json')) ? JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')) : null;
+    // Strip full-line # comments first so legitimate mentions (e.g. the comment
+  // "zero node_modules required") don't false-positive; only actual CODE
+  // references to node_modules (like node_modules/.bin/<tool>) are a regression.
+  const preHookRaw = fs.readFileSync(path.join(repoRoot, '.husky', 'pre-commit'), 'utf8');
+  const preHook = preHookRaw.split('\n').map(l => l.trim().startsWith('#') ? '' : l).join('\n');
+  const guarantees = [
+    ['suite devDependencies empty', hubPkg && Object.keys(hubPkg.devDependencies || {}).length === 0],
+    ['root devDependencies empty', rootPkg && Object.keys(rootPkg.devDependencies || {}).length === 0],
+    ['hook contains no node_modules references', !preHook.includes('node_modules')],
+    ['hook delegates to js-gate.mjs', preHook.includes('js-gate.mjs')],
+    ['js-gate.mjs present at repo root', fs.existsSync(path.join(repoRoot, '.husky', 'js-gate.mjs'))]
+  ];
+  for (const [label, ok] of guarantees) {
+    if (!ok) toolchainFail = true;
+    results.push({ label: 'Toolchain: ' + label, exit: ok ? 0 : 1, summary: ok ? 'guaranteed' : 'regression detected' });
+    console.log('  ' + (ok ? '✓' : '✗') + ' Toolchain: ' + label + '  [' + (ok ? 'guaranteed' : 'regression detected') + ']');
+  }
+
   console.log('  total harnesses: ' + results.length);
   console.log('  passing:         ' + results.filter(r => r.exit === 0).length);
   console.log('  failing:         ' + results.filter(r => r.exit !== 0).length);
-  if (anyFail) {
+    if (anyFail || toolchainFail) {
     console.log('\n  ✗ SUITE HEALTH FAILED — see failing harness(es) above.\n');
     process.exit(1);
   }
