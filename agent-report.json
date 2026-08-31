@@ -1,0 +1,27 @@
+{
+  "version": "6.0",
+  "dry_run": false,
+  "max_tasks": 8,
+  "duplicates_closed": 6,
+  "scanned_at": "2026-08-31T12:21:32Z",
+  "tasks": [
+    {
+      "type": "lockfile",
+      "title": "Generate missing Node lockfile for ./ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite",
+      "impact": 2.5,
+      "risk": 0.12,
+      "success": true
+    },
+    {
+      "type": "lockfile",
+      "title": "Generate missing Node lockfile for .",
+      "impact": 1.2,
+      "risk": 0.12,
+      "success": true
+    }
+  ],
+  "counts_by_type": {
+    "lockfile": 2
+  },
+  "solved": 2
+}
