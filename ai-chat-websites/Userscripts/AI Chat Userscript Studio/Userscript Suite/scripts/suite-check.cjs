@@ -63,7 +63,8 @@ function main() {
     const ok = r.exit === 0;
     if (!ok) anyFail = true;
     results.push({ label, exit: r.exit, summary: r.summary });
-    console.log('  ' + (ok ? '✓' : '✗') + ' ' + label + '  [' + (r.summary || 'exit ' + r.exit) + ']');
+    const detail = ok ? (r.summary || 'exit 0') : ((r.summary ? r.summary + ' — ' : '') + 'exit ' + r.exit);
+    console.log('  ' + (ok ? '✓' : '✗') + ' ' + label + '  [' + detail + ']');
     if (!ok && r.exit === null && r.out) {
       console.log('    (timed out or crashed — tail: ' + (r.out.split('\n').filter(Boolean).slice(-3).join(' | ')) + ')');
     }
