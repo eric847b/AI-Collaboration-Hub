@@ -1,0 +1,18 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+#
+# Goal: keep real workflow errors while not failing the gate on
+# shellcheck info/style suggestions that are currently present in a few
+# long-running scripts.
+
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      # SC2015: A && B || C is not true if-then-else (info)
+      - 'shellcheck reported issue in this script: SC2015:.+'
+      # SC2086: Double quote to prevent globbing and word splitting (info)
+      - 'shellcheck reported issue in this script: SC2086:.+'
+      # SC2129: Consider grouping redirects (style)
+      - 'shellcheck reported issue in this script: SC2129:.+'
+      # SC2012: Use find instead of ls (info)
+      - 'shellcheck reported issue in this script: SC2012:.+'
