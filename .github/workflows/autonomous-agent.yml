@@ -45,46 +45,23 @@ jobs:
       - name: Install dependencies
         run: pip install PyGithub openai anthropic requests 2>/dev/null || pip install PyGithub requests
 
-      - name: Cleanup stale auto-fix branches first
+      - name: auto_ops (spam / Dependabot / branches / actionlint)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          AUTO_MERGE_DEPENDABOT: '1'
+          MAX_DEP_MERGES: '6'
         run: |
-          python << 'PY'
-          import os
-          try:
-              from github import Github
-          except ImportError:
-              raise SystemExit(0)
-          token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("REPO")
-          if not token or not repo:
-              raise SystemExit(0)
-          g = Github(token)
-          r = g.get_repo(repo)
-          main_sha = r.get_branch("main").commit.sha
-          for b in r.get_branches():
-              if b.name in ("main", "master") or b.protected:
-                  continue
-              if not b.name.startswith("auto-fix-"):
-                  continue
-              try:
-                  if b.commit.sha == main_sha:
-                      r.get_git_ref(f"heads/{b.name}").delete()
-                      print("deleted", b.name)
-                      continue
-                  cmp = r.compare("main", b.name)
-                  if cmp.ahead_by == 0:
-                      r.get_git_ref(f"heads/{b.name}").delete()
-                      print("deleted-merged", b.name)
-              except Exception as e:
-                  print("skip", b.name, e)
-          PY
+          if [ -f autonomous-github-agent/.github/scripts/auto_ops.py ]; then
+            python autonomous-github-agent/.github/scripts/auto_ops.py || true
+          fi
 
-      - name: Run v4.4 problem solvers (syntax / peer / lockfiles)
+      - name: Run v6.1 problem solvers (syntax / peer / lockfiles)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           AGENT_OWNS_GITHUB: '1'
+          AUTO_MERGE_DEPENDABOT: '1'
         run: |
           if [ -f autonomous-github-agent/.github/scripts/problem_solvers_runner.py ]; then
             python autonomous-github-agent/.github/scripts/problem_solvers_runner.py || true
@@ -116,4 +93,5 @@ jobs:
       - name: Status Report
         run: |
           echo "Monorepo autonomous agent run completed"
+          cat auto-ops-report.json 2>/dev/null || echo "No auto-ops report"
           cat .agent_profile.json 2>/dev/null || echo "No global profile yet"
