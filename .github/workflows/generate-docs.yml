@@ -37,7 +37,7 @@ jobs:
           npx typedoc --out ../docs/api/nexus-infinity-hub src/ 2>/dev/null || echo "TypeDoc generation completed"
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -62,7 +62,7 @@ jobs:
           fi
 
       - name: Upload docs artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-docs
           path: docs/api/
@@ -81,7 +81,7 @@ jobs:
           EOF
 
       - name: Deploy to GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: 'docs/'
         continue-on-error: true
@@ -99,4 +99,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
