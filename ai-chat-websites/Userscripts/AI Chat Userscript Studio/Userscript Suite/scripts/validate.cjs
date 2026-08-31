@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const { spawnSync } = require('child_process');
 const utils = require('./bundler-utils.cjs');
 
@@ -161,21 +162,36 @@ function collectReferencedFiles(pkg) {
   return Array.from(referenced).sort();
 }
 
+const ESM_SYNTAX_RE = /(?:^|[;{}()\n])\s*(?:import\s+[\w$*{,\s'"]|import\s*['"]|export\s+(?:default|const|let|var|function|class|async|\{))/;
+
 function checkNodeSyntax(filePath, reporter = createReporter()) {
   const label = path.relative(BASE_DIR, filePath);
-  const result = spawnSync(process.execPath, ['--check', filePath], {
-    encoding: 'utf-8'
-  });
-
-  if (result.error) {
-    reporter.addIssue(`${label}: Node syntax check could not run (${result.error.message})`);
+  let code;
+  try {
+    code = fs.readFileSync(filePath, 'utf-8');
+  } catch (e) {
+    reporter.addIssue(`${label}: Node syntax check could not run (${e.message})`);
     return reporter;
   }
 
-  if (result.status !== 0) {
-    reporter.addIssue(`${label}: Node syntax check failed`);
+  try {
+    // Fast path: in-process parse check (equivalent to `node --check` for
+    // CommonJS/Script sources) — no subprocess spawn per file.
+    new vm.Script(code, { filename: filePath });
+  } catch (err) {
+    if (ESM_SYNTAX_RE.test(code)) {
+      // vm.Script is Script/CJS-only and rejects ESM module syntax. Fall back
+      // to the real parser, which honors .mjs and package.json "type".
+      const result = spawnSync(process.execPath, ['--check', filePath], { encoding: 'utf-8' });
+      if (result.error) {
+        reporter.addIssue(`${label}: Node syntax check could not run (${result.error.message})`);
+      } else if (result.status !== 0) {
+        reporter.addIssue(`${label}: Node syntax check failed`);
+      }
+    } else {
+      reporter.addIssue(`${label}: Node syntax check failed (${err.message})`);
+    }
   }
-
   return reporter;
 }
 
