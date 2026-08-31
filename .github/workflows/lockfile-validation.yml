@@ -29,12 +29,7 @@ jobs:
 
             # has_deps=1 only when package.json lists real dependencies
             has_deps=0
-            if python3 -c "
-import json,sys
-d=json.load(open(sys.argv[1]))
-has = bool(d.get('dependencies') or d.get('devDependencies') or d.get('optionalDependencies'))
-sys.exit(0 if has else 1)
-" "$pkg" 2>/dev/null; then
+            if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if (d.get('dependencies') or d.get('devDependencies') or d.get('optionalDependencies')) else 1)" "$pkg" 2>/dev/null; then
               has_deps=1
             fi
 
