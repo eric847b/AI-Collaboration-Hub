@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-auto_ops v1.1 — autonomous operational maintenance (maximize free GitHub resources).
+auto_ops v1.2 — autonomous operational maintenance (maximize free GitHub resources).
 
 Handles failure classes without calling an LLM:
   1. Duplicate 🤖 Lockfile / auto-fix draft PR spam
-  2. Safe Dependabot patch auto-merge (semver-patch only, green checks)
+  2. Safe Dependabot patch auto-merge (semver-patch + named *-patches groups, green checks)
   3. Conflicted Dependabot: @dependabot rebase / recreate (free bot)
   4. Stale auto-fix-* branch cleanup
   5. Ensure actionlint.yaml silences non-blocking shellcheck advisories
@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional, Tuple
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("auto_ops")
 
-VERSION = "1.1"
+VERSION = "1.2"
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 AUTO_MERGE_DEPENDABOT = os.getenv("AUTO_MERGE_DEPENDABOT", "1") == "1"
 MAX_DEP_MERGES = int(os.getenv("MAX_DEP_MERGES", "8"))
@@ -50,7 +50,7 @@ except ImportError:
     GITHUB_AVAILABLE = False
     GithubException = Exception  # type: ignore
 
-ACTIONLINT_YAML = """# Managed by autonomous-github-agent auto_ops v1.1
+ACTIONLINT_YAML = """# Managed by autonomous-github-agent auto_ops v1.2
 # Keep real errors; silence noisy shellcheck info/style that actionlint promotes to fail.
 self-hosted-runner:
   labels: []
@@ -69,6 +69,12 @@ SKIP_LOCKFILE_TOKENS = (
     "ai chat userscript studio",
     "/archive/",
     "/archives/",
+)
+
+# Dependabot group names we treat as patch-class (from dependabot.yml groups)
+PATCH_GROUP_RE = re.compile(
+    r"\b(?:npm[-_]?[\w-]*[-_]?patches|production-patches|patches)\b",
+    re.I,
 )
 
 
@@ -180,15 +186,20 @@ def close_all_lockfile_spam(r=None) -> Dict[str, Any]:
 
 
 def _is_patch_bump(title: str) -> bool:
+    """True for single-package patch bumps or Dependabot *-patches group PRs."""
+    t = title or ""
+    # Grouped patch updates from dependabot.yml (e.g. npm-dash-patches, production-patches)
+    if PATCH_GROUP_RE.search(t) and "group" in t.lower():
+        return True
     m = re.search(
         r"from\s+(\d+)\.(\d+)\.(\d+)\s+to\s+(\d+)\.(\d+)\.(\d+)",
-        title or "",
+        t,
         re.I,
     )
     if not m:
         m = re.search(
             r"(\d+)\.(\d+)\.(\d+)\s+to\s+(\d+)\.(\d+)\.(\d+)",
-            title or "",
+            t,
             re.I,
         )
     if not m:
