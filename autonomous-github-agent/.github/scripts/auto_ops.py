@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-auto_ops v1.0 — autonomous operational maintenance for AI-Collaboration-Hub.
+auto_ops v1.1 — autonomous operational maintenance (maximize free GitHub resources).
 
-Handles the failure classes that previously required human intervention:
+Handles failure classes without calling an LLM:
   1. Duplicate 🤖 Lockfile / auto-fix draft PR spam
   2. Safe Dependabot patch auto-merge (semver-patch only, green checks)
-  3. Stale auto-fix-* branch cleanup
-  4. Ensure actionlint.yaml silences non-blocking shellcheck advisories
+  3. Conflicted Dependabot: @dependabot rebase / recreate (free bot)
+  4. Stale auto-fix-* branch cleanup
+  5. Ensure actionlint.yaml silences non-blocking shellcheck advisories
 
 Env:
   GITHUB_TOKEN, REPO (required for GitHub ops)
   DRY_RUN=1               — report only
   AUTO_MERGE_DEPENDABOT=1 — enable patch auto-merge (default 1)
   MAX_DEP_MERGES=8        — cap merges per run
+  CONFLICT_RECREATE_DAYS=14 — after this many days, recreate instead of rebase
 """
 
 from __future__ import annotations
@@ -23,16 +25,21 @@ import os
 import re
 import time
 from collections import defaultdict
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("auto_ops")
 
-VERSION = "1.0"
+VERSION = "1.1"
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 AUTO_MERGE_DEPENDABOT = os.getenv("AUTO_MERGE_DEPENDABOT", "1") == "1"
 MAX_DEP_MERGES = int(os.getenv("MAX_DEP_MERGES", "8"))
+CONFLICT_RECREATE_DAYS = int(os.getenv("CONFLICT_RECREATE_DAYS", "14"))
+
+MARKER_REBASE = "<!-- auto_ops:request-rebase -->"
+MARKER_RECREATE = "<!-- auto_ops:request-recreate -->"
 
 try:
     from github import Github
@@ -43,7 +50,7 @@ except ImportError:
     GITHUB_AVAILABLE = False
     GithubException = Exception  # type: ignore
 
-ACTIONLINT_YAML = """# Managed by autonomous-github-agent auto_ops v1
+ACTIONLINT_YAML = """# Managed by autonomous-github-agent auto_ops v1.1
 # Keep real errors; silence noisy shellcheck info/style that actionlint promotes to fail.
 self-hosted-runner:
   labels: []
@@ -56,7 +63,6 @@ shellcheck:
     - SC2012  # Use find instead of ls
 """
 
-# Paths that should never get lockfile draft PRs
 SKIP_LOCKFILE_TOKENS = (
     "userscripts",
     "userscript suite",
@@ -80,22 +86,9 @@ def _repo():
         return None
 
 
-def _is_bot_pr(title: str, head_ref: str = "") -> bool:
-    t = (title or "").lower()
-    h = (head_ref or "").lower()
-    return (
-        t.startswith("🤖")
-        or "lockfile" in t
-        or h.startswith("auto-fix")
-        or h.startswith("dependabot/")
-    )
-
-
 def _lockfile_key(title: str) -> str:
-    """Normalize 🤖 Lockfile titles so '.' and truncated paths group together."""
     t = title or ""
     if t.startswith("🤖 Lockfile"):
-        # Strip emoji prefix and collapse whitespace; keep first 48 chars
         rest = re.sub(r"^🤖\s*Lockfile:\s*", "", t, flags=re.I).strip()
         return "lock:" + rest[:48].lower()
     if t.startswith("🤖"):
@@ -104,7 +97,6 @@ def _lockfile_key(title: str) -> str:
 
 
 def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
-    """Close older open bot draft PRs that share the same normalized key. Keep newest."""
     r = r or _repo()
     result = {"closed": [], "kept": [], "errors": []}
     if not r:
@@ -118,13 +110,11 @@ def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
                 head = pr.head.ref if pr.head else ""
             except Exception:
                 pass
-            # Only bot/lockfile drafts (not Dependabot)
             if head.startswith("dependabot/"):
                 continue
             if not (title.startswith("🤖") or head.startswith("auto-fix")):
                 continue
             if not pr.draft and not title.startswith("🤖 Lockfile"):
-                # Still close non-draft lockfile spam if any
                 if not title.startswith("🤖"):
                     continue
             key = _lockfile_key(title)
@@ -144,8 +134,7 @@ def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
                 old.edit(state="closed")
                 try:
                     old.create_issue_comment(
-                        "Closed by auto_ops: duplicate bot/lockfile draft "
-                        f"(kept #{prs_sorted[0].number})."
+                        f"Closed by auto_ops: duplicate bot/lockfile draft (kept #{prs_sorted[0].number})."
                     )
                 except Exception:
                     pass
@@ -157,10 +146,6 @@ def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
 
 
 def close_all_lockfile_spam(r=None) -> Dict[str, Any]:
-    """
-    Nuclear option for known-bad lockfile targets: close EVERY open
-    🤖 Lockfile PR for root (.) and Userscripts paths — they are not useful.
-    """
     r = r or _repo()
     result = {"closed": [], "errors": []}
     if not r:
@@ -171,11 +156,7 @@ def close_all_lockfile_spam(r=None) -> Dict[str, Any]:
             if not title.startswith("🤖 Lockfile"):
                 continue
             lower = title.lower()
-            bad = (
-                lower.rstrip().endswith(": .")
-                or lower.rstrip().endswith(": .")
-                or any(t in lower for t in SKIP_LOCKFILE_TOKENS)
-            )
+            bad = lower.rstrip().endswith(": .") or any(t in lower for t in SKIP_LOCKFILE_TOKENS)
             if not bad:
                 continue
             if DRY_RUN:
@@ -199,15 +180,12 @@ def close_all_lockfile_spam(r=None) -> Dict[str, Any]:
 
 
 def _is_patch_bump(title: str) -> bool:
-    """Detect semver-patch Dependabot titles: x.y.Z -> x.y.Z+n"""
-    # e.g. bump foo from 1.2.3 to 1.2.4
     m = re.search(
         r"from\s+(\d+)\.(\d+)\.(\d+)\s+to\s+(\d+)\.(\d+)\.(\d+)",
         title or "",
         re.I,
     )
     if not m:
-        # also accept short forms like 5.0.14 to 5.0.15
         m = re.search(
             r"(\d+)\.(\d+)\.(\d+)\s+to\s+(\d+)\.(\d+)\.(\d+)",
             title or "",
@@ -220,31 +198,22 @@ def _is_patch_bump(title: str) -> bool:
 
 
 def _pr_checks_green(pr) -> Tuple[bool, str]:
-    """Best-effort: allow merge if no failing required checks."""
     try:
-        # Combined status (legacy)
         status = pr.get_commits().reversed[0].get_combined_status()
         if status.state == "failure":
             return False, "combined_status=failure"
-        # Check runs via head SHA
         sha = pr.head.sha
         checks = pr.base.repo.get_commit(sha).get_check_runs()
         failing = [
             c.name
             for c in checks
             if c.conclusion in ("failure", "timed_out", "cancelled")
-            and c.name
-            not in (
-                # Historically noisy / non-blocking for dep bumps
-                "validate-lockfiles",
-                "Lockfile Validation",
-            )
+            and c.name not in ("validate-lockfiles", "Lockfile Validation")
         ]
         if failing:
             return False, "failing:" + ",".join(failing[:5])
         return True, "ok"
     except Exception as e:
-        # If we cannot determine, be conservative unless mergeable_state is clean
         try:
             if pr.mergeable and pr.mergeable_state in ("clean", "unstable", None):
                 return True, f"mergeable_fallback:{pr.mergeable_state}"
@@ -253,8 +222,89 @@ def _pr_checks_green(pr) -> Tuple[bool, str]:
         return False, f"check_error:{e}"
 
 
+def _pr_has_marker(pr, marker: str) -> bool:
+    try:
+        for c in pr.get_issue_comments():
+            body = c.body or ""
+            if marker in body:
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _pr_age_days(pr) -> float:
+    try:
+        created = pr.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - created).total_seconds() / 86400.0
+    except Exception:
+        return 0.0
+
+
+def handle_conflicted_dependabot(r=None) -> Dict[str, Any]:
+    """
+    Free GitHub path: ask Dependabot to rebase or recreate conflicted PRs.
+    No LLM. Markers prevent comment spam on every Self-Heal cycle.
+    """
+    r = r or _repo()
+    result = {"rebase_requests": [], "recreate_requests": [], "skipped": [], "errors": []}
+    if not r:
+        return result
+    try:
+        for pr in r.get_pulls(state="open"):
+            try:
+                user = (pr.user.login or "").lower()
+            except Exception:
+                user = ""
+            if user != "dependabot[bot]":
+                continue
+            title = pr.title or ""
+            # Only auto-heal patch bumps this way; majors stay for human/AI review
+            if not _is_patch_bump(title):
+                result["skipped"].append({"number": pr.number, "reason": "not-patch-conflict-policy"})
+                continue
+            try:
+                # Force mergeable computation
+                _ = pr.mergeable
+                if pr.mergeable is not False:
+                    continue
+            except Exception:
+                continue
+
+            age = _pr_age_days(pr)
+            use_recreate = age >= CONFLICT_RECREATE_DAYS
+            marker = MARKER_RECREATE if use_recreate else MARKER_REBASE
+            cmd = "@dependabot recreate" if use_recreate else "@dependabot rebase"
+
+            if _pr_has_marker(pr, marker):
+                result["skipped"].append({"number": pr.number, "reason": "already-requested", "cmd": cmd})
+                continue
+
+            body = (
+                f"{cmd}\n\n{marker}\n"
+                f"auto_ops v{VERSION}: conflicted Dependabot patch "
+                f"(age≈{age:.0f}d). Using free GitHub Dependabot — no AI call."
+            )
+            if DRY_RUN:
+                key = "recreate_requests" if use_recreate else "rebase_requests"
+                result[key].append({"number": pr.number, "action": "would-comment", "cmd": cmd})
+                continue
+            try:
+                pr.create_issue_comment(body)
+                key = "recreate_requests" if use_recreate else "rebase_requests"
+                result[key].append({"number": pr.number, "cmd": cmd, "age_days": round(age, 1)})
+                log.info("Requested %s on conflicted PR #%s", cmd, pr.number)
+                time.sleep(0.5)
+            except Exception as e:
+                result["errors"].append({"number": pr.number, "error": str(e)})
+    except Exception as e:
+        result["errors"].append(str(e))
+    return result
+
+
 def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
-    """Squash-merge Dependabot patch PRs that look safe."""
     r = r or _repo()
     result = {"merged": [], "skipped": [], "errors": []}
     if not r or not AUTO_MERGE_DEPENDABOT:
@@ -265,11 +315,10 @@ def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
         for pr in r.get_pulls(state="open", sort="created", direction="asc"):
             if merged_count >= MAX_DEP_MERGES:
                 break
-            user = ""
             try:
                 user = (pr.user.login or "").lower()
             except Exception:
-                pass
+                user = ""
             if user != "dependabot[bot]":
                 continue
             title = pr.title or ""
@@ -279,7 +328,6 @@ def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
             if pr.draft:
                 result["skipped"].append({"number": pr.number, "reason": "draft"})
                 continue
-            # Conflicts
             try:
                 if pr.mergeable is False:
                     result["skipped"].append({"number": pr.number, "reason": "conflicts"})
@@ -297,14 +345,11 @@ def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
                 merged_count += 1
                 continue
             try:
-                pr.merge(
-                    commit_title=f"{title} (#{pr.number})",
-                    merge_method="squash",
-                )
+                pr.merge(commit_title=f"{title} (#{pr.number})", merge_method="squash")
                 result["merged"].append({"number": pr.number, "title": title})
                 merged_count += 1
                 log.info("Merged Dependabot patch PR #%s: %s", pr.number, title)
-                time.sleep(1.5)  # let base update between merges
+                time.sleep(1.5)
             except GithubException as e:
                 result["errors"].append({"number": pr.number, "error": str(e)})
             except Exception as e:
@@ -315,7 +360,6 @@ def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
 
 
 def cleanup_stale_autofix_branches(r=None) -> Dict[str, Any]:
-    """Delete auto-fix-* branches that match main or have 0 commits ahead."""
     r = r or _repo()
     result = {"deleted": [], "errors": []}
     if not r:
@@ -351,13 +395,11 @@ def cleanup_stale_autofix_branches(r=None) -> Dict[str, Any]:
 
 
 def ensure_actionlint_config(root: str = ".") -> Dict[str, Any]:
-    """Write .github/actionlint.yaml if missing or empty."""
     path = Path(root) / ".github" / "actionlint.yaml"
     result = {"path": str(path), "action": "none"}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.is_file() and path.stat().st_size > 20:
-            # Ensure ignore list contains our known codes
             text = path.read_text(errors="ignore")
             missing = [c for c in ("SC2015", "SC2086", "SC2129", "SC2012") if c not in text]
             if not missing:
@@ -375,7 +417,13 @@ def ensure_actionlint_config(root: str = ".") -> Dict[str, Any]:
 
 
 def run_all() -> Dict[str, Any]:
-    log.info("auto_ops v%s starting (DRY_RUN=%s AUTO_MERGE=%s)", VERSION, DRY_RUN, AUTO_MERGE_DEPENDABOT)
+    log.info(
+        "auto_ops v%s starting (DRY_RUN=%s AUTO_MERGE=%s CONFLICT_RECREATE_DAYS=%s)",
+        VERSION,
+        DRY_RUN,
+        AUTO_MERGE_DEPENDABOT,
+        CONFLICT_RECREATE_DAYS,
+    )
     r = _repo()
     report: Dict[str, Any] = {
         "version": VERSION,
@@ -385,6 +433,7 @@ def run_all() -> Dict[str, Any]:
         "duplicate_drafts": close_duplicate_bot_drafts(r),
         "policy_lockfile_spam": close_all_lockfile_spam(r),
         "stale_branches": cleanup_stale_autofix_branches(r),
+        "dependabot_conflicts": handle_conflicted_dependabot(r),
         "dependabot_merges": auto_merge_safe_dependabot(r),
     }
     try:
@@ -399,11 +448,15 @@ def run_all() -> Dict[str, Any]:
     )
     n_merged = len(report["dependabot_merges"].get("merged", []))
     n_branches = len(report["stale_branches"].get("deleted", []))
+    n_rebase = len(report["dependabot_conflicts"].get("rebase_requests", []))
+    n_recreate = len(report["dependabot_conflicts"].get("recreate_requests", []))
     log.info(
-        "auto_ops done — closed_prs=%s merged_deps=%s deleted_branches=%s",
+        "auto_ops done — closed_prs=%s merged_deps=%s deleted_branches=%s rebase=%s recreate=%s",
         n_closed,
         n_merged,
         n_branches,
+        n_rebase,
+        n_recreate,
     )
     return report
 
