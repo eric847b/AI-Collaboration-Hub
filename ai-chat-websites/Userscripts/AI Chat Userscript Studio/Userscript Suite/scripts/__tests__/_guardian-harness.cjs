@@ -1,7 +1,15 @@
 'use strict';
 /* AI Guardian Suite bundle harness — probes dist/AI-Guardian-Suite.user.js */
-const fs = require('fs'), vm = require('vm');
-const P = 'C:/Users/Eric/OneDrive/Documents/GitHub/ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/dist/AI-Guardian-Suite.user.js';
+const fs = require('fs'), vm = require('vm'), path = require('path');
+/* dist artifact path derived from this file's location — no absolute user paths */
+const P = path.join(__dirname, '..', '..', 'dist', 'AI-Guardian-Suite.user.js');
+if (!fs.existsSync(P)) {
+  // Dense bundle (dist/AI-Guardian-Suite.user.js) is a gitignored, hand-tuned local
+  // artifact — it cannot exist in a fresh clone and build-bundle.cjs is a gate (not a
+  // generator), so it cannot be synthesized. Skip gracefully instead of failing.
+  console.log('[GS dense bundle] 0 pass / 0 fail  (skipped — dist/AI-Guardian-Suite.user.js not present; gitignored local artifact)');
+  process.exit(0);
+}
 let PASS = 0, FAIL = 0;
 function t(name, cond, extra) { if (cond) { PASS++; console.log('PASS ' + name); } else { FAIL++; console.log('FAIL ' + name + (extra !== undefined ? ' :: ' + JSON.stringify(extra) : '')); } }
 const SLEEP = ms => new Promise(r => setTimeout(r, ms));

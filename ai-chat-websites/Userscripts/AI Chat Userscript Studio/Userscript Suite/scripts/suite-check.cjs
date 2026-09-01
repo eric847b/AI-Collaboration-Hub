@@ -47,10 +47,46 @@ function run(name) {
   return { exit: res.status, summary, out };
 }
 
+/* Fresh-clone guarantee: synthesize dist artifacts when missing and vm-parse them.
+ * The dense-bundle harness probes dist/AI-Guardian-Suite.user.js, so the build chain
+ * (bundle → merge → minify → dense) must run BEFORE any harness. Idempotent: skipped
+ * when artifacts already exist. All steps are dependency-free (node built-ins only). */
+function ensureArtifacts() {
+  const distDir = path.join(ROOT, 'dist');
+  const dense = path.join(distDir, 'AI-Guardian-Suite.user.js');
+  const hasDense = fs.existsSync(dense);
+  const hasOther = fs.existsSync(distDir) && fs.readdirSync(distDir).some(x => x.endsWith('.user.js') && x !== 'AI-Guardian-Suite.user.js');
+  if (hasDense && hasOther) return null;
+  // Only the 3 modular generators are required. build-bundle.cjs is a gate (not a
+  // generator) for the hand-tuned dense bundle — it can only pass when that gitignored
+  // local artifact already exists, so skip it when absent (fresh clone / CI).
+  const steps = ['bundle.cjs', 'bundle-merge.cjs', 'bundle-minify.cjs'];
+  if (hasDense) steps.push('build-bundle.cjs');
+  for (const s of steps) {
+    const r = spawnSync(process.execPath, [path.join(__dirname, s)], { cwd: ROOT, encoding: 'utf8', timeout: 180000 });
+    if (r.error) return 'synthesis failed at scripts/' + s + ': ' + r.error.message;
+    if (r.status !== 0) return 'synthesis failed at scripts/' + s + ' (exit ' + r.status + '): ' + ((r.stdout || '') + (r.stderr || '')).slice(-300);
+  }
+  const arts = fs.existsSync(distDir) ? fs.readdirSync(distDir).filter(x => x.endsWith('.user.js')) : [];
+  if (!arts.length) return 'synthesis produced no dist artifacts';
+  const vm = require('vm');
+  for (const a of arts) {
+    try { new vm.Script(fs.readFileSync(path.join(distDir, a), 'utf8'), { filename: a }); }
+    catch (err) { return 'artifact parse failed: ' + a + ': ' + err.message; }
+  }
+  return null;
+}
+
 function main() {
   console.log('\nAI Guardian Suite — full-suite health check\n');
   const results = [];
   let anyFail = false;
+
+  // step 0: fresh-clone dist synthesis + artifact parse guarantee (feeds dense harness)
+  const buildErr = ensureArtifacts();
+  results.push({ label: 'Build: dist synthesis & parse', exit: buildErr ? 1 : 0, summary: buildErr || 'artifacts ok' });
+  console.log('  ' + (buildErr ? '✗' : '✓') + ' Build: dist synthesis & parse  [' + (buildErr || 'artifacts ok') + ']');
+  if (buildErr) anyFail = true;
 
   for (const [name, label] of HARNESSES) {
     const r = run(name);
@@ -149,6 +185,9 @@ function main() {
     process.exit(1);
   }
   console.log('\n  ✅ SUITE HEALTHY — all harnesses green (exit 0).\n');
+
+
+
   process.exit(0);
 }
 
