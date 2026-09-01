@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "dry_run": false,
+  "scanned_at": "2026-09-01T01:39:01Z",
+  "actionlint": {
+    "path": ".github/actionlint.yaml",
+    "action": "exists"
+  },
+  "duplicate_drafts": {
+    "closed": [],
+    "kept": [],
+    "errors": []
+  },
+  "policy_lockfile_spam": {
+    "closed": [],
+    "errors": []
+  },
+  "stale_branches": {
+    "deleted": [],
+    "errors": []
+  },
+  "dependabot_merges": {
+    "merged": [],
+    "skipped": [
+      {
+        "number": 278,
+        "reason": "not-patch",
+        "title": "ci(deps): update groq requirement from >=0.9.0 to >=1.7.0"
+      },
+      {
+        "number": 279,
+        "reason": "not-patch",
+        "title": "ci(deps): update groq requirement from >=0.9.0 to >=1.7.0 in /singularity-operator"
+      },
+      {
+        "number": 437,
+        "reason": "not-patch",
+        "title": "ci(deps): bump actions/setup-node from 4 to 7"
+      },
+      {
+        "number": 439,
+        "reason": "not-patch",
+        "title": "ci(deps): bump zod from 4.4.3 to 4.5.2 in /nexus-infinity-hub"
+      },
+      {
+        "number": 440,
+        "reason": "not-patch",
+        "title": "ci(deps): bump input-otp from 1.4.2 to 1.5.0 in /nexus-infinity-hub"
+      },
+      {
+        "number": 441,
+        "reason": "not-patch",
+        "title": "ci(deps-dev): bump lint-staged from 15.5.2 to 17.4.1 in /nexus-infinity-hub"
+      },
+      {
+        "number": 442,
+        "reason": "not-patch",
+        "title": "ci(deps): bump react-hook-form from 7.83.0 to 7.86.0 in /nexus-infinity-hub"
+      },
+      {
+        "number": 443,
+        "reason": "not-patch",
+        "title": "ci(deps): bump the npm-third-door-patches group in /third-door-blink-controller with 16 updates"
+      },
+      {
+        "number": 444,
+        "reason": "not-patch",
+        "title": "ci(deps): bump react-native-screens from 4.26.1 to 4.27.0 in /third-door-blink-controller"
+      },
+      {
+        "number": 445,
+        "reason": "not-patch",
+        "title": "ci(deps): bump @blinkdotnew/sdk from 2.7.1 to 2.9.0 in /third-door-blink-controller"
+      }
+    ],
+    "errors": []
+  }
+}

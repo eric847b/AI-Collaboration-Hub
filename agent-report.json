@@ -1,0 +1,14 @@
+{
+  "version": "6.1",
+  "dry_run": false,
+  "max_tasks": 8,
+  "auto_ops": {
+    "merged_deps": 0,
+    "closed_spam": 0,
+    "deleted_branches": 0
+  },
+  "scanned_at": "2026-09-01T01:40:20Z",
+  "tasks": [],
+  "counts_by_type": {},
+  "solved": 0
+}
