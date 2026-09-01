@@ -1,11 +1,12 @@
 # AI Session Handoff — Userscript Suite + Zero-deps Workspace
 
-> **TL;DR.** Two features complete and pushed; 9 files from other sessions are
-> **unstaged-and-untouched-in-this-repo** (do not stage/revert them).
+> **TL;DR.** Feature work complete and pushed (Userscript Suite registration,
+> zero-`node_modules` toolchain, VectorFS branch checkout); 8 files from other
+> sessions are **unstaged-and-untouched-in-this-repo** (do not stage/revert them).
 > See `.renitor/handoff-result.json` for the machine-readable version.
 
-- **Updated:** 2026-08-30 by Cline
-- **Branch:** `main`; feature work through `16a6a31` is on origin/main — this handoff commit is pushed immediately after authoring (live sync state: `.renitor/handoff-result.json`)
+- **Updated:** 2026-09-01 (UTC) by Cline (latest: VectorFS branch checkout `753ef1f`)
+- **Branch:** `main`; feature work through `753ef1f` is on origin/main — this handoff commit is pushed immediately after authoring (live sync state: `.renitor/handoff-result.json`)
 - **Toolchain:** zero `node_modules` (deleted). Hooks via `core.hooksPath=.husky`.
 
 ---
@@ -47,6 +48,25 @@
   positives (sentiment word-lists, test fixtures, the code-assistant's own
   TODO-detector). `suite-check` 334/334 green after the rewrite.
 
+### 3. VectorFS branch checkout (git-like semantics) ✅
+- **Commit:** `753ef1f` (5 files, +92/−6) — area: `VectorFS/branches/*`, `VectorFS/tests/`
+- **What changed:**
+  - `branch_checkout()` actually swaps the active branch now: loads the target's
+    committed tree root + generation, validates the record, then publishes via
+    `BranchStore::set_current()` (fails *before* publishing if unreadable).
+    Re-checkout of the current branch is a successful no-op (matches git).
+  - `branch_create()` rejects empty names and **seeds new branches from the active
+    branch** (root inherited, `parent_generation` = fork point); the **first-ever
+    branch auto-activates** (git-init semantics).
+  - `BranchStore` gained `update()` (upsert), `set_current()` (fails unless the
+    branch exists), `current()`; `branch_current()` accessor added to `branch_ops.h`.
+  - Deliberate deferral: node-store materialization of the working tree lands with
+    the superblock/journal wiring; generations advance on commit, never on checkout.
+- **Verified by:** `tests/branch_checkout.cpp` — 13 assertions (unknown-branch
+  failure, auto-activation, no-op re-checkout, HEAD seeding, duplicate rejection,
+  switch/back switching, failed checkout leaves current intact); compiled and run
+  green before the commit.
+
 ### Supporting hardening (same push sequence)
 - **`b934966`** — fresh-clone suite gate: `suite-check.cjs` step-0 synthesizes
   `dist` artifacts (bundle → merge → minify → vm-parse gate) so a fresh clone
@@ -65,10 +85,12 @@
 | `tools/bootstrap.ps1` | Activates git hooks via `git config core.hooksPath .husky` (no husky) |
 | `package.json` (root) | `devDependencies: {}` |
 | `ai-guardian-suite-ci.yml` | CI runs install-free |
-| `scripts/suite-check.cjs` | 13/13 green — the single source of truth for suite health |
+| `scripts/suite-check.cjs` | 334/334 harnesses green — the single source of truth for suite health |
 | `scripts/build-bundle.cjs` | Graceful skip on missing gitignored dense bundle |
 | `scripts/bundler-utils.cjs` | Stateful tokenizer minifier (not the old blind regex pipeline) |
 | `00-hub.user.js` | `normalizeRegisterArgs()` auto-registration |
+| `VectorFS/branches/branch_ops.cpp` | Branch checkout/creation semantics (current-branch tracking, fork-point seeding) |
+| `VectorFS/tests/branch_checkout.cpp` | 13-assertion behavioral test for the above |
 
 ---
 
@@ -97,7 +119,7 @@ dedicated commit. Do **not** fold them into the next Userscript-Suite commit.
 ## Validation (all exit 0)
 
 - `npm run gate` (no `node_modules`) → green
-- `node scripts/suite-check.cjs` → **334/334 green** (8 functional + 13 zero-deps/parse checks)
+- `node scripts/suite-check.cjs` → **334/334 harnesses green, exit 0** (8 functional suites + 5 zero-deps toolchain guarantees + module/dist parse gates)
 - `node scripts/validate.cjs` → exit 0
 - `node --check build-bundle.cjs` → exit 0
 - `node .husky/js-gate.mjs` on empty/JSON-only stdin → exit 0
@@ -106,7 +128,7 @@ dedicated commit. Do **not** fold them into the next Userscript-Suite commit.
 
 ## How to continue
 
-1. `git fetch && git reset --hard origin/main` (ensure clean base — your work is on `main` as commit `16a6a31`).
-2. The 9 other-session files will re-appear as unstaged diffs — leave them.
-3. For Userscript-Suite work: `cd \"Userscript Suite\"` and run `npm run check:suite` or `npm run validate`.
-4. To make a new change visible fast, commit directly to `main` and run `resilient-git.ps1 sync -Repo <root>`.
+1. **Sync safely** — `powershell -ExecutionPolicy Bypass -File 'C:\Users\Eric\Documents\Cline\Hooks\resilient-git.ps1' sync -Repo <workspace-root>` (fetches, reconciles, pushes; discards nothing). **Never run `git reset --hard`/`git checkout .` here — the 8 foreign unstaged files listed below belong to other live AI sessions.**
+2. Those 8 files may re-appear as unstaged diffs after a reconcile — leave them exactly as found (never stage, revert, or fold them into your commits).
+3. For Userscript-Suite work: `cd "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite"` and run `npm run check:suite` or `npm run validate`.
+4. On a fresh clone, activate hooks once with `git config core.hooksPath .husky` (no `npm install` needed). Commit to `main` and sync via resilient-git — never bare push/pull.
