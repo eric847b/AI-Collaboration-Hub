@@ -1,6 +1,6 @@
 name: CI Self-Heal
 
-# v5.3 — auto_ops + full autonomous repair + multi-repo + escalation + export + FailureSolver
+# v5.4 — auto_ops + solvers; workflow_run only on failure (no success thrash)
 on:
   schedule:
     - cron: '15 */3 * * *'
@@ -29,6 +29,7 @@ on:
       - "lockfile-validation"
       - "all-projects-sanity"
       - "lint-autofix"
+      - "Workflow Lint"
     types: [completed]
 
 permissions:
@@ -39,15 +40,15 @@ permissions:
 
 concurrency:
   group: ci-self-heal
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   self-heal:
     runs-on: ubuntu-latest
+    # schedule + dispatch always; workflow_run only when upstream failed
     if: >-
       github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'failure' ||
-      github.event.workflow_run.conclusion == 'success'
+      github.event.workflow_run.conclusion == 'failure'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -160,7 +161,7 @@ jobs:
       - name: Summary
         run: |
           {
-            echo "### CI Self-Heal v5.3 complete (auto_ops + FailureSolver)"
+            echo "### CI Self-Heal v5.4 complete (failure-only workflow_run)"
             for f in auto-ops-report.json agent-report.json multi-repo-report.json nexus-export.json; do
               if [ -f "$f" ]; then
                 echo "#### $f"
