@@ -1,5 +1,6 @@
 version: 2
-# Expanded monorepo coverage — free Dependabot (GitHub-native)
+# Expanded monorepo coverage — maximize free Dependabot (GitHub-native)
+# Patches are grouped so auto_ops can merge one green PR instead of many.
 updates:
   # --- GitHub Actions (keep workflows current) ---
   - package-ecosystem: "github-actions"
@@ -13,6 +14,9 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      actions-patches:
+        update-types: ["patch"]
 
   # --- npm workspaces ---
   - package-ecosystem: "npm"
@@ -20,31 +24,49 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    groups:
+      npm-root-patches:
+        update-types: ["patch"]
   - package-ecosystem: "npm"
     directory: "/self-evolve-dash"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      npm-dash-patches:
+        update-types: ["patch"]
   - package-ecosystem: "npm"
     directory: "/nexus-infinity-hub"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      npm-nexus-patches:
+        update-types: ["patch"]
   - package-ecosystem: "npm"
     directory: "/third-door-blink-controller"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    groups:
+      npm-third-door-patches:
+        update-types: ["patch"]
   - package-ecosystem: "npm"
     directory: "/ai-chat-websites"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    groups:
+      npm-chat-patches:
+        update-types: ["patch"]
   - package-ecosystem: "npm"
     directory: "/collabhub-modules"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 2
+    groups:
+      npm-modules-patches:
+        update-types: ["patch"]
 
   # --- Python ---
   - package-ecosystem: "pip"
@@ -52,18 +74,30 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      pip-root-patches:
+        update-types: ["patch"]
   - package-ecosystem: "pip"
     directory: "/autonomous-github-agent"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      pip-agent-patches:
+        update-types: ["patch"]
   - package-ecosystem: "pip"
     directory: "/singularity-operator"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      pip-singularity-patches:
+        update-types: ["patch"]
   - package-ecosystem: "pip"
     directory: "/solutions-dynamics"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    groups:
+      pip-solutions-patches:
+        update-types: ["patch"]
