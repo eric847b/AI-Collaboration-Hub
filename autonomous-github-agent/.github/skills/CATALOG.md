@@ -10,7 +10,7 @@ once so Actions / Dependabot / `auto_ops` can run without repeated AI calls.
 
 | Local module | Role |
 |--------------|------|
-| `scripts/auto_ops.py` | Spam cleanup, Dependabot patch merge, conflict → `@dependabot rebase/recreate`, stale branches |
+| `scripts/auto_ops.py` (v1.2) | Spam cleanup; Dependabot patch + `*-patches group` merge; conflict → `@dependabot rebase/recreate`; stale branches |
 | `scripts/problem_solvers_runner.py` | ROI-ranked solvers, lockfile guards, skip Userscripts/root |
 | `scripts/skills.py` | File/grep/test/triage/release helpers (no paid APIs) |
 | `scripts/security_audit.py` | Lightweight security pass |
@@ -33,7 +33,7 @@ once so Actions / Dependabot / `auto_ops` can run without repeated AI calls.
 
 - Do **not** install 1000+ skills into the monorepo.
 - Do **not** call paid MCP/Composio for routine hygiene.
-- Majors (eslint major, groq, actions majors) stay human/AI judgment; patches stay free-bot.
+- Majors (eslint major, groq, actions majors) stay human/AI judgment; patches + named patch-groups stay free-bot.
 
 ## When to extend
 
