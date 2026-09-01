@@ -2,9 +2,9 @@
 name: github-ops
 description: >
   Autonomous GitHub hygiene for AI-Collaboration-Hub — Dependabot patch
-  merges, conflict rebase/recreate, lockfile PR spam guards, failure-only
-  self-heal. Use when working on PRs, Actions failures, or agent scripts
-  under autonomous-github-agent/.
+  merges (single + *-patches groups), conflict rebase/recreate, lockfile
+  PR spam guards, failure-only self-heal. Use when working on PRs, Actions
+  failures, or agent scripts under autonomous-github-agent/.
 license: MIT
 metadata:
   author: eric847b
@@ -15,17 +15,17 @@ metadata:
 
 ## Prefer free automation over AI loops
 
-1. **Patches** — Dependabot groups (`dependabot.yml`) + `auto_ops` auto-merge when checks green.
+1. **Patches** — Dependabot groups (`dependabot.yml`) + `auto_ops` v1.2 auto-merge when checks green. Recognizes both single-package `from X.Y.Z to X.Y.W` and titles containing `*-patches group`.
 2. **Conflicts** — Comment `@dependabot rebase` (age < 14d) or `@dependabot recreate` (older). Marker comments prevent spam.
 3. **Lockfile drafts** — Never open root/`Userscripts` lockfile PRs; close duplicate lockfile drafts.
 4. **Self-Heal** — `ci-self-heal.yml` runs only on **failure** (`workflow_run` conclusion) + schedule; `cancel-in-progress`.
-5. **Majors** — Do not auto-merge (eslint major, groq, actions major). Human or one-shot AI judgment.
+5. **Majors** — Do not auto-merge (eslint major, groq, actions major, non-patches groups). Human or one-shot AI judgment.
 
 ## Key paths
 
 | Path | Purpose |
 |------|---------|
-| `autonomous-github-agent/.github/scripts/auto_ops.py` | Spam, merges, conflict requests |
+| `autonomous-github-agent/.github/scripts/auto_ops.py` | Spam, merges, conflict requests (v1.2) |
 | `autonomous-github-agent/.github/scripts/problem_solvers_runner.py` | Solver cycle |
 | `autonomous-github-agent/.github/scripts/skills.py` | Local free skill registry |
 | `.github/workflows/ci-self-heal.yml` | Orchestration |
