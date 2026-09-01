@@ -1,12 +1,12 @@
 # Autonomous GitHub Agent
 
-**v6.0 Unified** — self-healing multi-LLM agent for GitHub + monorepo repair.
+**v6.2 free-path** — self-healing GitHub + monorepo repair with free resources first.
 
 > Living core of the AI-Collaboration-Hub / Singularity Operator ecosystem.
 
 ## Status
 
-See **[STATUS.md](./STATUS.md)** for the full capability matrix (v6.0).
+See **[STATUS.md](./STATUS.md)** for the capability matrix and free-path policy.
 
 ## What it does
 
@@ -14,20 +14,31 @@ See **[STATUS.md](./STATUS.md)** for the full capability matrix (v6.0).
 2. Prioritizes highest-ROI work
 3. Auto-repairs via problem solvers (syntax, peers, requirements, GHA)
 4. Opens **draft** PRs; cleans duplicate drafts
-5. **CI Self-Heal** runs on a schedule and after failed workflows
-6. **Nexus multi-role consensus** gated in `agent.py` before risky issue/PR/todo edits
-7. Closed-loop ledger + escalate to `needs-human` when fixes reappear
-8. Optional multi-repo metadata scan (`MULTI_REPO=1`)
-9. **Fleet Maintenance v1.0** — cross-repo audit of required root files (README, LICENSE, SECURITY.md, .gitignore); plan-only by default, fail-closed `apply_safe`
+5. **CI Self-Heal** — schedule (every 3h), failure-only `workflow_run`, manual dispatch
+6. **auto_ops v1.2** — Dependabot patch + `*-patches group` merge when green; conflict → `@dependabot rebase|recreate`
+7. **Nexus multi-role consensus** gated before risky issue/PR/todo edits
+8. Closed-loop ledger + escalate to `needs-human` when fixes reappear
+9. Optional multi-repo metadata scan (`MULTI_REPO=1`)
+10. **Fleet Maintenance** — cross-repo audit of required root files; plan-only by default
+
+## Free path vs AI
+
+| Work | Who |
+|------|-----|
+| Patch deps, spam PRs, stale branches, lockfile policy | Dependabot + `auto_ops` (no AI) |
+| CI failure → known solver | Self-Heal + problem_solvers |
+| New failure class / major bump / architecture | AI writes playbook once → free path thereafter |
+
+Skill map (do not vendor wholesale): `.github/skills/CATALOG.md` · upstream [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills)
 
 ## Quick start
 
 ### Secrets
-Settings → Secrets → Actions: at least one of `DEEPSEEK_API_KEY`, `HF_TOKEN`, `OPENAI_API_KEY`, etc.
+Settings → Secrets → Actions: `GITHUB_TOKEN` is enough for auto_ops. Optional LLM keys only if you run agent.py solvers that need them.
 
 ### Trigger
-- Actions → **CI Self-Heal** or **Autonomous Agent** → Run workflow
-- Or push / open issues / PRs (depending on workflow triggers)
+- Actions → **CI Self-Heal** → Run workflow (`auto_merge_dependabot=1`)
+- Or wait for the 3-hour schedule / a failed watched workflow
 
 ### Local quality gates (free)
 ```bash
@@ -36,21 +47,22 @@ pre-commit install
 ruff check autonomous-github-agent --fix
 ```
 
-## Architecture (v6.0)
+## Architecture (v6.2)
 
 ```
 Triggers → GitHub Actions
+  → auto_ops (Dependabot hygiene, free)
   → problem_solvers_runner (deterministic repairs)
-  → agent.py (LLM + tools + consensus gate)
+  → agent.py (LLM + tools + consensus — only when needed)
   → draft PRs + ledger + export
-  → Self-Heal schedule / workflow_run
+  → Self-Heal schedule / failure-only workflow_run
 ```
 
-Modules: `nexus_consensus.py`, `agent_hooks.py`, `agent_nexus_bridge.py`, `closed_loop.py`, `escalate.py`, `multi_repo.py`, `collab_export.py`, `security_audit.py`, `fleet_maintenance.py`
+Modules: `scripts/auto_ops.py`, `problem_solvers_runner.py`, `nexus_consensus.py`, `closed_loop.py`, `escalate.py`, `multi_repo.py`, `security_audit.py`, `fleet_maintenance.py`, `skills/`
 
 ## Security
 
-Draft PRs only · input sanitization · high-risk command block · path checks · depth limit · consensus veto · least-privilege workflow permissions.
+Draft PRs only · no force-push to main · path checks · consensus veto · least-privilege workflow permissions · Pages deploy optional (`continue-on-error`).
 
 ## License / ecosystem
 
