@@ -38,6 +38,14 @@
   `dist/AI-Guardian-Suite.user.js` (absent in CI/fresh clones); now
   graceful-skips (the committed `b934966` claimed this but the hard-fail code
   was still in HEAD — this commit makes it real).
+- **`96a2aec`** — coverage-audit fix: a full-suite sweep (312 modules across
+  25+ categories) found exactly one real problem marker —
+  `Modules/04-Production/07-script-auto-updater.module.user.js` was a
+  `// TODO: Implement` stub. Now a working implementation following the
+  suite's `register()` convention (single call reaches both ModuleRegistry
+  and ConfigManager via the hub bridge). Remaining marker hits are false
+  positives (sentiment word-lists, test fixtures, the code-assistant's own
+  TODO-detector). `suite-check` 334/334 green after the rewrite.
 
 ### Supporting hardening (same push sequence)
 - **`b934966`** — fresh-clone suite gate: `suite-check.cjs` step-0 synthesizes
@@ -66,7 +74,7 @@
 
 ## ⚠️ Untouched In-Progress Work (NOT mine — do not touch)
 
-The following **9 files are modified but unstaged** — they belong to **other AI
+The following **8 files are modified but unstaged** — they belong to **other AI
 sessions** (AI-Collaboration-Hub and autonomous-github-agent). Per workspace
 rules I left them exactly as found, including not staging or reverting them:
 
