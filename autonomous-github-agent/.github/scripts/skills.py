@@ -82,7 +82,7 @@ def skill_list_branches():
 
 def skill_merge_safe(branch, target="main"):
     try:
-        subprocess.check_call(["git", "checkout", "--", target])
+        subprocess.check_call(["git", "checkout", target])
         if subprocess.run(["git", "merge", "--ff-only", branch], capture_output=True).returncode == 0:
             return {"ok": True, "method": "ff-only", "branch": branch}
         r = subprocess.run(["git", "merge", "--no-commit", "--no-ff", branch], capture_output=True, text=True)
