@@ -12,9 +12,8 @@ on:
         required: false
         default: 'auto'
   schedule:
-    # Continuous autonomy — every 2 hours
+    # Continuous autonomy — every 2 hours (free GitHub Actions minutes)
     - cron: '0 */2 * * *'
-    - cron: '0 */6 * * *'
   push:
     branches: [main]
   issues:
