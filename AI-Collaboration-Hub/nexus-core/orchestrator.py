@@ -220,7 +220,7 @@ def graph(r=None):
             if dependency == "*":
                 print(f'  {node_id} -.-> wildcard["all registered modules"]')
             else:
-                dependency_id = node_ids.get(dependency, external_ids[dependency])
+                dependency_id = node_ids[dependency] if dependency in node_ids else external_ids[dependency]
                 print(f"  {dependency_id} --> {node_id}")
     for dependency, dependency_id in external_ids.items():
         print(f'  {dependency_id}["external: {dependency}"]')
