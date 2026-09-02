@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""nexus-core v2.9 — minimal permanent successor
+"""nexus-core v2.8 — minimal permanent successor
 Free, quiet, cron, self-audit, full lifecycle, optional release, runtime-fail safe.
 
 Catalyst cycle:
@@ -181,7 +181,6 @@ def improve():
     else:
         print("No issues found — all modules healthy, clean, and TODO-free.")
     print("\nTop remaining: stabilize — only change on real need.")
-    print("Note: PRs #13 and #14 (Dependabot) already merged/closed.")
 
 def run_agent():
     if not AGENT.exists(): print("agent not found"); return
