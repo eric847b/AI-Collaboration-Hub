@@ -1,7 +1,8 @@
 #include "superblock.h"
 #include <fstream>
-#include <iostream>
 #include <cstdio>
+#include <chrono>
+#include <thread>
 #include <ctime>
 
 Superblock::Superblock(CAS& cas) : cas(cas) {}
@@ -93,7 +94,18 @@ bool SuperblockAB::save(const std::string& path) const {
     // Atomic write: write to temp file then rename
     std::string temp_path = path + ".tmp";
     
-    std::ofstream out(temp_path, std::ios::binary | std::ios::trunc);
+    // Retry the open a few times: on Windows, file creation can transiently fail
+    // (ENOENT) when the working directory lives inside a OneDrive "Files On
+    // Demand" folder or under real-time antivirus scanning. A short retry loop
+    // makes persistence robust there without masking genuine errors.
+    std::ofstream out;
+    for (int attempt = 0; attempt < 5; ++attempt) {
+        out.open(temp_path, std::ios::binary | std::ios::trunc);
+        if (out) break;
+        std::remove(temp_path.c_str());  // clear any stale/partial file
+        out.clear();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     if (!out) {
         return false;
     }
@@ -112,7 +124,10 @@ bool SuperblockAB::save(const std::string& path) const {
     out.close();
 
     if (success) {
-        // Atomic rename for crash safety
+        // Atomic rename for crash safety. POSIX rename() replaces an existing
+        // destination, but MSVC's rename() fails if the destination exists —
+        // so remove it first (ENOENT is benign here).
+        std::remove(path.c_str());
         if (std::rename(temp_path.c_str(), path.c_str()) != 0) {
             std::remove(temp_path.c_str());
             return false;

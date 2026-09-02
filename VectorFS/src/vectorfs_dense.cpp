@@ -69,7 +69,7 @@ struct Transaction {
     
     // Prepare transaction
     void prepare(h64 h, Type t) {
-        State s{h, epoch, t};
+        State s{h, static_cast<uint32_t>(epoch), t};
         roots[active ^ 1] = s;
     }
 };
@@ -98,12 +98,17 @@ struct InstructionCache {
 } // namespace vfs
 
 // === Single entry point ===
-extern "C" void vfs_init() {
+extern "C" {
+void vfs_init();
+vfs::State vfs_execute(vfs::h64 workload);
+}
+
+void vfs_init() {
     vfs_ptr = new vfs::Runner{};
     vfs_ptr->selector = vfs::State::zip(vfs::h256{}, 0);
 }
 
-extern "C" vfs::State vfs_execute(h64 workload) {
+vfs::State vfs_execute(vfs::h64 workload) {
     if (!vfs_ptr) vfs_init();
     vfs::VoltagePath vp;
     vp.transistor_state(1.0f);  // High signal

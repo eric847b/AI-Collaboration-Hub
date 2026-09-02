@@ -128,6 +128,7 @@ if(VECTORFS_BUILD_TESTS)
         core/recovery_replay.cpp
         src/superblock.cpp
         src/cas.cpp
+        src/hash.cpp
         tests/replay_recovery.cpp
     )
     target_include_directories(replay_recovery PRIVATE
@@ -170,7 +171,7 @@ if(VECTORFS_BUILD_TESTS)
 endif()
 
 # ---- Dense Core Target ----
-add_executable(vectorfs_dense
+add_library(vectorfs_dense STATIC
     src/vectorfs_dense.cpp
 )
 target_include_directories(vectorfs_dense PRIVATE include core)

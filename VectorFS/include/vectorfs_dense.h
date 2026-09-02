@@ -20,7 +20,7 @@ struct State {
     
     static State zip(const h256& full, uint64_t e) {
         State s{};
-        s.h = *reinterpret_cast<const h64*>(full.data());
+        s.h = (static_cast<h64>(full[0]) << 24) | (static_cast<h64>(full[1]) << 16) | (static_cast<h64>(full[2]) << 8) | static_cast<h64>(full[3]); // BE pack of first 4 bytes: endian-safe, no aliasing UB
         s.epoch = e;
         return s;
     }
@@ -105,7 +105,7 @@ struct Runner {
 
 // === Hash compression utility ===
 inline h64 compact(const h256& full) {
-    return *reinterpret_cast<const h64*>(full.data());
+    return (static_cast<h64>(full[0]) << 24) | (static_cast<h64>(full[1]) << 16) | (static_cast<h64>(full[2]) << 8) | static_cast<h64>(full[3]); // BE pack of first 4 bytes: endian-safe, no aliasing UB
 }
 
 // === Voltage signal encoding ===
