@@ -30,7 +30,17 @@ jobs:
           pip install -r requirements.txt
 
       - name: Validate Python syntax
-        run: python -m py_compile **/*.py
+        run: |
+          mapfile -d '' python_files < <(find . -type f -name '*.py' \
+            -not -path './.git/*' \
+            -not -path './.venv/*' \
+            -not -path './venv/*' \
+            -not -path './__pycache__/*' -print0)
+          if [ "${#python_files[@]}" -eq 0 ]; then
+            echo "No Python files found"
+            exit 1
+          fi
+          python -m py_compile "${python_files[@]}"
 
       - name: Check with flake8 (optional)
         run: |

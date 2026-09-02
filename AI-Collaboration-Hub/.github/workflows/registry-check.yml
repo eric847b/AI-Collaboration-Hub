@@ -20,4 +20,53 @@ jobs:
 
       - name: Validate json
         run: |
-          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('nexus-core/registry.json','utf8')); if(!d.system||!d.modules||!d.roles){console.log('invalid'); process.exit(1);} console.log('ok');"
+          node <<'NODE'
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('nexus-core/registry.json', 'utf8'));
+          const requiredRoles = ['execution', 'coordination', 'memory', 'ui', 'automation'];
+          const optionalRoles = ['unclassified'];
+          const allowedRoles = [...requiredRoles, ...optionalRoles];
+
+          if (!registry.system || !Array.isArray(registry.modules) || !registry.roles) {
+            throw new Error('registry must define system, modules, and roles');
+          }
+
+          const moduleNames = registry.modules.map((module) => {
+            if (!module.name || !module.role || !module.entrypoint || !Array.isArray(module.deps)) {
+              throw new Error(`invalid module record: ${JSON.stringify(module)}`);
+            }
+            if (!allowedRoles.includes(module.role)) {
+              throw new Error(`unknown role '${module.role}' for module '${module.name}'`);
+            }
+            return module.name;
+          });
+
+          if (new Set(moduleNames).size !== moduleNames.length) {
+            throw new Error('module names must be unique');
+          }
+
+          for (const module of registry.modules) {
+            for (const dependency of module.deps) {
+              if (dependency !== '*' && !moduleNames.includes(dependency)) {
+                throw new Error(`unknown dependency '${dependency}' for module '${module.name}'`);
+              }
+            }
+          }
+
+          const roleNames = allowedRoles.flatMap((role) => {
+            if (!Array.isArray(registry.roles[role])) {
+              if (optionalRoles.includes(role) && registry.roles[role] === undefined) {
+                return [];
+              }
+              throw new Error(`role '${role}' must contain an array`);
+            }
+            return registry.roles[role];
+          });
+
+          if (new Set(roleNames).size !== roleNames.length ||
+              [...moduleNames].sort().join('\n') !== [...roleNames].sort().join('\n')) {
+            throw new Error('roles must list each registered module exactly once');
+          }
+
+          console.log(`registry ok: ${moduleNames.length} modules across ${requiredRoles.length} required roles`);
+          NODE
