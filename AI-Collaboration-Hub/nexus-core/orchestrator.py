@@ -10,7 +10,7 @@ Catalyst cycle:
   graph   → print module dependency graph
   agent   → run the autonomous GitHub agent (quiet, free)
 """
-import json, sys, datetime, subprocess, os, re, time
+import json, sys, datetime, subprocess, os, re, time, tempfile
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -26,7 +26,54 @@ SCAN_BUDGET_S = 3.0
 SCAN_FILE_LIMIT = 400
 
 def load():
-    return json.loads(REG.read_text())
+    try:
+        registry = json.loads(REG.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"unable to load registry {REG}: {error}") from error
+    if not isinstance(registry, dict) or not registry.get("system"):
+        raise ValueError("registry must define a system")
+    modules = registry.get("modules")
+    roles = registry.get("roles")
+    if not isinstance(modules, list) or not isinstance(roles, dict):
+        raise ValueError("registry must define modules and roles")
+    names = []
+    for module in modules:
+        if not isinstance(module, dict):
+            raise ValueError(f"invalid module record: {module!r}")
+        if not isinstance(module.get("name"), str) or not module["name"].strip():
+            raise ValueError(f"module name must be a non-empty string: {module!r}")
+        if not isinstance(module.get("role"), str) or not module["role"].strip():
+            raise ValueError(f"module role must be a non-empty string: {module!r}")
+        if not isinstance(module.get("deps", []), list):
+            raise ValueError(f"deps must be a list for module {module['name']}")
+        if any(not isinstance(dependency, str) or not dependency.strip() for dependency in module.get("deps", [])):
+            raise ValueError(f"dependencies must be non-empty strings for module {module['name']}")
+        names.append(module["name"])
+    if len(set(names)) != len(names):
+        raise ValueError("module names must be unique")
+    role_names = []
+    for role in {module["role"] for module in modules}:
+        members = roles.get(role)
+        if not isinstance(members, list):
+            raise ValueError(f"role {role!r} must contain an array")
+        role_names.extend(members)
+    if len(set(role_names)) != len(role_names) or set(role_names) != set(names):
+        raise ValueError("roles must list each registered module exactly once")
+    for module in modules:
+        for dependency in module.get("deps", []):
+            if dependency != "*" and dependency not in names:
+                raise ValueError(f"unknown dependency {dependency!r} for module {module['name']!r}")
+    return registry
+
+def _atomic_write(path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as temp:
+        temp.write(content)
+        temporary_path = Path(temp.name)
+    try:
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 def exists(n):
     return (ROOT/n).exists() or (ROOT/"AI-Collaboration-Hub"/n).exists()
@@ -44,7 +91,7 @@ def scope(json_only=False):
             "unhealthy":[m["name"] for m in mods if m["status"]!="HEALTHY"],"rules":r["rules"],
             "canonical":"AI-Collaboration-Hub/nexus-core","executor":"autonomous-github-agent",
             "cost":"zero","user_time":"zero"}
-    SCOPE_JSON.write_text(json.dumps(data, indent=2))
+    _atomic_write(SCOPE_JSON, json.dumps(data, indent=2))
     if json_only:
         print(json.dumps(data)); return data
     print(f"# nexus-core SCOPE  v{data['version']}  {data['generated']}")
@@ -61,7 +108,7 @@ def scope(json_only=False):
         idx = existing.find("\n## ")
         if idx > 0:
             progress = existing[idx:]
-    NEXT.write_text(f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {now}\nVersion: {data['version']}\n{progress}")
+    _atomic_write(NEXT, f"# NEXT CATALYST\n\n{prompt}\n\nGenerated: {now}\nVersion: {data['version']}\n{progress}")
     print("\n## Next Catalyst\n```\n"+prompt+"\n```\n## scope.json written" + (" · notes preserved" if progress else ""))
     if data["unhealthy"]: print(f"## Health note: {len(data['unhealthy'])} not fully HEALTHY")
     return data
@@ -140,9 +187,17 @@ def run_agent():
     if not AGENT.exists(): print("agent not found"); return
     os.environ.update(QUIET="1", SUPPRESS_NOTIFICATIONS="1", AGENT_OWNS_GITHUB="1")
     try:
-        subprocess.run([sys.executable, str(AGENT)], cwd=str(ROOT), timeout=300)
+        result = subprocess.run([sys.executable, str(AGENT)], cwd=str(ROOT), timeout=300)
+        if result.returncode != 0:
+            print(f"agent exited with status {result.returncode}")
+        return result.returncode
     except Exception as e:
         print(f"agent runtime absorbed: {e}")
+
+def cron():
+    scope()
+    improve()
+    run_agent()
 
 def check():
     r = load()
@@ -152,12 +207,30 @@ def check():
 def graph(r=None):
     r = r or load()
     print("graph TD")
+    node_ids = {m["name"]: f"module_{i}" for i, m in enumerate(r["modules"])}
+    external_ids = {}
+    for module in r["modules"]:
+        for dependency in module.get("deps", []):
+            if dependency != "*" and dependency not in node_ids:
+                external_ids.setdefault(dependency, f"external_{len(external_ids)}")
     for m in r["modules"]:
-        print(f'  {m["name"]}[{m["name"]}|{m["role"]}]')
-        for d in m.get("deps",[]):
-            if d!="*": print(f"  {d} --> {m['name']}")
+        node_id = node_ids[m["name"]]
+        print(f'  {node_id}["{m["name"]}|{m["role"]}"]')
+        for dependency in m.get("deps", []):
+            if dependency == "*":
+                print(f'  {node_id} -.-> wildcard["all registered modules"]')
+            else:
+                dependency_id = node_ids.get(dependency, external_ids[dependency])
+                print(f"  {dependency_id} --> {node_id}")
+    for dependency, dependency_id in external_ids.items():
+        print(f'  {dependency_id}["external: {dependency}"]')
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv)>1 else "scope"
-    {"graph":lambda: graph(), "improve":improve, "check":check, "agent":run_agent,
-     "json":lambda: scope(True)}.get(cmd, scope)()
+    commands = {"graph": graph, "improve": improve, "check": check, "agent": run_agent,
+                "cron": cron, "json": lambda: scope(True), "scope": scope}
+    if cmd not in commands:
+        print(f"unknown command: {cmd}", file=sys.stderr)
+        print(f"available commands: {', '.join(commands)}", file=sys.stderr)
+        raise SystemExit(2)
+    commands[cmd]()

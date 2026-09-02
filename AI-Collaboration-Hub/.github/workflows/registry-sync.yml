@@ -5,6 +5,15 @@ on:
     - cron: '0 */6 * * *'
   workflow_dispatch:
   push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: registry-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
@@ -13,14 +22,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: fetch repos
-        run: curl -s https://api.github.com/users/eric847b/repos > repos.json
+      - name: Fetch repositories
+        run: |
+          set -euo pipefail
+          page=1
+          while true; do
+            curl --fail --show-error --silent --retry 3 --retry-delay 5 \
+              --header 'Accept: application/vnd.github+json' \
+              "https://api.github.com/users/eric847b/repos?per_page=100&page=${page}" \
+              > "repos-${page}.json"
+            count=$(jq 'length' "repos-${page}.json")
+            if [ "$count" -lt 100 ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
+          jq -s 'add' repos-*.json > repos.json
+          rm repos-*.json
 
       - name: build registry
         run: |
           node -e "
           const fs=require('fs');
           const repos=JSON.parse(fs.readFileSync('repos.json','utf8'));
+          if(!Array.isArray(repos)) throw new Error('GitHub API returned a non-array response');
 
           function role(n){
             n=n.toLowerCase();
@@ -43,10 +68,16 @@ jobs:
           for(const r of repos){
             if(!seen.has(r.name)){
               const rr=role(r.name);
-              reg.modules.push({name:r.name,role:rr});
-              if(!reg.roles[rr]) reg.roles[rr]=[];
-              reg.roles[rr].push(r.name);
+              reg.modules.push({name:r.name,role:rr,entrypoint:'TBD',deps:[]});
             }
+          }
+
+          for(const roleName of ['execution','coordination','memory','ui','automation','unclassified']){
+            reg.roles[roleName]=[];
+          }
+          for(const module of reg.modules){
+            if(!reg.roles[module.role]) reg.roles[module.role]=[];
+            reg.roles[module.role].push(module.name);
           }
 
           fs.mkdirSync('nexus-core',{recursive:true});
