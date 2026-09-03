@@ -8,11 +8,25 @@ Status: Active development queue
 
 ---
 
+## Merged Architecture (2026-09-26) — COMPLETE
+
+These 6 core modules were merged from AI-Collaboration-Hub, autonomous-github-agent, and self-evolve-dash:
+
+- [x] 16. Hub Orchestrator → `00-Core/016-hub-orchestrator`
+- [x] 17. Self-Evolution Engine → `00-Core/017-self-evolution-engine`
+- [x] 18. Dashboard Core → `00-Core/018-dashboard-core`
+- [x] 19. Consensus Engine → `00-Core/019-consensus-engine`
+- [x] 20. Module Registry → `00-Core/020-module-registry`
+- [x] 21. Failure Recovery → `00-Core/021-failure-recovery`
+
+---
+
 ## Module Expansion (originals 40-100) — COMPLETE
 
 All 60 modules from the original Module Expansion list exist.
 
 ---
+
 
 ## Feature Enhancements (originals 61-120)
 
@@ -285,6 +299,7 @@ All 60 modules from the original Module Expansion list exist.
 | Category | Total | Done | Remaining |
 |----------|-------|------|-----------|
 | Module Expansion (40-100) | 60 | 60 | 0 |
+| Merged Architecture (2026-09) | 6 | 6 | 0 |
 | Feature Enhancements (61-120) | 60 | 3 | 57 |
 | UI/UX Improvements (101-140) | 40 | 0 | 40 |
 | Security Hardening (141-170) | 30 | 2 | 28 |
@@ -297,9 +312,9 @@ All 60 modules from the original Module Expansion list exist.
 | AI/ML Enhancements (301-320) | 20 | 2 | 18 |
 | Infrastructure & DevOps (321-340) | 20 | 0 | 20 |
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
-| **TOTAL** | **360** | **69** | **291** |
+| **TOTAL** | **366** | **75** | **291** |
 
-**Status**: 69/360 implemented (19%) | 351 module files on disk
+**Status**: 75/366 implemented (21%) | 357 module files on disk
 **Next priority**: Feature Enhancements + UI/UX for maximum user impact
 
 - [ ] 258. Dropbox integration
