@@ -193,6 +193,9 @@ All 60 modules from the original Module Expansion list exist.
 - [ ] 255. Email integration
 - [ ] 256. Calendar integration
 - [ ] 257. Drive integration
+- [ ] 258. Dropbox integration
+- [ ] 259. OneDrive integration
+- [ ] 260. Google Drive integration
 
 ---
 
@@ -329,9 +332,6 @@ All 60 modules from the original Module Expansion list exist.
 | 2026-09-26 | solutions-dynamics (failure types) | → 021-failure-recovery |
 | 2026-09-26 | autonomous-github-agent (skills.py) | Integrated into 016-hub-orchestrator
 
-- [ ] 258. Dropbox integration
-- [ ] 259. OneDrive integration
-- [ ] 260. Google Drive integration
 
 ---
 

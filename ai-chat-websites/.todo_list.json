@@ -6,7 +6,21 @@
     "trajectory_roadmap": "../next_year_roadmap.md",
     "docs_index": "../Userscripts/docs/INDEX.md"
   },
-  "last_updated": "2026-09-26T12:00:00-05:00",
+  "last_updated": "2026-09-26T14:30:00-05:00",
+  "core_module_wiring_2026_09": {
+    "status": "completed",
+    "completed_at": "2026-09-26T14:30:00-05:00",
+    "summary": "Wired the 6 merged core modules into a functioning system; fixed consensus-engine ReferenceError; repaired ROADMAP Integrations section",
+    "details": [
+      "018-dashboard-core v1.1 fully wired: live panels fed by __NEXUS_HUB__/__NEXUS_REGISTRY__/__NEXUS_FAILURE__/__NEXUS_EVOLUTION__/__NEXUS_CONSENSUS__ (all guarded soft deps)",
+      "Dashboard: FPS meter samples only while open, 2s refresh loop, draggable panel with persisted position, catalyst-trigger button (hub.runCatalyst()), GM menu toggle, auto-open when hub healthy",
+      "019-consensus-engine: fixed ReferenceError (researchResult -> researcherResult, line 103)",
+      "ROADMAP.md: restored items 258-260 (Dropbox/OneDrive/Google Drive) displaced from Integrations section by the Integration Phase Log insert",
+      "package.json 1.3.0 -> 1.3.1 (wiring improvement)"
+    ],
+    "validation": "node --check passed on 018 and 019",
+    "package_version": "1.3.1"
+  },
   "suite_modules_milestone_2026_09": {
     "status": "completed",
     "completed_at": "2026-09-26T12:00:00-05:00",
@@ -112,7 +126,6 @@
     "Incremental commits (logical grouping of changes)"
   ],
   "next_actions": [
-    "Wire 018-dashboard-core to 016-hub-orchestrator getHealth() API for live health view",
     "Feed 017-self-evolution-engine failure types into 019-consensus-engine Planner role",
     "Extend 020-module-registry auto-discovery to 13-Chat-Platforms (folder empty, 0 modules)",
     "Connect 021-failure-recovery ErrorBoundary.wrap() to orchestrator validateRegistry() auto-retry",
