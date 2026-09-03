@@ -22,10 +22,10 @@
 | 3 | `.todo_list.json` | **Unified AI Assistant Suite** action queue (task-level) | ACTIVE | `next_year_roadmap.md`、`Userscripts/docs/INDEX.md` |
 | 4 | `Userscripts/docs/INDEX.md` | **Unified AI Assistant Suite** docs & architecture index | ACTIVE | `../next_year_roadmap.md`、`../README.md` |
 | 5 | `Userscripts/README.md` | **Userscripts folder** entry/landing | ACTIVE — folder landing | `docs/INDEX.md`、`docs/OVERVIEW.md`、`AI Chat Userscript Studio/Userscript Suite/README.md` |
-| 6 | `CHANGELOG.md` (repo root`) | Unified AI Assistant Suite changelog | ACTIVE — living record | `Userscripts/CHANGELOG.md` (duplicate copy — see note) |
-| 7 | `Userscripts/CHANGELOG.md` | Unified AI Assistant Suite changelog | ACTIVE — living record | `../CHANGELOG.md` (duplicate copy — see note) |
+| 6 | `CHANGELOG.md` (repo root`) | **Unified AI Assistant Suite** changelog | ACTIVE — living record | `Userscripts/CHANGELOG.md` (different scope — see note), `Userscripts/docs/INDEX.md` |
+| 7 | `Userscripts/CHANGELOG.md` | **AI Chat Websites workspace** changelog (v2026.03.28.1 → v1.4.0) | ACTIVE — living record | `../CHANGELOG.md` (different scope — see note) |
 
-> **NOTE (duplication):** `CHANGELOG.md` exists at both repo root and `Userscripts/` with same content (7694/7696 B). One of the two should eventually be deleted andthe other pointed-to; this map records the duplication so it is not silently lost.
+> **NOTE (related, NOT duplicates):** The two `CHANGELOG.md` files cover different products. Repo-root = the Unified AI Assistant Suite (`Unified-AI-Assistant-Suite.user.js`). `Userscripts/CHANGELOG.md` = the AI Chat Websites workspace (date-based versions + v1.0–v1.4). Keep both; they are separate records.
 
 ---
 
@@ -48,13 +48,13 @@
 |---|----------|---------|
 | 14 | `Docs/_consolidation-2026-07-15/` | July 2026 root cleanup: `PHASE_2_3_4_IMPLEMENTATION_PLAN.md`, `IMPROVEMENT_PLAN.md`, `motivational-prompt.md` |
 | 15 | `Archive/_userscripts-misc-2026-07-15/docs/history/2026-03-consolidation/` | 12 files — March 2026 consolidation proposals/summaries/plan |
-| 16 | `Userscripts/docs/history/2026-03-consolidation/` | same 12 files — **duplicate copy** of #15 |
+| 16 | `Userscripts/docs/history/2026-03-consolidation/` | same 12 files — **historical working copy** of #15 |
 | 17 | `Userscripts/AI Chat Userscript Studio/Userscript Suite/CONSOLIDATION_REPORT.md` | suite hub delegation consolidation report |
 | 18 | `Userscripts/AI Chat Userscript Studio/Userscript Suite/IMPROVEMENT_SUMMARY.md` | suite improvement recap |
 | 19 | `Userscripts/AI Chat Userscript Studio/Userscript Suite/FUTURE_MODULES_README.md` | future-modules generation guide |
 | 20 | `Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/ARCHIVE_SUMMARY.md` | module archive cleanup record |
 
-> **NOTE (duplication):** #15 and #16 hold the same March 2026 files in two places. Keep both (one is the archive-of-record, the other is the working history folder); this map records the overlap.
+> **NOTE (related, near-duplicate):** #15 (Archive) and #16 (Userscripts working history) hold essentially the same March 2026 files. `README.md` inside each is byte-identical; a few files differ slightly in whitespace/byte size. Keep both — #15 is the archive-of-record, #16 is the working history folder — this map records the overlap so edits stay in sync if ever consolidated.
 
 ---
 
