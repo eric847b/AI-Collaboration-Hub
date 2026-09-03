@@ -8,11 +8,19 @@ Enterprise-grade modular userscript suite for AI chat platforms including ChatGP
 
 ## Features
 
-- **Modular Architecture**: Load and manage feature modules dynamically
+### Core Architecture (Merged from AI-Collaboration-Hub & autonomous-github-agent)
+- **Hub Orchestrator**: Central brain that runs catalyst cycles (scope → improve → act), registry validation, atomic writes, and health monitoring
+- **Self-Evolution Engine**: 50+ typed failure types with automatic retry, exponential backoff, fix verification ledger, and escalation
+- **Dashboard Core**: Real-time health dashboard with performance metrics (FPS, memory, latency), analytics tracking, and registry browser
+- **Consensus Engine**: Multi-role AI consensus (Planner → Researcher → Critic → Forge → Echo) with confidence scoring and rule-based fallback
+- **Module Registry**: Full module tracking with roles, dependencies, entrypoints, and auto-discovery
+- **Failure Recovery**: ErrorBoundary class, typed failure tracking, automatic retry with exponential backoff
+
+### User-Facing Features
+- **Modular Architecture**: 351 modules across 27 categories — load and manage feature modules dynamically
 - **Enterprise-Grade**: Advanced error handling, performance monitoring, and analytics
 - **Configuration Management**: Centralized settings with validation
 - **Service Container**: Dependency injection with lifecycle management
-- **Module Registry**: Track and manage loaded modules
 - **Settings UI**: Beautiful, accessible settings interface
 - **Keyboard Navigation**: Full keyboard support for accessibility
 - **Dark/Light Theme**: Automatic theme detection and manual override
@@ -79,19 +87,59 @@ npm run dev
 
 ```text
 Userscript Suite/
-|-- 00-hub.user.js              # Main hub/orchestrator
-|-- settings-ui.js              # Settings UI manager
+|-- README.md                   # This file
+|-- ROADMAP.md                  # Development roadmap with remaining items
+|-- NEXT_100_SUGGESTIONS_ARCHIVED.md  # Original suggestion list (archived)
 |-- package.json                # Project configuration
 |-- eslint.config.cjs           # ESLint configuration
-|-- README.md                   # This file
 |-- CONTRIBUTING.md             # Contribution guidelines
 |-- DEVELOPMENT.md              # Development documentation
-|-- Modules/                    # Feature modules
-|   |-- 00-utilities.module.user.js
-|   |-- 01-automation.module.user.js
-|   |-- 02-error-handling.module.user.js
-|   |-- ...
-|   `-- 28-ai-conversation-enhancer.module.user.js
+|-- Modules/                    # Feature modules (351 total)
+|   |-- 00-Core/                # Core orchestrators (15 modules)
+|   |   |-- 001-site-adapter.module.user.js
+|   |   |-- 002-error-handling.module.user.js
+|   |   |-- 003-module-registry.module.user.js
+|   |   |-- 004-intelligent-error-handler.module.user.js
+|   |   |-- 005-config-manager.module.user.js
+|   |   |-- 006-unified-configuration-manager.module.user.js
+|   |   |-- 007-config-validator.module.user.js
+|   |   |-- 008-utilities.module.user.js
+|   |   |-- 009-service-container.module.user.js
+|   |   |-- 010-module-loader.module.user.js
+|   |   |-- 011-memory-manager.module.user.js
+|   |   |-- 012-hub-event-handler.module.user.js
+|   |   |-- 013-control-panel-ui.module.user.js
+|   |   |-- 014-autonomous-improvement.module.user.js
+|   |   |-- 015-module-bootstrap-helper.module.user.js
+|   |   |-- 016-hub-orchestrator.module.user.js          # Central orchestrator
+|   |   |-- 017-self-evolution-engine.module.user.js     # Self-healing engine
+|   |   |-- 018-dashboard-core.module.user.js            # Real-time health dashboard
+|   |   |-- 019-consensus-engine.module.user.js          # Multi-role AI consensus
+|   |   |-- 020-module-registry.module.user.js        # Module tracking & discovery
+|   |   `-- 021-failure-recovery.module.user.js       # Recovery with retry/backoff
+|   |-- 01-Chat-Enhancement/      # Chat features (25 modules)
+|   |-- 02-AI-Agents/             # AI agent modules (7 modules)
+|   |-- 03-UI-Components/         # UI components (14 modules)
+|   |-- 04-Production/            # Production tools (16 modules)
+|   |-- 05-Security/              # Security modules (23 modules)
+|   |-- 06-Performance/           # Performance optimization (33 modules)
+|   |-- 07-Accessibility/         # Accessibility (5 modules)
+|   |-- 08-Export-Import/         # Export/import (20 modules)
+|   |-- 09-Media/                 # Media handling (23 modules)
+|   |-- 10-Text-Language/         # Text/language tools (23 modules)
+|   |-- 11-Code-Tools/            # Code utilities (20 modules)
+|   |-- 12-Testing/               # Testing tools (12 modules)
+|   |-- 13-Chat-Platforms/       # Platform integrations
+|   |-- 14-Networking-API/       # Network tools (8 modules)
+|   |-- 15-Analytics/              # Analytics (9 modules)
+|   |-- 16-Prompt-Engineering/     # Prompt tools
+|   |-- 14-Error-Handling/       # Error handling (20 modules)
+|   |-- 17-Collaboration/          # Collaboration tools (10 modules)
+|   |-- 18-Organization/           # Organization tools (23 modules)
+|   |-- 19-Hotkeys-Shortcuts/      # Keyboard shortcuts (6 modules)
+|   |-- 20-Session-Timing/         # Session tools (5 modules)
+|   |-- 21-Quota-Saving/           # Quota optimization (4 modules)
+|   `-- 25-Cost-Advisor/           # Cost analysis (3 modules)
 |-- scripts/                    # Build and utility scripts
 |   |-- validate.cjs
 |   |-- bundle.cjs
@@ -100,14 +148,7 @@ Userscript Suite/
 |   |-- bundle-analyze.cjs
 |   |-- bundler-utils.cjs
 |   |-- dev-server.cjs
-|   |-- quick-test.cjs
-|   |-- ai-dev-assistant.cjs
-|   |-- clean.cjs
-|   |-- lint-markdown.cjs
-|   |-- lint-markdown.mjs
-|   |-- setup-husky.cjs
-|   |-- setup-husky.js
-|   |-- jest-setup.js
+|   |-- quick-test.cjsup.js
 |   `-- __tests__/
 |-- dist/                       # Generated bundles (created by build)
 `-- node_modules/               # Dependencies (created by npm install)
@@ -450,14 +491,17 @@ For issues and questions:
 
 ## Roadmap
 
-- [ ] Add more AI platform support
-- [ ] Implement plugin system
-- [ ] Add cloud sync for settings
-- [ ] Create visual module manager
-- [ ] Add performance dashboard
-- [ ] Implement A/B testing framework
-- [ ] Add internationalization support
-- [ ] Create mobile companion app
+See [ROADMAP.md](ROADMAP.md) for the full development roadmap with 291 remaining items across 12 categories.
+
+**Current Status**: 69/360 items implemented (19%), 351 modules on disk
+
+**Recent Merges**:
+- Hub Orchestrator — central brain with catalyst cycles
+- Self-Evolution Engine — 50+ typed failure recovery
+- Dashboard Core — real-time health monitoring
+- Consensus Engine — multi-role AI consensus
+
+**Next Priority**: Feature Enhancements + UI/UX for maximum user impact
 
 ---
 
