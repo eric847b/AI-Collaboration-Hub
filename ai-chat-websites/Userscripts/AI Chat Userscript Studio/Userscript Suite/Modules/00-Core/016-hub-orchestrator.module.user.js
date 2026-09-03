@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         hub-orchestrator
 // @namespace   AI-Chat-Userscript-Studio
-// @version     2026.09.26.0
+// @version     2026.09.26.1
 // @description  Central orchestrator - merges nexus-core catalyst cycle, registry validation, atomic writes, health monitoring. Replaces loose module collection with unified brain.
 // @author       AI Chat Userscript Studio (merged from nexus-core, autonomous-github-agent, self-evolve-dash)
 // @match        *://*/*
@@ -14,7 +14,7 @@
 // ==/UserScript==
 
 /**
- * Hub Orchestrator v1.0
+ * Hub Orchestrator v1.1
  * Merged from: nexus-core/orchestrator.py + skills.py + self-evolve-dash state + solutions-dynamics
  * Upgrades: browser-native, atomic writes, health self-healing, dependency cycle detection
  */
@@ -28,7 +28,7 @@
 
     const metadata = {
         name: MODULE_NAME,
-        version: '2026.09.26.0',
+        version: '2026.09.26.1',
         dependencies: [],
         critical: true,
         category: '00-Core',
@@ -176,6 +176,34 @@
         return catalyst;
     }
 
+    // ─── Registry Validation ────────────────────────────────────────────────
+    const KNOWN_ROLES = ['core', 'execution', 'coordination', 'memory', 'ui',
+        'automation', 'security', 'performance', 'analytics'];
+
+    function validateRegistry() {
+        const reg = getRegistry();
+        const errors = [];
+        const seen = new Set();
+        const names = new Set(reg.modules.map(m => m.name));
+        for (const mod of reg.modules) {
+            if (!mod.name || typeof mod.name !== 'string') {
+                errors.push('registry entry missing valid name');
+                continue;
+            }
+            if (seen.has(mod.name)) errors.push('duplicate registration: ' + mod.name);
+            seen.add(mod.name);
+            if (!mod.version) errors.push(mod.name + ': missing version');
+            if (mod.role && mod.role !== '*' && KNOWN_ROLES.indexOf(mod.role) < 0) {
+                errors.push(mod.name + ": unknown role '" + mod.role + "'");
+            }
+            for (const dep of (mod.deps || [])) {
+                if (dep === '*' || dep === mod.name) continue;
+                if (!names.has(dep)) errors.push(mod.name + ": unmet dependency '" + dep + "'");
+            }
+        }
+        return errors;
+    }
+
     function runSelfAudit() {
         const reg = getRegistry();
         const issues = [];
@@ -272,7 +300,7 @@
 
     if (typeof window !== 'undefined') {
         window.__NEXUS_HUB__ = {
-            init, getHealth, getRegistry, registerModule, computeScope,
+            init, getHealth, getRegistry, registerModule, computeScope, validateRegistry,
             runCatalyst, getDependencyGraph, detectCycles, discoverModules,
             metadata,
         };

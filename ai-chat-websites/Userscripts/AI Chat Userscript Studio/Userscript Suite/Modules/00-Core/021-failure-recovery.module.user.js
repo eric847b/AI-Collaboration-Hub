@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         failure-recovery
 // @namespace   AI-Chat-Userscript-Studio
-// @version     2026.09.26.0
-// @description  Unified failure recovery - merges solutions-dynamics 50+ FailureType enum + closed_loop ledger + error boundary pattern
+// @version     2026.09.26.1
+// @description  Unified failure recovery - merges solutions-dynamics 50+ FailureType enum + closed_loop ledger + error boundary pattern + self-heal retry loop
 // @author       AI Chat Userscript Studio (merged from solutions-dynamics, autonomous-github-agent)
 // @match        *://*/*
 // @grant        GM_setValue
@@ -12,7 +12,7 @@
 // ==/UserScript==
 
 /**
- * Failure Recovery v1.0
+ * Failure Recovery v1.1
  * Merged from: solutions-dynamics/runtime_failure_handler.py (50+ FailureTypes) + closed_loop.py ledger
  * Upgrades: browser-native, typed failures with auto-retry + backoff, error boundary, escalation
  */
@@ -24,7 +24,7 @@
     const MAX_HISTORY = 500;
 
     const metadata = {
-        name: MODULE_NAME, version: '2026.09.26.0',
+        name: MODULE_NAME, version: '2026.09.26.1',
         dependencies: ['self-evolution-engine'], critical: true, category: '00-Core',
     };
 
@@ -109,6 +109,71 @@
         return { healthy: total === 0, details: `${types} failure types, ${total} total occurrences` };
     }
 
+    // ─── Retry Policies (from solutions-dynamics FailureType configs) ────────
+    const RETRY_POLICIES = {
+        transient: { maxRetries: 3, backoffMs: 500, backoffFactor: 2 },
+        init:      { maxRetries: 2, backoffMs: 1000, backoffFactor: 2 },
+        render:    { maxRetries: 2, backoffMs: 200, backoffFactor: 1.5 },
+        storage:   { maxRetries: 1, backoffMs: 250, backoffFactor: 1 },
+        fatal:     { maxRetries: 0, backoffMs: 0, backoffFactor: 1 },
+    };
+    const DEFAULT_POLICY = 'transient';
+    function getPolicy(name) { return RETRY_POLICIES[name] || RETRY_POLICIES[DEFAULT_POLICY]; }
+    function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+    async function retryWithBackoff(fn, opts = {}) {
+        const base = getPolicy(opts.policy);
+        const policy = Object.assign({}, base, opts.maxRetries !== undefined ? { maxRetries: opts.maxRetries } : {});
+        const boundary = createBoundary(opts.boundary || 'retry');
+        let attempt = 0, delay = policy.backoffMs, lastErr = null;
+        while (attempt <= policy.maxRetries) {
+            try { return await fn(attempt); }
+            catch (e) {
+                lastErr = e;
+                boundary.catch(e, { attempt, policy: opts.policy || DEFAULT_POLICY });
+                record(opts.type || 'transient_failure', String(e), Object.assign({ attempt, boundary: boundary.name }, opts.context || {}));
+                attempt++;
+                if (attempt > policy.maxRetries) break;
+                await sleep(delay);
+                delay = Math.round(delay * policy.backoffFactor);
+            }
+        }
+        throw lastErr;
+    }
+
+    // ─── Self-Heal Loop (016 detects ERROR → here → escalate to 017 ledger) ──
+    const healState = { inFlight: {} };
+
+    function escalate(problemType, moduleName, details) {
+        const evo = (typeof window !== 'undefined') ? window.__NEXUS_EVOLUTION__ : null;
+        if (evo && typeof evo.recordFix === 'function') {
+            evo.recordFix(problemType, 'Auto-recovery exhausted: ' + moduleName, details);
+        } else {
+            console.warn(`[${MODULE_NAME}] Escalation unavailable (evolution engine not loaded): ${moduleName}`);
+        }
+    }
+
+    async function selfHeal(moduleName, reinitFn, opts = {}) {
+        if (healState.inFlight[moduleName]) return { healed: false, reason: 'already-healing' };
+        healState.inFlight[moduleName] = true;
+        const type = opts.type || 'module_reinit';
+        try {
+            await retryWithBackoff(async () => {
+                if (typeof reinitFn !== 'function') throw new Error(`no reinit handle for '${moduleName}'`);
+                await reinitFn();
+            }, { policy: opts.policy || 'init', type, boundary: 'heal:' + moduleName, context: { module: moduleName } });
+            const evo = (typeof window !== 'undefined') ? window.__NEXUS_EVOLUTION__ : null;
+            if (evo && typeof evo.markVerified === 'function') evo.markVerified(type);
+            record(type + ':recovered', 'recovered after retry: ' + moduleName, { module: moduleName });
+            return { healed: true, moduleName };
+        } catch (e) {
+            escalate(type, moduleName, String(e).slice(0, 200));
+            return { healed: false, moduleName, escalated: true, error: String(e) };
+        } finally {
+            delete healState.inFlight[moduleName];
+        }
+    }
+
     function init() {
         if (state.initialized) return;
         console.log(`[${MODULE_NAME}] Initializing...`);
@@ -122,6 +187,7 @@
             init, getHealth, metadata,
             createBoundary, ErrorBoundary,
             record, getFailureSummary, boundaries,
+            retryWithBackoff, selfHeal, RETRY_POLICIES, getPolicy,
         };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }
