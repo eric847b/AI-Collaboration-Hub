@@ -100,7 +100,7 @@
                 echo: echoResult,
             },
             approved: criticResult.approve,
-            confidence: criticResult.approve ? (researchResult.risks.length === 0 ? 'high' : 'medium') : 'blocked',
+            confidence: criticResult.approve ? (researcherResult.risks.length === 0 ? 'high' : 'medium') : 'blocked',
         };
 
         try {
