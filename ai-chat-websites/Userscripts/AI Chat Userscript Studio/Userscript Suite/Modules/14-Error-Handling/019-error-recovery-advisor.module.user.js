@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         test-harness
+// @name         error-recovery-advisor
 // @namespace   AI-Chat-Userscript-Studio
 // @version     2026.09.02.0
-// @description  AI Chat Userscript Suite - Automated testing
+// @description  AI Chat Userscript Suite - Suggests fixes for known errors
 // @author       AI Chat Userscript Studio
 // @match        *://*/*
 // @grant        GM_setValue
@@ -12,20 +12,20 @@
 // ==/UserScript==
 
 /**
- * test-harness
- * Automated testing
+ * error-recovery-advisor
+ * Suggests fixes for known errors
  *
  * Part of the AI Chat Userscript Suite.
  */
 (() => {
     'use strict';
-    const MODULE_NAME = 'test-harness';
+    const MODULE_NAME = 'error-recovery-advisor';
     const metadata = {
         name: MODULE_NAME,
         version: '2026.09.02.0',
         dependencies: [],
         critical: false,
-        category: '12-Testing',
+        category: '14-Error-Handling',
     };
     const state = { initialized: false, config: {} };
     function init() {

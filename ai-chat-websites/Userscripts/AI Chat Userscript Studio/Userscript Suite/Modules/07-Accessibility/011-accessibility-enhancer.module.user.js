@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         test-harness
+// @name         accessibility-enhancer
 // @namespace   AI-Chat-Userscript-Studio
 // @version     2026.09.02.0
-// @description  AI Chat Userscript Suite - Automated testing
+// @description  AI Chat Userscript Suite - WCAG compliance checker
 // @author       AI Chat Userscript Studio
 // @match        *://*/*
 // @grant        GM_setValue
@@ -12,20 +12,20 @@
 // ==/UserScript==
 
 /**
- * test-harness
- * Automated testing
+ * accessibility-enhancer
+ * WCAG compliance checker
  *
  * Part of the AI Chat Userscript Suite.
  */
 (() => {
     'use strict';
-    const MODULE_NAME = 'test-harness';
+    const MODULE_NAME = 'accessibility-enhancer';
     const metadata = {
         name: MODULE_NAME,
         version: '2026.09.02.0',
         dependencies: [],
         critical: false,
-        category: '12-Testing',
+        category: '07-Accessibility',
     };
     const state = { initialized: false, config: {} };
     function init() {
