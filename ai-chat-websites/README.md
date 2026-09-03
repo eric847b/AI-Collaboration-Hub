@@ -6,8 +6,8 @@ Private workspace for AI chat userscripts, modular suite development, legacy arc
 
 - Active collection: `Userscripts/`
 - Canonical development package: `Userscripts/AI Chat Userscript Studio/Userscript Suite/`
-- Current roadmap: `PHASE_2_3_4_IMPLEMENTATION_PLAN.md`
-- Short planning index: `IMPROVEMENT_PLAN.md`
+- Current roadmap: `Docs/_consolidation-2026-07-15/PHASE_2_3_4_IMPLEMENTATION_PLAN.md`
+- Short planning index: `Docs/_consolidation-2026-07-15/IMPROVEMENT_PLAN.md`
 - Active task queue: `.todo_list.json`
 - Legacy reference material: `Archive/`
 - Build and validation: `scripts/`
@@ -48,8 +48,8 @@ npm run check:deps
 - `task-mcp/`: MCP server automation for project management
 - `Archive/`: legacy scripts, notes, duplicates, and workspace snapshots
 - `Docs/`: planning and consolidation docs
-- `PHASE_2_3_4_IMPLEMENTATION_PLAN.md`: detailed roadmap
-- `IMPROVEMENT_PLAN.md`: short planning index
+- `PHASE_2_3_4_IMPLEMENTATION_PLAN.md` → archived at `Docs/_consolidation-2026-07-15/PHASE_2_3_4_IMPLEMENTATION_PLAN.md`
+- `IMPROVEMENT_PLAN.md` → archived at `Docs/_consolidation-2026-07-15/IMPROVEMENT_PLAN.md`
 
 ## Architecture
 

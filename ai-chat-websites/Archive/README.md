@@ -16,6 +16,11 @@ This folder stores legacy scripts, notes, exports, and workspace snapshots kept 
 - `workspace-config/`: workspace files and misc local config artifacts
 - `packages/`: zipped exports and packaged downloads
 - `duplicates/`: exact duplicates retained only for provenance
+- `userscript-bin-2026-09/`: loose root files and inert placeholders archived on 2026-09-26
+
+## Dated Archive Bins
+
+Bins prefixed with a date (e.g. `userscript-bin-2026-09/`) hold files swept from repo roots during cleanup sweeps. Files are moved with `git mv` to preserve history, and inert placeholders keep original names discoverable.
 
 ## Duplicate Handling
 
