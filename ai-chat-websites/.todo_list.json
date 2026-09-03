@@ -1,6 +1,12 @@
 {
   "version": "2.1.0",
-  "last_updated": "2026-07-26T03:03:00-05:00",
+  "_map": {
+    "purpose": "Action queue for the Unified AI Assistant Suite. See PLAN_MAP.md at repo root for the where-are-you-now index of every plan file.",
+    "plan_map": "../PLAN_MAP.md",
+    "trajectory_roadmap": "../next_year_roadmap.md",
+    "docs_index": "../Userscripts/docs/INDEX.md"
+  },
+  "last_updated": "2026-09-26T00:00:00-05:00",
   "v140_template_gallery": {
     "status": "completed",
     "completed_at": "2026-07-26T03:03:00-05:00",
@@ -95,6 +101,6 @@
     "Add custom template creation form (future)",
     "Implement template editing (future)",
     "Add template sharing/export features (future)",
-    "Begin v1.5.0 planning"
+    "Track all remaining work via PLAN_MAP.md + next_year_roadmap.md + Userscript Suite ROADMAP.md"
   ]
 }

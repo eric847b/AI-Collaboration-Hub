@@ -1,5 +1,7 @@
 # Change Log
 
+> **Where am I?** This changelog covers the **Unified AI Assistant Suite**. Plan map: [`PLAN_MAP.md`](PLAN_MAP.md). Suite roadmap: [`next_year_roadmap.md`](next_year_roadmap.md).
+
 All notable changes to the Unified AI Assistant Suite will be documented in this file.
 
 ## [1.2.0] - 2026-07-21 - STREAMING, RETRY, THEME, VERSIONING, BATCH OPERATIONS

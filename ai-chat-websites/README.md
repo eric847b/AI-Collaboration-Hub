@@ -4,9 +4,10 @@ Private workspace for AI chat userscripts, modular suite development, legacy arc
 
 ## Start Here
 
+- **Where am I?** See [`PLAN_MAP.md`](PLAN_MAP.md) — thee index of every plan/roadmap/todo in this repo (which are ACTIVE, superseded, historical, and how they relate).
 - Active collection: `Userscripts/`
 - Canonical development package: `Userscripts/AI Chat Userscript Studio/Userscript Suite/`
-- Current roadmap: `Docs/_consolidation-2026-07-15/PHASE_2_3_4_IMPLEMENTATION_PLAN.md`
+- Current roadmap (entry point): [`PLAN_MAP.md`](PLAN_MAP.md); legacy phase plan archived at `Docs/_consolidation-2026-07-15/PHASE_2_3_4_IMPLEMENTATION_PLAN.md`
 - Short planning index: `Docs/_consolidation-2026-07-15/IMPROVEMENT_PLAN.md`
 - Active task queue: `.todo_list.json`
 - Legacy reference material: `Archive/`
