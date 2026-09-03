@@ -1,6 +1,8 @@
 # Unified AI Assistant Suite — Documentation
 
-**Version:** 1.9.0 (20 modules, 195 KB)
+> **Where am I?** This is the **docs & architecture index** for the **Unified AI Assistant Suite** (v2.1.0). Root plan map: [`../../PLAN_MAP.md`](../../PLAN_MAP.md). Trajectory roadmap: [`../../next_year_roadmap.md`](../../next_year_roadmap.md). Action queue: [`../../.todo_list.json`](../../.todo_list.json).
+
+**Version:** 2.1.0 (20 modules, 195 KB)
 **Status:** v2.0.0 preparation
 
 ## Quick Start

@@ -61,8 +61,8 @@ npm run bundle:merge
 
 ## Current Version
 
-- **Version**: 1.2.0
-- **Status**: Active development with v1.2.0 enhancements
+- **Version**: 2.1.0
+- **Status**: Active development (trajectory to v3.0.0 — see `next_year_roadmap.md`)
 
 ## Quick Links
 

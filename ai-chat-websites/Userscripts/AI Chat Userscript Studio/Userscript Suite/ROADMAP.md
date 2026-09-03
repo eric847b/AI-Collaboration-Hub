@@ -1,5 +1,7 @@
 # AI Chat Userscript Suite — Roadmap
 
+> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (357 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
+
 Generated: 2026-09-26
 Status: Active development queue
 

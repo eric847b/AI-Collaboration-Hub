@@ -1,4 +1,7 @@
 # Next Year Roadmap: v2.1.0 → v3.0.0
+
+> **Where am I?** This is the **ACTIVE trajectory roadmap** for the **Unified AI Assistant Suite** (2026-07 → 2027-07). Root plan map: [`PLAN_MAP.md`](PLAN_MAP.md). Action queue: [`.todo_list.json`](.todo_list.json). Docs index: [`Userscripts/docs/INDEX.md`](Userscripts/docs/INDEX.md).
+
 **Updated: July 30, 2026 | Timeline: July 2026 - July 2027**
 
 ## EXECUTIVE SUMMARY
