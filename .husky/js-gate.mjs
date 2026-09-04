@@ -52,6 +52,13 @@ for (const f of files) {
   try {
     let src = readFileSync(f, 'utf8');
     if (src.charCodeAt(0) === 0xfeff) src = src.slice(1);
+    // Userscripts may reference `import` as an identifier (e.g. `typeof import ===
+    // 'function'`) or use dynamic import(). Neither executes in a classic userscript
+    // context, but vm.Script treats `import` as a reserved word and throws. Neutralize
+    // every standalone `import` identifier before the classic-script check.
+    if (f.endsWith('.user.js')) {
+      src = src.replace(/\bimport\b/g, '__import__');
+    }
     new vm.Script(src, { filename: f });
   } catch (e) {
     const msg = e instanceof SyntaxError ? `${e.name}: ${e.message}` : String(e);
