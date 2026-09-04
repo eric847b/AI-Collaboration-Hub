@@ -430,16 +430,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
-const safeJsonParse = (typeof window !== 'undefined' && window.UnifiedSuite?.safeJsonParse) || ((v, fb) => { try { return JSON.parse(v); } catch { return fb; } });
-const generateId = (typeof window !== 'undefined' && window.UnifiedSuite?.generateId) || (() => `script_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`);
-const deriveScriptName = (typeof window !== 'undefined' && window.UnifiedSuite?.deriveScriptName) || ((script) => { const m = String(script ?? '').match(/@name\s+(.+)/); return m ? m[1].trim() : ''; });
-const generateFilename = (typeof window !== 'undefined' && window.UnifiedSuite?.generateFilename) || ((script, fallback = `generated-${Date.now()}`) => { const name = deriveScriptName(script).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase(); return `${name || fallback}.user.js`; });
-const deriveDescription = (typeof window !== 'undefined' && window.UnifiedSuite?.deriveDescription) || ((text) => { const clean = String(text ?? '').replace(/```[\s\S]*?```/g, ' ').replace(/\s+/g, ' ').trim(); return clean || 'Auto-generated from AI'; });
 
 /**
  * Storage Module - Handles all GM storage operations
@@ -673,7 +663,6 @@ const StorageModule = {
 };
 
 // Re-export utility functions for convenience
-const { generateId, deriveScriptName, generateFilename, deriveDescription } = window.UnifiedSuite;
 
 // Export for userscript context
 if (typeof window !== 'undefined') {
@@ -697,10 +686,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
 
 /**
  * Fetch JSON with retry logic
@@ -1119,11 +1104,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
 
 /**
  * @typedef {Object} Template
@@ -1426,10 +1406,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
 
 /**
  * @typedef {Object} PageContext
@@ -1685,9 +1661,6 @@ if (typeof window !== 'undefined') {
  * 3-way merge for user modifications.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 /**
  * @typedef {Object} UpdateInfo
@@ -1933,9 +1906,6 @@ if (typeof window !== 'undefined') {
  * Security linter, best practices checker, and complexity metrics for generated scripts.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
 
 const ValidatorModule = {
     /**
@@ -2171,9 +2141,6 @@ if (typeof window !== 'undefined') {
  * marketplace integration, and dependency management.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 /**
  * @typedef {Object} PluginManifest
@@ -2373,9 +2340,6 @@ if (typeof window !== 'undefined') {
  * Supports Spanish, Chinese, Japanese, and RTL layout.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 const i18n = {
     currentLocale: 'en',
@@ -2724,9 +2688,6 @@ if (typeof window !== 'undefined') {
  * virtual scrolling, and bundle optimization.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 const PerformanceModule = {
     metrics: {
@@ -2861,9 +2822,6 @@ if (typeof window !== 'undefined') {
  * performance profiling, and network request inspector.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 const DebuggerModule = {
     logs: [],
@@ -3095,9 +3053,6 @@ if (typeof window !== 'undefined') {
  * GitHub Gist sync for templates, export/import, and team collaboration features.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 const SyncModule = {
     GIST_API: 'https://api.github.com/gists',
@@ -3286,9 +3241,6 @@ if (typeof window !== 'undefined') {
  * and usage pattern analysis.
  */
 
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 const AnalyticsModule = {
     events: [],
@@ -3498,10 +3450,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 /**
  * UI Module - Handles all UI rendering and interactions
@@ -3777,7 +3725,6 @@ const UIModule = {
      * @param {Object} elements - UI elements
      */
     bindGeneratorControls(ui, elements) {
-        const storage = window.UnifiedSuite?.storage;
         const providers = window.UnifiedSuite?.providers;
         const versioning = window.UnifiedSuite?.versioning;
         
@@ -4164,7 +4111,6 @@ const UIModule = {
         const templatesGrid = document.getElementById('templates-grid');
         if (!templatesGrid) return;
 
-        const templates = window.UnifiedSuite?.templates?.loadTemplates() || [];
         templatesGrid.innerHTML = '';
 
         if (templates.length === 0) {
@@ -4346,7 +4292,6 @@ const UIModule = {
             if (!name) { alert('Please enter a template name'); return; }
             if (!prompt) { alert('Please enter a prompt template'); return; }
             
-            const templates = window.UnifiedSuite?.templates;
             if (!templates) { alert('Templates module not loaded'); return; }
             
             try {
@@ -4373,7 +4318,6 @@ const UIModule = {
      * @returns {string} JSON export
      */
     exportTemplatesJSON() {
-        const templates = window.UnifiedSuite?.templates;
         if (!templates) return '[]';
         return templates.exportTemplates();
     },
@@ -4384,7 +4328,6 @@ const UIModule = {
      * @returns {{imported: number}} Import result
      */
     importTemplatesJSON(jsonData) {
-        const templates = window.UnifiedSuite?.templates;
         if (!templates) return { imported: 0 };
         return templates.importTemplates(jsonData);
     }
@@ -4405,9 +4348,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
 
 /**
  * Theme Module - Handles theme management
@@ -4461,7 +4401,6 @@ const ThemeModule = {
      */
     saveTheme() {
         updateState('config', { ...state.config, theme: this.currentTheme });
-        const storage = window.UnifiedSuite?.storage;
         if (storage) {
             try {
                 const settings = JSON.parse(GM_getValue(CONFIG.STORAGE_KEYS.settings, '{}'));
@@ -4505,12 +4444,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
-const safeJsonParse = (typeof window !== 'undefined' && window.UnifiedSuite?.safeJsonParse) || ((v, fb) => { try { return JSON.parse(v); } catch { return fb; } });
 
 /**
  * Versioning Module - Handles script versioning and diff view
@@ -4695,7 +4628,6 @@ const VersioningModule = {
      * @returns {string} JSON export
      */
     exportAll() {
-        const storage = window.UnifiedSuite?.storage;
         if (storage) {
             return storage.exportAllScripts();
         }
@@ -4708,7 +4640,6 @@ const VersioningModule = {
      * @returns {Object} Import result
      */
     importAll(jsonData) {
-        const storage = window.UnifiedSuite?.storage;
         if (storage) {
             return storage.importScripts(jsonData);
         }
@@ -4731,11 +4662,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
-const sanitizeText = (typeof window !== 'undefined' && window.UnifiedSuite?.sanitizeText) || ((text) => String(text ?? '').trim());
 
 /**
  * Auth & Security Module
@@ -5001,10 +4927,6 @@ if (typeof window !== 'undefined') {
  */
 
 // Get dependencies from global UnifiedSuite object
-const CONFIG = (typeof window !== 'undefined' && window.UnifiedSuite?.CONFIG) || {};
-const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {};
-const updateState = (typeof window !== 'undefined' && window.UnifiedSuite?.updateState) || (() => {});
-const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 /**
  * Module definitions for dynamic loading
