@@ -136,8 +136,19 @@
     ],
     "validation": "node --check passed on 016 and 017"
   },
+  "registry_autodiscovery_2026_09_04": {
+    "status": "completed",
+    "completed_at": "2026-09-26T19:00:00-05:00",
+    "summary": "Extended 020-module-registry auto-discoverFromGlobals() — scans all __NEXUS_*Module__ globals + legacy MODULE_ID globals",
+    "details": [
+      "Added discoverFromGlobals() — iterates window keys matching __NEXUS_*Module__ pattern, registers any unregistered modules",
+      "Also scans legacy MODULE_ID globals (old-style 01-Chat-Enhancement modules) and registers them with role 'automation' and category 'legacy'",
+      "Wired into init() — runs after scanExisting() on every startup",
+      "Exported via window.__NEXUS_REGISTRY__"
+    ],
+    "validation": "node --check passed on 020"
+  },
   "next_actions": [
-    "Extend 020-module-registry auto-discovery to 13-Chat-Platforms (folder empty, 0 modules)",
     "Work ROADMAP.md items 101-140 (UI/UX - 40 items, largest unaddressed category)",
     "Track all remaining work via PLAN_MAP.md + next_year_roadmap.md + Userscript Suite ROADMAP.md"
   ]
