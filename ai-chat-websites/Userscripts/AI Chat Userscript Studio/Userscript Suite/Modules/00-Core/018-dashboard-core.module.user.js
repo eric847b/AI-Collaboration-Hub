@@ -145,7 +145,9 @@
         p.innerHTML = [
             '<div id="nx-dash-head" style="display:flex;justify-content:space-between;align-items:center;cursor:move;user-select:none">',
             '  <b style="color:#7aa2f7">⬢ Nexus Dashboard</b>',
-            '  <span><button data-act="catalyst" title="Run catalyst cycle" style="margin-right:6px">⚡</button>',
+            '  <span>',
+            '  <button data-act="heal" title="Trigger auto-heal" style="margin-right:6px">💊</button>',
+            '  <button data-act="catalyst" title="Run catalyst cycle" style="margin-right:6px">⚡</button>',
             '  <button data-act="close" style="cursor:pointer">✕</button></span>',
             '</div>',
             '<div id="nx-dash-body" style="margin-top:8px;white-space:pre-wrap">…</div>',
@@ -160,6 +162,14 @@
                 try { const r = hub.runCatalyst(); flash('Catalyst: ' + JSON.stringify(r).slice(0, 120)); }
                 catch (e) { flash('Catalyst error: ' + e.message); }
             } else flash('Hub has no runCatalyst()');
+        });
+        p.querySelector('[data-act="heal"]').addEventListener('click', async () => {
+            const hub = sibling('__NEXUS_HUB__');
+            trackEvent('dashboard', 'heal_trigger');
+            if (hub && typeof hub.healUnhealthy === 'function') {
+                try { const r = await hub.healUnhealthy(); flash('Healed: ' + r.healed + '/' + r.attempted); }
+                catch (e) { flash('Heal error: ' + e.message); }
+            } else flash('Hub has no healUnhealthy()');
         });
         makeDraggable(p, p.querySelector('#nx-dash-head'));
         state.panel = p;
@@ -222,6 +232,9 @@
         state.refreshTimer = setInterval(render, 2000);
         render();
     }
+
+    function getLastCatalyst() { return state._lastCatalyst || null; }
+    function storeCatalystResult(r) { state._lastCatalyst = r; }
 
     function togglePanel(open) {
         state.open = open;
