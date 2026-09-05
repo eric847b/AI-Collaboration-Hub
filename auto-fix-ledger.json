@@ -1,0 +1,42 @@
+{
+  "version": "6.0",
+  "entries": [
+    {
+      "problem_type": "auto_pr",
+      "title": "\ud83e\udd16 Lockfile: ./ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite",
+      "pr_number": 308,
+      "merge_sha": null,
+      "recorded_at": "2026-08-31T12:20:46Z",
+      "status": "pending_verify",
+      "reappear_count": 0
+    },
+    {
+      "problem_type": "lockfile",
+      "title": "Generate missing Node lockfile for ./ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite",
+      "pr_number": null,
+      "merge_sha": null,
+      "recorded_at": "2026-08-31T12:20:46Z",
+      "status": "pending_verify",
+      "reappear_count": 0
+    },
+    {
+      "problem_type": "auto_pr",
+      "title": "\ud83e\udd16 Lockfile: .",
+      "pr_number": 309,
+      "merge_sha": null,
+      "recorded_at": "2026-08-31T12:20:49Z",
+      "status": "pending_verify",
+      "reappear_count": 0
+    },
+    {
+      "problem_type": "lockfile",
+      "title": "Generate missing Node lockfile for .",
+      "pr_number": null,
+      "merge_sha": null,
+      "recorded_at": "2026-08-31T12:20:49Z",
+      "status": "pending_verify",
+      "reappear_count": 0
+    }
+  ],
+  "updated_at": "2026-08-31T12:20:49Z"
+}
