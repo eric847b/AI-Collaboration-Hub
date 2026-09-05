@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         consensus-engine
 // @namespace   AI-Chat-Userscript-Studio
-// @version     2026.09.26.0
-// @description  Consensus engine - merges nexus_consensus multi-role AI (Planner/Researcher/Critic/Forge/Echo) adapted for browser context with rule-based fallback
+// @version     2026.09.26.1
+// @description  Consensus engine - merges nexus_consensus multi-role AI (Planner/Researcher/Critic/Forge/Echo) adapted for browser context with failure-aware planning + rule-based fallback
 // @author       AI Chat Userscript Studio (merged from autonomous-github-agent/nexus_consensus.py)
 // @match        *://*/*
 // @grant        GM_setValue
@@ -12,10 +12,11 @@
 // ==/UserScript==
 
 /**
- * Consensus Engine v1.0
+ * Consensus Engine v1.1
  * Merged from: autonomous-github-agent/nexus_consensus.py
  * Roles: Planner -> Researcher -> Critic -> Forge -> Echo
  * Upgrades: browser-native, rule-based fallback (no LLM needed), confidence scoring
+ * Failure-aware: auto-pulls __NEXUS_FAILURE__.getFailureSummary() into Planner/Researcher context
  */
 (() => {
     'use strict';
@@ -24,7 +25,7 @@
     const CONSENSUS_KEY = 'consensus_history';
 
     const metadata = {
-        name: MODULE_NAME, version: '2026.09.26.0',
+        name: MODULE_NAME, version: '2026.09.26.1',
         dependencies: ['hub-orchestrator', 'self-evolution-engine'],
         critical: false, category: '00-Core',
     };
@@ -33,9 +34,11 @@
 
     const Roles = {
         Planner: {
-            analyze: (task) => {
+            analyze: (task, failureContext) => {
                 const steps = [];
-                if (task.includes('fix')) steps.push('Identify root cause', 'Implement fix', 'Verify resolution');
+                const failures = failureContext || [];
+                if (task.includes('fix')) { steps.push('Identify root cause', 'Implement fix', 'Verify resolution'); }
+                if (failures.length > 0) steps.unshift('Review ' + Math.min(failures.length, 3) + ' recent failure(s): ' + failures.slice(0, 3).map(f => f.type || '?').join(', '));
                 if (task.includes('add')) steps.push('Define requirements', 'Implement feature', 'Test integration');
                 if (task.includes('refactor')) steps.push('Analyze current code', 'Plan changes', 'Execute incrementally');
                 if (steps.length === 0) steps.push('Analyze task', 'Break into steps', 'Execute', 'Verify');
@@ -43,12 +46,17 @@
             }
         },
         Researcher: {
-            analyze: (task, plan) => {
+            analyze: (task, plan, opts = {}) => {
                 const risks = [];
                 const deps = [];
                 if (task.includes('network')) risks.push('Network failures may recur');
                 if (task.includes('auth')) risks.push('Token expiry possible');
                 if (task.includes('deps')) deps.push('hub-orchestrator', 'self-evolution-engine');
+                const failures = opts.failureContext || [];
+                if (failures.length > 0) {
+                    risks.push(`${failures.length} known failure type(s) active — recovery plans should account for these`);
+                    failures.slice(0, 5).forEach(f => deps.push(`${f.type || '?'} (×${f.count || 1})`));
+                }
                 return { risks, deps, notes: [`Task type: ${task.split(' ')[0] || 'unknown'}`] };
             }
         },
@@ -82,9 +90,17 @@
         },
     };
 
-    function runConsensus(task) {
-        const plannerResult = Roles.Planner.analyze(task);
-        const researcherResult = Roles.Researcher.analyze(task, plannerResult);
+    function getFailureContext() {
+        try {
+            const fail = (typeof window !== 'undefined') ? window.__NEXUS_FAILURE__ : null;
+            return (fail && typeof fail.getFailureSummary === 'function') ? fail.getFailureSummary() : [];
+        } catch (e) { return []; }
+    }
+
+    function runConsensus(task, opts) {
+        const failureContext = (opts && opts.failureContext) || getFailureContext();
+        const plannerResult = Roles.Planner.analyze(task, failureContext);
+        const researcherResult = Roles.Researcher.analyze(task, plannerResult, { failureContext });
         const criticResult = Roles.Critic.analyze(task, plannerResult, researcherResult);
         const forgeResult = Roles.Forge.analyze(task, plannerResult, researcherResult, criticResult);
         const echoResult = Roles.Echo.analyze(task, plannerResult, researcherResult, criticResult, forgeResult);
@@ -125,7 +141,7 @@
     }
 
     if (typeof window !== 'undefined') {
-        window.__NEXUS_CONSENSUS__ = { init, getHealth, runConsensus, Roles, metadata };
+        window.__NEXUS_CONSENSUS__ = { init, getHealth, runConsensus, getFailureContext, Roles, metadata };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }
     if (document.readyState === 'complete') { init(); } else { window.addEventListener('load', init); }

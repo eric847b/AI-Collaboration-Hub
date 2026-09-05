@@ -166,7 +166,9 @@
         const scope = computeScope();
         const audit = runSelfAudit();
         const heal = await healUnhealthy();
-        const prompt = generateCatalystPrompt(scope, audit);
+        const failMod = (typeof window !== 'undefined') ? window.__NEXUS_FAILURE__ : null;
+        const failureSummary = (failMod && typeof failMod.getFailureSummary === 'function') ? failMod.getFailureSummary() : null;
+        const prompt = generateCatalystPrompt(scope, audit, failureSummary);
         const catalyst = {
             generated: new Date().toISOString(),
             scope_summary: scope.health_summary,
@@ -219,12 +221,17 @@
         return { issues, module_count: reg.modules.length };
     }
 
-    function generateCatalystPrompt(scope, audit) {
-        if (audit.issues.length === 0) {
+    function generateCatalystPrompt(scope, audit, failureSummary) {
+        if (audit.issues.length === 0 && (!failureSummary || failureSummary.length === 0)) {
             return 'System stable. No action needed.';
         }
         const top = audit.issues.slice(0, 3).join('; ');
-        return `Address: ${top}. Then re-run scope to verify.`;
+        let prompt = 'Address: ' + top + '. Then re-run scope to verify.';
+        if (failureSummary && failureSummary.length > 0) {
+            const topFailures = failureSummary.slice(0, 3).map(f => (f.type || '?') + ' (x' + (f.count || 1) + ')').join('; ');
+            prompt += '\nActive failures: ' + topFailures + '. Consult consensus engine for recovery plan.';
+        }
+        return prompt;
     }
 
     // ─── Module Discovery ───────────────────────────────────────────────────
