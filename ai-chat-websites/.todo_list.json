@@ -33,7 +33,13 @@
       "020-module-registry (nexus-core registry.json)",
       "021-failure-recovery (solutions-dynamics FailureType + closed_loop)"
     ],
-    "commits": ["90a233c", "645119c", "d7375ad", "ea85755", "4f48463"],
+    "commits": [
+      "90a233c",
+      "645119c",
+      "d7375ad",
+      "ea85755",
+      "4f48463"
+    ],
     "package_version": "1.3.0"
   },
   "v140_template_gallery": {
@@ -149,7 +155,18 @@
     "validation": "node --check passed on 020"
   },
   "next_actions": [
-    "Work ROADMAP.md items 101-140 (UI/UX - 40 items, largest unaddressed category)",
-    "Track all remaining work via PLAN_MAP.md + next_year_roadmap.md + Userscript Suite ROADMAP.md"
-  ]
+    "Extend 020 auto-discovery to 13-Chat-Platforms (folder empty)",
+    "Adopt 019 failure-aware consensus output in 020/016 evolve loop",
+    "Work ROADMAP.md items 101-140 (UI/UX)"
+  ],
+  "consensus_failure_aware_2026_09_04": {
+    "status": "completed",
+    "completed_at": "2026-09-26T20:00:00-05:00",
+    "summary": "019 failure-aware planning + 016 catalyst prompt failure injection",
+    "details": [
+      "019-consensus-engine: runConsensus(task, opts) now auto-pulls getFailureSummary() from __NEXUS_FAILURE__ when opts.failureContext absent; Planner prepends review of top failures; Researcher flags them as risks + deps; exports getFailureContext()",
+      "016-hub-orchestrator: generateCatalystPrompt(scope, audit, failureSummary) includes top active failures and defers to consensus for recovery; runCatalyst passes failure summary in"
+    ],
+    "validation": "node --check passed on 016, 019; package bumped 2.1.0 - 2.1.1; pushed"
+  }
 }

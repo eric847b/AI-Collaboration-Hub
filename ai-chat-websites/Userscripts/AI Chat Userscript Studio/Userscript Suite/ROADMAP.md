@@ -342,11 +342,12 @@ All 60 modules from the original Module Expansion list exist.
 - [x] 016-hub-orchestrator v2026.09.26.1 — implemented missing validateRegistry() (names, duplicates, versions, roles, unmet deps), exported on __NEXUS_HUB__
 - [x] 020-module-registry — state.modules GM-storage persistence confirmed
 - [x] All six merged 00-Core modules pass `node --check`
+- [x] 019-consensus-engine v2026.09.26.1 - failure-aware planning: auto-pulls 021 getFailureSummary() into Planner/Researcher context; 016 catalyst prompt injects top failures
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
-2. Feed 021 `getFailureSummary()` into 019-consensus-engine Planner prompts
-3. Extend 020 auto-discovery to 13-Chat-Platforms (folder currently empty)
+2. Extend 020 auto-discovery to 13-Chat-Platforms (folder currently empty)
+3. Adopt 019 failure-aware consensus output in the 020/016 evolve loop (recovery plan to registry action)
 4. Add 12-Testing harness cases covering retryWithBackoff backoff math
 5. Check off ROADMAP items as modules land; bump package.json on each merge
 
