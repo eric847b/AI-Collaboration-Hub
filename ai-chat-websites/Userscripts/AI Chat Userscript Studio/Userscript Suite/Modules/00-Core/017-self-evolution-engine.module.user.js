@@ -198,6 +198,29 @@
         };
     }
 
+    // ─── Consensus Planner Integration (017 failure → 019 Planner steps) ─────
+    function planRecovery(failureType, context) {
+        const consensus = (typeof window !== 'undefined') ? window.__NEXUS_CONSENSUS__ : null;
+        const config = getFailureConfig(failureType);
+        if (!consensus || typeof consensus.runConsensus !== 'function') {
+            return { planned: false, reason: 'consensus-engine unavailable', fallback: ['Retry manually'] };
+        }
+        const task = `fix ${failureType} (${config.category})` + (context ? `: ${String(context).slice(0, 100)}` : '');
+        const plan = consensus.runConsensus(task);
+        const retryHint = config.retryable ? `retry up to ${config.maxRetries}x with ${config.backoff}ms backoff` : 'no retry — manual fix required';
+        return {
+            planned: true,
+            failureType,
+            category: config.category,
+            retryable: config.retryable,
+            retryHint,
+            steps: plan.roles.planner.steps,
+            risks: plan.roles.researcher.risks,
+            approved: plan.approved,
+            confidence: plan.confidence,
+        };
+    }
+
     function init() {
         if (state.initialized) return;
         console.log(`[${MODULE_NAME}] Initializing...`);
@@ -220,6 +243,7 @@
             init, getHealth, metadata, FailureTypes,
             recordFix, markVerified, noteReappearance,
             recordFailure, attemptRecovery, getFailureConfig, runAudit,
+            planRecovery,
         };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }
