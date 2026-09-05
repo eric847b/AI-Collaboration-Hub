@@ -155,9 +155,9 @@
     "validation": "node --check passed on 020"
   },
   "next_actions": [
-    "Extend 020 auto-discovery to 13-Chat-Platforms (folder empty)",
-    "Adopt 019 failure-aware consensus output in 020/016 evolve loop",
-    "Work ROADMAP.md items 101-140 (UI/UX)"
+    "Adopt 019 failure-aware consensus output in 020/016 evolve loop (recovery to registry action)",
+    "Add 12-Testing harness cases for retryWithBackoff backoff math",
+    "Work ROADMAP items 101-140 (UI/UX)"
   ],
   "consensus_failure_aware_2026_09_04": {
     "status": "completed",
@@ -168,5 +168,17 @@
       "016-hub-orchestrator: generateCatalystPrompt(scope, audit, failureSummary) includes top active failures and defers to consensus for recovery; runCatalyst passes failure summary in"
     ],
     "validation": "node --check passed on 016, 019; package bumped 2.1.0 - 2.1.1; pushed"
+  },
+  "platform_discovery_2026_09_04": {
+    "status": "completed",
+    "completed_at": "2026-09-26T21:00:00-05:00",
+    "summary": "020 auto-discovery extended to 13-Chat-Platforms + new platform modules",
+    "details": [
+      "Created 13-Chat-Platforms folder with 001-platform-detector (hostname to platform id + capability traits over 11 platforms) and 002-platform-adapters (DOM adapter: composer/send/reply/history, delegating to ChatGPTUtils when present)",
+      "Both register metadata into __NEXUS_MODULES__ for 020 scanExisting + discoverFromGlobals",
+      "Added discoverPlatforms() to 020-module-registry — scans __NEXUS_PLATFORMS__ and __NEXUS_ADAPTERS__ globals, registers with role coordination/execution and category 13-Chat-Platforms; wired into init() and exported",
+      "Added 12-Testing/009-platform-discovery-smoke-test.cjs — 13 assertions all passing"
+    ],
+    "validation": "node --check on 020 + new modules; 13/13 smoke test pass"
   }
 }

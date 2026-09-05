@@ -1,6 +1,6 @@
 {
   "name": "ai-chat-userscript-suite",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Sovereign Singularity - Self-evolving autonomous agent suite for ai-chat-websites",
   "scripts": {
     "verify": "node ./Userscripts/tools/run-suite.cjs verify",

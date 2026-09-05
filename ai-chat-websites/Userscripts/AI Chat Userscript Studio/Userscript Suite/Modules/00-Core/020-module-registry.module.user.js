@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         module-registry
 // @namespace   AI-Chat-Userscript-Studio
-// @version     2026.09.26.0
+// @version     2026.09.26.1
 // @description  Module registry - merges nexus-core registry.json with roles/deps/entrypoint/health + validation + topological sort
 // @author       AI Chat Userscript Studio (merged from nexus-core/registry.json + orchestrator.py)
 // @match        *://*/*
@@ -25,7 +25,7 @@
     const VALID_ROLES = ['core', 'execution', 'coordination', 'memory', 'ui', 'automation', 'security', 'performance', 'analytics', 'unclassified'];
 
     const metadata = {
-        name: MODULE_NAME, version: '2026.09.26.0',
+        name: MODULE_NAME, version: '2026.09.26.1',
         dependencies: ['hub-orchestrator'], critical: true, category: '00-Core',
     };
 
@@ -147,10 +147,35 @@
         return found;
     }
 
+    // ─── 13-Chat-Platforms discovery (detector + adapters) ──────────────
+    function discoverPlatforms() {
+        load();
+        const found = [];
+        if (typeof window === 'undefined') return found;
+        const candidates = [];
+        const plat = window.__NEXUS_PLATFORMS__;
+        if (plat && plat.metadata && plat.metadata.name) {
+            candidates.push({ name: plat.metadata.name, role: 'coordination', version: plat.metadata.version || '1.0.0', metadata: plat.metadata });
+        }
+        const adp = window.__NEXUS_ADAPTERS__;
+        if (adp && adp.metadata && adp.metadata.name) {
+            candidates.push({ name: adp.metadata.name, role: 'execution', version: adp.metadata.version || '1.0.0', metadata: adp.metadata });
+        }
+        for (const c of candidates) {
+            const existing = getByName(c.name);
+            if (!existing) {
+                register(Object.assign({}, c.metadata, { role: c.role, version: c.version, category: c.metadata.category || '13-Chat-Platforms' }));
+                found.push(c.name);
+            }
+        }
+        state.lastScan = new Date().toISOString();
+        return found;
+    }
+
     function init() {
         if (state.initialized) return;
         console.log(`[${MODULE_NAME}] Initializing...`);
-        load(); scanExisting(); discoverFromGlobals();
+        load(); scanExisting(); discoverFromGlobals(); discoverPlatforms();
         state.initialized = true;
         console.log(`[${MODULE_NAME}] Initialized - ${state.modules.length} modules`);
     }
@@ -159,7 +184,7 @@
     if (typeof window !== 'undefined') {
         window.__NEXUS_REGISTRY__ = {
             init, getHealth, metadata, register, remove, getByName, getByRole, getByCategory,
-            validate, topologicalSort, getStats, scanExisting, discoverFromGlobals,
+            validate, topologicalSort, getStats, scanExisting, discoverFromGlobals, discoverPlatforms,
         };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }
