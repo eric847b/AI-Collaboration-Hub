@@ -106,10 +106,51 @@
         return found;
     }
 
+    // ─── Extended Auto-Discovery (scan all __NEXUS_*Module__ globals) ────────
+    function discoverFromGlobals() {
+        load();
+        const found = [];
+        if (typeof window === 'undefined') return found;
+        const nexusPrefix = '__NEXUS_';
+        const moduleSuffix = 'Module';
+        for (const key of Object.keys(window)) {
+            if (!key.startsWith(nexusPrefix) || !key.endsWith(moduleSuffix)) continue;
+            const mod = window[key];
+            if (mod && mod.metadata && mod.metadata.name) {
+                const existing = getByName(mod.metadata.name);
+                if (!existing) {
+                    register(mod.metadata);
+                    found.push(mod.metadata.name);
+                }
+            }
+        }
+        // Also scan legacy MODULE_ID globals (old-style modules)
+        for (const key of Object.keys(window)) {
+            const mod = window[key];
+            if (mod && mod.MODULE_NAME && mod.MODULE_ID) {
+                const name = mod.MODULE_NAME;
+                const existing = getByName(name);
+                if (!existing) {
+                    register({
+                        name,
+                        role: 'automation',
+                        version: mod.MODULE_VERSION || '1.0.0',
+                        status: 'HEALTHY',
+                        category: 'legacy',
+                        description: `Legacy module ${mod.MODULE_ID}`,
+                    });
+                    found.push(name);
+                }
+            }
+        }
+        state.lastScan = new Date().toISOString();
+        return found;
+    }
+
     function init() {
         if (state.initialized) return;
         console.log(`[${MODULE_NAME}] Initializing...`);
-        load(); scanExisting();
+        load(); scanExisting(); discoverFromGlobals();
         state.initialized = true;
         console.log(`[${MODULE_NAME}] Initialized - ${state.modules.length} modules`);
     }
@@ -118,7 +159,7 @@
     if (typeof window !== 'undefined') {
         window.__NEXUS_REGISTRY__ = {
             init, getHealth, metadata, register, remove, getByName, getByRole, getByCategory,
-            validate, topologicalSort, getStats, scanExisting,
+            validate, topologicalSort, getStats, scanExisting, discoverFromGlobals,
         };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }
