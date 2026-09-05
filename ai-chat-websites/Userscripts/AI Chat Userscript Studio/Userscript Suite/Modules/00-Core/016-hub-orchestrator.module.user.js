@@ -162,14 +162,16 @@
     }
 
     // ─── Catalyst Cycle ──────────────────────────────────────────────────────
-    function runCatalyst() {
+    async function runCatalyst() {
         const scope = computeScope();
         const audit = runSelfAudit();
+        const heal = await healUnhealthy();
         const prompt = generateCatalystPrompt(scope, audit);
         const catalyst = {
             generated: new Date().toISOString(),
             scope_summary: scope.health_summary,
             audit_issues: audit.issues.length,
+            heal_results: heal,
             prompt: prompt,
         };
         atomicWrite(CATALYST_KEY, catalyst);
@@ -298,11 +300,33 @@
         };
     }
 
+    // ─── Auto-Heal Integration (016 detects → 021 selfHeal retries) ─────────
+    async function healUnhealthy() {
+        const failures = (typeof window !== 'undefined') ? window.__NEXUS_FAILURE__ : null;
+        const errors = validateRegistry();
+        const results = [];
+        if (!failures || typeof failures.selfHeal !== 'function') {
+            return { healed: [], skipped: errors.length, reason: 'failure-recovery module unavailable' };
+        }
+        for (const mod of getRegistry().modules) {
+            const modState = state.modules[mod.name];
+            if (modState && modState.error) {
+                const r = await failures.selfHeal(mod.name, async () => {
+                    modState.error = null;
+                    modState.initialized = false;
+                    if (typeof modState.reinit === 'function') await modState.reinit();
+                }, { policy: 'init', type: 'registry_error_recovery' });
+                results.push(r);
+            }
+        }
+        return { healed: results.filter(r => r.healed).length, attempted: results.length, results };
+    }
+
     if (typeof window !== 'undefined') {
         window.__NEXUS_HUB__ = {
             init, getHealth, getRegistry, registerModule, computeScope, validateRegistry,
             runCatalyst, getDependencyGraph, detectCycles, discoverModules,
-            metadata,
+            healUnhealthy, metadata,
         };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }
