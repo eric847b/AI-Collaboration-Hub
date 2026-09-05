@@ -125,10 +125,19 @@
     "Document as you go (updated TODO throughout)",
     "Incremental commits (logical grouping of changes)"
   ],
+  "integration_wiring_2026_09_04": {
+    "status": "completed",
+    "completed_at": "2026-09-26T18:00:00-05:00",
+    "summary": "Closed the loop between core modules: 016 validates → 021 selfHeals; 017 failures → 019 Planner steps",
+    "details": [
+      "016-hub-orchestrator: added healUnhealthy() — feeds registry errors into __NEXUS_FAILURE__.selfHeal() with init policy; wired into runCatalyst() so every catalyst cycle auto-heals unhealthy modules",
+      "017-self-evolution-engine: added planRecovery(failureType, context) — looks up FailureTypes config, builds task string, calls __NEXUS_CONSENSUS__.runConsensus() to get Planner steps + Researcher risks + Critic approval; returns structured recovery plan with retryHint",
+      "Both functions exported via window.__NEXUS_HUB__ and window.__NEXUS_EVOLUTION__ respectively"
+    ],
+    "validation": "node --check passed on 016 and 017"
+  },
   "next_actions": [
-    "Feed 017-self-evolution-engine failure types into 019-consensus-engine Planner role",
     "Extend 020-module-registry auto-discovery to 13-Chat-Platforms (folder empty, 0 modules)",
-    "Connect 021-failure-recovery ErrorBoundary.wrap() to orchestrator validateRegistry() auto-retry",
     "Work ROADMAP.md items 101-140 (UI/UX - 40 items, largest unaddressed category)",
     "Track all remaining work via PLAN_MAP.md + next_year_roadmap.md + Userscript Suite ROADMAP.md"
   ]
