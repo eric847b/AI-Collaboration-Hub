@@ -172,6 +172,34 @@
         return found;
     }
 
+    // ─── Recovery Action Tracking (016 heal → 017 plan → 020 record) ─────────
+    function recordRecoveryAction(moduleName, plan) {
+        load();
+        const idx = state.modules.findIndex(m => m.name === moduleName);
+        if (idx < 0) return null;
+        const mod = state.modules[idx];
+        if (!mod.recovery_history) mod.recovery_history = [];
+        const entry = {
+            timestamp: new Date().toISOString(),
+            failure_type: plan.failureType || 'unknown',
+            category: plan.category || 'unknown',
+            retryable: !!plan.retryable,
+            retry_hint: plan.retryHint || '',
+            steps: Array.isArray(plan.steps) ? plan.steps : [],
+            risks: Array.isArray(plan.risks) ? plan.risks : [],
+            approved: !!plan.approved,
+            confidence: plan.confidence || 'unknown',
+        };
+        mod.recovery_history.push(entry);
+        mod.recovery_history = mod.recovery_history.slice(-20);
+        if (mod.status === 'HEALTHY' || mod.status === 'ERROR') {
+            mod.status = 'RECOVERY_PLANNED';
+        }
+        mod.last_recovery_at = entry.timestamp;
+        save();
+        return entry;
+    }
+
     function init() {
         if (state.initialized) return;
         console.log(`[${MODULE_NAME}] Initializing...`);
@@ -185,6 +213,7 @@
         window.__NEXUS_REGISTRY__ = {
             init, getHealth, metadata, register, remove, getByName, getByRole, getByCategory,
             validate, topologicalSort, getStats, scanExisting, discoverFromGlobals, discoverPlatforms,
+            recordRecoveryAction,
         };
         window[`${MODULE_NAME}Module`] = { init, getHealth, metadata };
     }

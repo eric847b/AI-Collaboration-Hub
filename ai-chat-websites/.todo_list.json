@@ -154,8 +154,18 @@
     ],
     "validation": "node --check passed on 020"
   },
+  "recovery_to_registry_2026_09_04": {
+    "status": "completed",
+    "completed_at": "2026-09-26T22:00:00-05:00",
+    "summary": "Closed the full recovery loop: 016 heal → 017 planRecovery → 020 recordRecoveryAction",
+    "details": [
+      "020-module-registry: added recordRecoveryAction(moduleName, plan) — stores recovery plan (failureType, category, steps, risks, confidence, retryHint) in module.recovery_history (cap 20), sets status RECOVERY_PLANNED, exported via __NEXUS_REGISTRY__",
+      "016-hub-orchestrator: healUnhealthy() upgraded — after selfHeal, calls __NEXUS_EVOLUTION__.planRecovery() to get consensus plan, then __NEXUS_REGISTRY__.recordRecoveryAction() to track it; passes modState.errorType to selfHeal; results include recovery_plan",
+      "Full loop: failure detection → self-heal retry → consensus-based recovery plan → registry-tracked action with full audit trail"
+    ],
+    "validation": "node --check passed on 016, 020"
+  },
   "next_actions": [
-    "Adopt 019 failure-aware consensus output in 020/016 evolve loop (recovery to registry action)",
     "Add 12-Testing harness cases for retryWithBackoff backoff math",
     "Work ROADMAP items 101-140 (UI/UX)"
   ],

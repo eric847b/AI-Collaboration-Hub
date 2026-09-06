@@ -307,9 +307,11 @@
         };
     }
 
-    // ─── Auto-Heal Integration (016 detects → 021 selfHeal retries) ─────────
+    // ─── Auto-Heal Integration (016 detects → 021 selfHeal → 017 plan → 020 record) ───
     async function healUnhealthy() {
         const failures = (typeof window !== 'undefined') ? window.__NEXUS_FAILURE__ : null;
+        const evolution = (typeof window !== 'undefined') ? window.__NEXUS_EVOLUTION__ : null;
+        const registry = (typeof window !== 'undefined') ? window.__NEXUS_REGISTRY__ : null;
         const errors = validateRegistry();
         const results = [];
         if (!failures || typeof failures.selfHeal !== 'function') {
@@ -318,12 +320,22 @@
         for (const mod of getRegistry().modules) {
             const modState = state.modules[mod.name];
             if (modState && modState.error) {
+                const failureType = modState.errorType || 'registry_error_recovery';
                 const r = await failures.selfHeal(mod.name, async () => {
                     modState.error = null;
                     modState.initialized = false;
                     if (typeof modState.reinit === 'function') await modState.reinit();
-                }, { policy: 'init', type: 'registry_error_recovery' });
-                results.push(r);
+                }, { policy: 'init', type: failureType });
+                // 017 planRecovery: get consensus-based recovery plan
+                let recoveryPlan = null;
+                if (evolution && typeof evolution.planRecovery === 'function') {
+                    try { recoveryPlan = evolution.planRecovery(failureType, mod.name); } catch (e) { /* ignore */ }
+                }
+                // 020 recordRecoveryAction: track recovery in registry
+                if (recoveryPlan && registry && typeof registry.recordRecoveryAction === 'function') {
+                    try { registry.recordRecoveryAction(mod.name, recoveryPlan); } catch (e) { /* ignore */ }
+                }
+                results.push({ ...r, recovery_plan: recoveryPlan });
             }
         }
         return { healed: results.filter(r => r.healed).length, attempted: results.length, results };
