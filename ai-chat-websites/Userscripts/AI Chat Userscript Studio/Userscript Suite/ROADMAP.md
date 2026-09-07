@@ -1,6 +1,6 @@
 # AI Chat Userscript Suite — Roadmap
 
-> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (360 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
+> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (361 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
 
 Generated: 2026-09-26
 Status: Active development queue
@@ -276,26 +276,26 @@ All 60 modules from the original Module Expansion list exist.
 
 ## Monitoring & Observability (originals 341-360)
 
-- [ ] 341. Distributed tracing
-- [ ] 342. OpenTelemetry integration
-- [ ] 343. Jaeger export
-- [ ] 344. Zipkin export
-- [ ] 345. Prometheus metrics
-- [ ] 346. Grafana dashboards
-- [ ] 347. Alertmanager rules
-- [ ] 348. PagerDuty integration
-- [ ] 349. Opsgenie integration
-- [ ] 350. VictorOps integration
-- [ ] 351. ServiceNow integration
-- [ ] 352. Splunk integration
-- [ ] 353. ELK stack integration
-- [ ] 354. DataDog integration
-- [ ] 355. New Relic integration
-- [ ] 356. Honeycomb integration
-- [ ] 357. Honeybadger integration
-- [ ] 358. Sentry integration
-- [ ] 359. Bugsnag integration
-- [ ] 360. Rollbar integration
+- [x] 341. Distributed tracing → `00-Core/029-monitoring-observability`
+- [x] 342. OpenTelemetry integration → `00-Core/029-monitoring-observability`
+- [x] 343. Jaeger export → `00-Core/029-monitoring-observability`
+- [x] 344. Zipkin export → `00-Core/029-monitoring-observability`
+- [x] 345. Prometheus metrics → `00-Core/029-monitoring-observability`
+- [x] 346. Grafana dashboards → `00-Core/029-monitoring-observability`
+- [x] 347. Alertmanager rules → `00-Core/029-monitoring-observability`
+- [x] 348. PagerDuty integration → `00-Core/029-monitoring-observability`
+- [x] 349. Opsgenie integration → `00-Core/029-monitoring-observability`
+- [x] 350. VictorOps integration → `00-Core/029-monitoring-observability`
+- [x] 351. ServiceNow integration → `00-Core/029-monitoring-observability`
+- [x] 352. Splunk integration → `00-Core/029-monitoring-observability`
+- [x] 353. ELK stack integration → `00-Core/029-monitoring-observability`
+- [x] 354. DataDog integration → `00-Core/029-monitoring-observability`
+- [x] 355. New Relic integration → `00-Core/029-monitoring-observability`
+- [x] 356. Honeycomb integration → `00-Core/029-monitoring-observability`
+- [x] 357. Honeybadger integration → `00-Core/029-monitoring-observability`
+- [x] 358. Sentry integration → `00-Core/029-monitoring-observability`
+- [x] 359. Bugsnag integration → `00-Core/029-monitoring-observability`
+- [x] 360. Rollbar integration → `00-Core/029-monitoring-observability`
 
 ---
 
@@ -319,7 +319,7 @@ All 60 modules from the original Module Expansion list exist.
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
 | **TOTAL** | **386** | **75** | **311** |
 
-**Status**: 134/386 implemented (35%) | 357 module files | Suite v1.6.0 | Core modules v2026.09.26.1
+**Status**: 154/386 implemented (40%) | 357 module files | Suite v1.7.0 | Core modules v2026.09.26.1
 **Next priority**: Dashboard-core live wiring + consensus/failure integration
 
 ## Integration Phase Log
@@ -335,7 +335,7 @@ All 60 modules from the original Module Expansion list exist.
 
 ---
 
-## Next Steps & To-Dos (current sprint — suite v1.6.0)
+## Next Steps & To-Dos (current sprint — suite v1.7.0)
 
 **Completed this pass (2026-09-26)**
 - [x] 021-failure-recovery v2026.09.26.1 — RETRY_POLICIES, retryWithBackoff(), selfHeal() escalating to 017 ledger
@@ -347,6 +347,7 @@ All 60 modules from the original Module Expansion list exist.
 - [x] 026-analytics-engine v2026.09.26.1 - ROADMAP 262-280 Data & Analytics: heatmaps, replay, recordings, conversions, funnels, cohorts, retention, churn, LTV, attribution, ROI, A/B stats (z-test, CI, hypothesis), Bayes, Thompson bandit, Q-learning, DiD; verified by 12-Testing/015
 - [x] 027-security-hardening v2026.09.26.1 - ROADMAP 141-170 Security Hardening: CSP builder, nonces, SRI, clickjacking, MIME sniffing, referrer policy, permissions policy, Permissions API, secure context, cert pinning, TLS enforcement, mixed content scan, HSTS, CT, OCSP staleness, DoH, ECH flags, PQ readiness, ZK commitments, E2EE (AES-GCM), key rotation, PFS (ECDH P-256), PBKDF2 KDF, password hashing, salting, pepper, algo capabilities; verified by 12-Testing/016
 - [x] 028-performance-optimizer v2026.09.26.1 - ROADMAP 171-200 Performance: critical CSS, fonts, lazy images, srcset, picture/WebP/AVIF, SVG optimization, icon fonts, SVG sprite sheet, CSS sprites, containment, content-visibility, will-change guard, GPU layers, paint hold, display lock, debounce/throttle/yield, priority scheduling, task queue, idle callbacks + deadline work, rAF batching, animation loop, inline workers, SharedArrayBuffer, Atomics, SIMD probe, WASM loader (cached), concurrency pool; verified by 12-Testing/017
+- [x] 029-monitoring-observability v2026.09.26.1 - ROADMAP 341-360 Monitoring & Observability: distributed tracing (parent-child spans), OTLP/JSON exporter, Jaeger + Zipkin payloads (us durations), Prometheus registry (counters/gauges/histograms + text exposition), Grafana dashboard/annotation builders, Alertmanager rule YAML, PagerDuty/Opsgenie/VictorOps/ServiceNow incident payloads + senders, Splunk/ELK/DataDog/New Relic/Honeycomb log+metric payloads, stack parser, Honeybadger/Sentry/Bugsnag/Rollbar error payloads; verified by 12-Testing/018
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
