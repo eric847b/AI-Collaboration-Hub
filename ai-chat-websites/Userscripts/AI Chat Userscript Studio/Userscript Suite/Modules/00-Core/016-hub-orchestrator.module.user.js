@@ -292,6 +292,18 @@
         registerModule(metadata);
         discoverModules();
         computeScope();
+        // 023 feature flags: check for disabled modules
+        const features = (typeof window !== 'undefined') ? window.__NEXUS_FEATURES__ : null;
+        if (features && typeof features.isEnabled === 'function') {
+            const disabled = [];
+            for (const mod of getRegistry().modules) {
+                if (features.isEnabled('module.' + mod.name + '.disabled')) {
+                    disabled.push(mod.name);
+                    state.modules[mod.name] = { initialized: false, disabled: true };
+                }
+            }
+            if (disabled.length > 0) console.log(`[${MODULE_NAME}] Feature flags disabled: ${disabled.join(', ')}`);
+        }
         state.initialized = true;
         console.log(`[${MODULE_NAME}] Initialized - ${getRegistry().modules.length} modules registered`);
     }
@@ -312,12 +324,18 @@
         const failures = (typeof window !== 'undefined') ? window.__NEXUS_FAILURE__ : null;
         const evolution = (typeof window !== 'undefined') ? window.__NEXUS_EVOLUTION__ : null;
         const registry = (typeof window !== 'undefined') ? window.__NEXUS_REGISTRY__ : null;
+        const features = (typeof window !== 'undefined') ? window.__NEXUS_FEATURES__ : null;
         const errors = validateRegistry();
         const results = [];
         if (!failures || typeof failures.selfHeal !== 'function') {
             return { healed: [], skipped: errors.length, reason: 'failure-recovery module unavailable' };
         }
         for (const mod of getRegistry().modules) {
+            // Skip modules disabled via feature flag
+            if (features && typeof features.isEnabled === 'function' && features.isEnabled('module.' + mod.name + '.disabled')) {
+                results.push({ healed: false, skipped: true, reason: 'feature-flag-disabled', module: mod.name });
+                continue;
+            }
             const modState = state.modules[mod.name];
             if (modState && modState.error) {
                 const failureType = modState.errorType || 'registry_error_recovery';
