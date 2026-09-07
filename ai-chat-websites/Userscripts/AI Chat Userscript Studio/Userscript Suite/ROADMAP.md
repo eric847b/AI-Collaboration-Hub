@@ -1,6 +1,6 @@
 # AI Chat Userscript Suite — Roadmap
 
-> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (361 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
+> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (362 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
 
 Generated: 2026-09-26
 Status: Active development queue
@@ -33,46 +33,46 @@ All 60 modules from the original Module Expansion list exist.
 ## Feature Enhancements (originals 61-120)
 
 ### Infrastructure & PWA
-- [ ] 61. Progressive Web App (PWA) support
-- [ ] 62. Offline mode with service workers
-- [ ] 63. Background sync capabilities
-- [ ] 64. Push notification integration
-- [ ] 65. Native API access via WebExtensions
-- [ ] 66. Cross-browser extension support
-- [ ] 67. Browser-native storage APIs
-- [ ] 68. IndexedDB for local data
-- [ ] 69. WebSQL legacy support
-- [ ] 70. Cache API optimization
-- [ ] 71. Background script workers
-- [ ] 72. Content script injection
-- [ ] 73. Declarative content rules
-- [ ] 74. Dynamic content scripts
-- [ ] 75. Hot reloading during development
-- [ ] 76. Live module reloading
-- [ ] 77. Hot module replacement (HMR)
-- [ ] 78. DevTools integration
-- [ ] 79. Console enhancement
-- [ ] 80. Network tab augmentation
-- [ ] 81. Source map support
-- [ ] 82. Time-travel debugging
-- [ ] 83. State snapshots
-- [ ] 84. Action replay
-- [ ] 85. Undo/redo stack
+- [x] 61. â†’ `00-Core/030-feature-enhancements` Progressive Web App (PWA) support
+- [x] 62. â†’ `00-Core/030-feature-enhancements` Offline mode with service workers
+- [x] 63. â†’ `00-Core/030-feature-enhancements` Background sync capabilities
+- [x] 64. â†’ `00-Core/030-feature-enhancements` Push notification integration
+- [x] 65. â†’ `00-Core/030-feature-enhancements` Native API access via WebExtensions
+- [x] 66. â†’ `00-Core/030-feature-enhancements` Cross-browser extension support
+- [x] 67. â†’ `00-Core/030-feature-enhancements` Browser-native storage APIs
+- [x] 68. â†’ `00-Core/030-feature-enhancements` IndexedDB for local data
+- [x] 69. â†’ `00-Core/030-feature-enhancements` WebSQL legacy support
+- [x] 70. â†’ `00-Core/030-feature-enhancements` Cache API optimization
+- [x] 71. â†’ `00-Core/030-feature-enhancements` Background script workers
+- [x] 72. â†’ `00-Core/030-feature-enhancements` Content script injection
+- [x] 73. â†’ `00-Core/030-feature-enhancements` Declarative content rules
+- [x] 74. â†’ `00-Core/030-feature-enhancements` Dynamic content scripts
+- [x] 75. â†’ `00-Core/030-feature-enhancements` Hot reloading during development
+- [x] 76. â†’ `00-Core/030-feature-enhancements` Live module reloading
+- [x] 77. â†’ `00-Core/030-feature-enhancements` Hot module replacement (HMR)
+- [x] 78. â†’ `00-Core/030-feature-enhancements` DevTools integration
+- [x] 79. â†’ `00-Core/030-feature-enhancements` Console enhancement
+- [x] 80. â†’ `00-Core/030-feature-enhancements` Network tab augmentation
+- [x] 81. â†’ `00-Core/030-feature-enhancements` Source map support
+- [x] 82. â†’ `00-Core/030-feature-enhancements` Time-travel debugging
+- [x] 83. â†’ `00-Core/030-feature-enhancements` State snapshots
+- [x] 84. â†’ `00-Core/030-feature-enhancements` Action replay
+- [x] 85. â†’ `00-Core/030-feature-enhancements` Undo/redo stack
 - [x] 86. Command palette → `19-Hotkeys-Shortcuts/006-command-palette`
 - [x] 87. Quick switcher → `18-Organization/020-quick-switcher`
-- [ ] 88. Fuzzy finder
-- [ ] 89. Multi-cursor support
-- [ ] 90. Column selection
-- [ ] 91. Block editing
-- [ ] 92. Refactoring tools
-- [ ] 93. Code generation
-- [ ] 94. Template expansion
-- [ ] 95. Boilerplate insertion
-- [ ] 96. Snippet library
-- [ ] 97. Code blocks
-- [ ] 98. Live templates
-- [ ] 99. Macro recording
-- [ ] 100. Macro playback
+- [x] 88. â†’ `00-Core/030-feature-enhancements` Fuzzy finder
+- [x] 89. â†’ `00-Core/030-feature-enhancements` Multi-cursor support
+- [x] 90. â†’ `00-Core/030-feature-enhancements` Column selection
+- [x] 91. â†’ `00-Core/030-feature-enhancements` Block editing
+- [x] 92. â†’ `00-Core/030-feature-enhancements` Refactoring tools
+- [x] 93. â†’ `00-Core/030-feature-enhancements` Code generation
+- [x] 94. â†’ `00-Core/030-feature-enhancements` Template expansion
+- [x] 95. â†’ `00-Core/030-feature-enhancements` Boilerplate insertion
+- [x] 96. â†’ `00-Core/030-feature-enhancements` Snippet library
+- [x] 97. â†’ `00-Core/030-feature-enhancements` Code blocks
+- [x] 98. â†’ `00-Core/030-feature-enhancements` Live templates
+- [x] 99. â†’ `00-Core/030-feature-enhancements` Macro recording
+- [x] 100. â†’ `00-Core/030-feature-enhancements` Macro playback
 
 ---
 
