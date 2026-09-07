@@ -1,6 +1,6 @@
 # AI Chat Userscript Suite — Roadmap
 
-> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (357 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
+> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (358 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
 
 Generated: 2026-09-26
 Status: Active development queue
@@ -319,7 +319,7 @@ All 60 modules from the original Module Expansion list exist.
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
 | **TOTAL** | **386** | **75** | **311** |
 
-**Status**: 75/386 implemented (19%) | 357 module files | Suite v1.3.1 | Core modules v2026.09.26.1
+**Status**: 76/386 implemented (20%) | 357 module files | Suite v1.4.0 | Core modules v2026.09.26.1
 **Next priority**: Dashboard-core live wiring + consensus/failure integration
 
 ## Integration Phase Log
@@ -335,7 +335,7 @@ All 60 modules from the original Module Expansion list exist.
 
 ---
 
-## Next Steps & To-Dos (current sprint — suite v1.3.1)
+## Next Steps & To-Dos (current sprint — suite v1.4.0)
 
 **Completed this pass (2026-09-26)**
 - [x] 021-failure-recovery v2026.09.26.1 — RETRY_POLICIES, retryWithBackoff(), selfHeal() escalating to 017 ledger
@@ -344,6 +344,7 @@ All 60 modules from the original Module Expansion list exist.
 - [x] All six merged 00-Core modules pass `node --check`
 - [x] 019-consensus-engine v2026.09.26.1 - failure-aware planning: auto-pulls 021 getFailureSummary() into Planner/Researcher context; 016 catalyst prompt injects top failures
 - [x] 020-module-registry v2026.09.26.1 - discoverPlatforms() + new 13-Chat-Platforms folder (001-platform-detector + 002-platform-adapters), verified by 12-Testing/009 smoke test
+- [x] 026-analytics-engine v2026.09.26.1 - ROADMAP 262-280 Data & Analytics: heatmaps, replay, recordings, conversions, funnels, cohorts, retention, churn, LTV, attribution, ROI, A/B stats (z-test, CI, hypothesis), Bayes, Thompson bandit, Q-learning, DiD; verified by 12-Testing/015
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
@@ -357,25 +358,25 @@ All 60 modules from the original Module Expansion list exist.
 ## Data & Analytics (originals 261-280)
 
 - [x] 261. Real-time analytics → `15-Analytics/009-realtime-dashboard`
-- [ ] 262. Heatmaps
-- [ ] 263. Session replay
-- [ ] 264. User recordings
-- [ ] 265. Conversion tracking
-- [ ] 266. Funnel analysis
-- [ ] 267. Cohort analysis
-- [ ] 268. Retention metrics
-- [ ] 269. Churn prediction
-- [ ] 270. LTV calculation
-- [ ] 271. Revenue attribution
-- [ ] 272. ROI tracking
-- [ ] 273. A/B test analysis
-- [ ] 274. Statistical significance
-- [ ] 275. Confidence intervals
-- [ ] 276. Hypothesis testing
-- [ ] 277. Bayesian inference
-- [ ] 278. Multi-armed bandit
-- [ ] 279. Reinforcement learning
-- [ ] 280. Causal inference
+- [x] 262. Heatmaps → `00-Core/026-analytics-engine`
+- [x] 263. Session replay → `00-Core/026-analytics-engine`
+- [x] 264. User recordings → `00-Core/026-analytics-engine`
+- [x] 265. Conversion tracking → `00-Core/026-analytics-engine`
+- [x] 266. Funnel analysis → `00-Core/026-analytics-engine`
+- [x] 267. Cohort analysis → `00-Core/026-analytics-engine`
+- [x] 268. Retention metrics → `00-Core/026-analytics-engine`
+- [x] 269. Churn prediction → `00-Core/026-analytics-engine`
+- [x] 270. LTV calculation → `00-Core/026-analytics-engine`
+- [x] 271. Revenue attribution → `00-Core/026-analytics-engine`
+- [x] 272. ROI tracking → `00-Core/026-analytics-engine`
+- [x] 273. A/B test analysis → `00-Core/026-analytics-engine`
+- [x] 274. Statistical significance → `00-Core/026-analytics-engine`
+- [x] 275. Confidence intervals → `00-Core/026-analytics-engine`
+- [x] 276. Hypothesis testing → `00-Core/026-analytics-engine`
+- [x] 277. Bayesian inference → `00-Core/026-analytics-engine`
+- [x] 278. Multi-armed bandit → `00-Core/026-analytics-engine`
+- [x] 279. Reinforcement learning → `00-Core/026-analytics-engine`
+- [x] 280. Causal inference → `00-Core/026-analytics-engine`
 
 ## Security Hardening (originals 141-170)
 
