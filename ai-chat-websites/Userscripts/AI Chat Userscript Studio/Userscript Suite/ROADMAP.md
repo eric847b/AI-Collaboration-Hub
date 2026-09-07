@@ -1,6 +1,6 @@
 # AI Chat Userscript Suite — Roadmap
 
-> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (358 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
+> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (359 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
 
 Generated: 2026-09-26
 Status: Active development queue
@@ -319,7 +319,7 @@ All 60 modules from the original Module Expansion list exist.
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
 | **TOTAL** | **386** | **75** | **311** |
 
-**Status**: 76/386 implemented (20%) | 357 module files | Suite v1.4.0 | Core modules v2026.09.26.1
+**Status**: 104/386 implemented (27%) | 357 module files | Suite v1.5.0 | Core modules v2026.09.26.1
 **Next priority**: Dashboard-core live wiring + consensus/failure integration
 
 ## Integration Phase Log
@@ -335,7 +335,7 @@ All 60 modules from the original Module Expansion list exist.
 
 ---
 
-## Next Steps & To-Dos (current sprint — suite v1.4.0)
+## Next Steps & To-Dos (current sprint — suite v1.5.0)
 
 **Completed this pass (2026-09-26)**
 - [x] 021-failure-recovery v2026.09.26.1 — RETRY_POLICIES, retryWithBackoff(), selfHeal() escalating to 017 ledger
@@ -345,6 +345,7 @@ All 60 modules from the original Module Expansion list exist.
 - [x] 019-consensus-engine v2026.09.26.1 - failure-aware planning: auto-pulls 021 getFailureSummary() into Planner/Researcher context; 016 catalyst prompt injects top failures
 - [x] 020-module-registry v2026.09.26.1 - discoverPlatforms() + new 13-Chat-Platforms folder (001-platform-detector + 002-platform-adapters), verified by 12-Testing/009 smoke test
 - [x] 026-analytics-engine v2026.09.26.1 - ROADMAP 262-280 Data & Analytics: heatmaps, replay, recordings, conversions, funnels, cohorts, retention, churn, LTV, attribution, ROI, A/B stats (z-test, CI, hypothesis), Bayes, Thompson bandit, Q-learning, DiD; verified by 12-Testing/015
+- [x] 027-security-hardening v2026.09.26.1 - ROADMAP 141-170 Security Hardening: CSP builder, nonces, SRI, clickjacking, MIME sniffing, referrer policy, permissions policy, Permissions API, secure context, cert pinning, TLS enforcement, mixed content scan, HSTS, CT, OCSP staleness, DoH, ECH flags, PQ readiness, ZK commitments, E2EE (AES-GCM), key rotation, PFS (ECDH P-256), PBKDF2 KDF, password hashing, salting, pepper, algo capabilities; verified by 12-Testing/016
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
@@ -380,36 +381,36 @@ All 60 modules from the original Module Expansion list exist.
 
 ## Security Hardening (originals 141-170)
 
-- [ ] 141. CSP enforcement
-- [ ] 142. Nonce generation
-- [ ] 143. Subresource integrity
+- [x] 141. CSP enforcement → `00-Core/027-security-hardening`
+- [x] 142. Nonce generation → `00-Core/027-security-hardening`
+- [x] 143. Subresource integrity → `00-Core/027-security-hardening`
 - [x] 144. XSS prevention → `05-Security/023-xss-sanitizer`, `05-Security/015-content-sanitizer`
 - [x] 145. CSRF protection → `05-Security/005-csrf-protection-helper`
-- [ ] 146. Clickjacking defense
-- [ ] 147. MIME sniffing protection
-- [ ] 148. Referrer policy control
-- [ ] 149. Feature policy management
-- [ ] 150. Permissions API integration
-- [ ] 151. Secure context validation
-- [ ] 152. Certificate pinning
-- [ ] 153. TLS enforcement
-- [ ] 154. Mixed content blocking
-- [ ] 155. HSTS preload
-- [ ] 156. Certificate transparency
-- [ ] 157. OCSP stapling
-- [ ] 158. DNS over HTTPS
-- [ ] 159. Encrypted SNI
-- [ ] 160. Post-quantum readiness
-- [ ] 161. Zero-knowledge architecture
-- [ ] 162. End-to-end encryption
-- [ ] 163. Key rotation
-- [ ] 164. Perfect forward secrecy
-- [ ] 165. Key derivation functions
-- [ ] 166. Password hashing
-- [ ] 167. Salting strategies
-- [ ] 168. Pepper implementation
-- [ ] 169. Argon2 support
-- [ ] 170. bcrypt/scrypt options
+- [x] 146. Clickjacking defense → `00-Core/027-security-hardening`
+- [x] 147. MIME sniffing protection → `00-Core/027-security-hardening`
+- [x] 148. Referrer policy control → `00-Core/027-security-hardening`
+- [x] 149. Feature policy management → `00-Core/027-security-hardening`
+- [x] 150. Permissions API integration → `00-Core/027-security-hardening`
+- [x] 151. Secure context validation → `00-Core/027-security-hardening`
+- [x] 152. Certificate pinning → `00-Core/027-security-hardening`
+- [x] 153. TLS enforcement → `00-Core/027-security-hardening`
+- [x] 154. Mixed content blocking → `00-Core/027-security-hardening`
+- [x] 155. HSTS preload → `00-Core/027-security-hardening`
+- [x] 156. Certificate transparency → `00-Core/027-security-hardening`
+- [x] 157. OCSP stapling → `00-Core/027-security-hardening`
+- [x] 158. DNS over HTTPS → `00-Core/027-security-hardening`
+- [x] 159. Encrypted SNI → `00-Core/027-security-hardening`
+- [x] 160. Post-quantum readiness → `00-Core/027-security-hardening`
+- [x] 161. Zero-knowledge architecture → `00-Core/027-security-hardening`
+- [x] 162. End-to-end encryption → `00-Core/027-security-hardening`
+- [x] 163. Key rotation → `00-Core/027-security-hardening`
+- [x] 164. Perfect forward secrecy → `00-Core/027-security-hardening`
+- [x] 165. Key derivation functions → `00-Core/027-security-hardening`
+- [x] 166. Password hashing → `00-Core/027-security-hardening`
+- [x] 167. Salting strategies → `00-Core/027-security-hardening`
+- [x] 168. Pepper implementation → `00-Core/027-security-hardening`
+- [x] 169. Argon2 support → `00-Core/027-security-hardening`
+- [x] 170. bcrypt/scrypt options → `00-Core/027-security-hardening`
 
 ---
 
