@@ -1,6 +1,6 @@
 # AI Chat Userscript Suite — Roadmap
 
-> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (359 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
+> **Where am I?** This is the **ACTIVE module feature queue** for the **Userscript Suite** (360 modules on disk, 386-item queue). Root plan map: [`../../../PLAN_MAP.md`](../../../PLAN_MAP.md). Archived predecessor: [`NEXT_100_SUGGESTIONS_ARCHIVED.md`](NEXT_100_SUGGESTIONS_ARCHIVED.md). Sibling trajectory (Unified Suite): [`../../../next_year_roadmap.md`](../../../next_year_roadmap.md).
 
 Generated: 2026-09-26
 Status: Active development queue
@@ -319,7 +319,7 @@ All 60 modules from the original Module Expansion list exist.
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
 | **TOTAL** | **386** | **75** | **311** |
 
-**Status**: 104/386 implemented (27%) | 357 module files | Suite v1.5.0 | Core modules v2026.09.26.1
+**Status**: 134/386 implemented (35%) | 357 module files | Suite v1.6.0 | Core modules v2026.09.26.1
 **Next priority**: Dashboard-core live wiring + consensus/failure integration
 
 ## Integration Phase Log
@@ -335,7 +335,7 @@ All 60 modules from the original Module Expansion list exist.
 
 ---
 
-## Next Steps & To-Dos (current sprint — suite v1.5.0)
+## Next Steps & To-Dos (current sprint — suite v1.6.0)
 
 **Completed this pass (2026-09-26)**
 - [x] 021-failure-recovery v2026.09.26.1 — RETRY_POLICIES, retryWithBackoff(), selfHeal() escalating to 017 ledger
@@ -346,6 +346,7 @@ All 60 modules from the original Module Expansion list exist.
 - [x] 020-module-registry v2026.09.26.1 - discoverPlatforms() + new 13-Chat-Platforms folder (001-platform-detector + 002-platform-adapters), verified by 12-Testing/009 smoke test
 - [x] 026-analytics-engine v2026.09.26.1 - ROADMAP 262-280 Data & Analytics: heatmaps, replay, recordings, conversions, funnels, cohorts, retention, churn, LTV, attribution, ROI, A/B stats (z-test, CI, hypothesis), Bayes, Thompson bandit, Q-learning, DiD; verified by 12-Testing/015
 - [x] 027-security-hardening v2026.09.26.1 - ROADMAP 141-170 Security Hardening: CSP builder, nonces, SRI, clickjacking, MIME sniffing, referrer policy, permissions policy, Permissions API, secure context, cert pinning, TLS enforcement, mixed content scan, HSTS, CT, OCSP staleness, DoH, ECH flags, PQ readiness, ZK commitments, E2EE (AES-GCM), key rotation, PFS (ECDH P-256), PBKDF2 KDF, password hashing, salting, pepper, algo capabilities; verified by 12-Testing/016
+- [x] 028-performance-optimizer v2026.09.26.1 - ROADMAP 171-200 Performance: critical CSS, fonts, lazy images, srcset, picture/WebP/AVIF, SVG optimization, icon fonts, SVG sprite sheet, CSS sprites, containment, content-visibility, will-change guard, GPU layers, paint hold, display lock, debounce/throttle/yield, priority scheduling, task queue, idle callbacks + deadline work, rAF batching, animation loop, inline workers, SharedArrayBuffer, Atomics, SIMD probe, WASM loader (cached), concurrency pool; verified by 12-Testing/017
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
@@ -416,33 +417,33 @@ All 60 modules from the original Module Expansion list exist.
 
 ## Performance Optimizations (originals 171-200)
 
-- [ ] 171. Critical CSS extraction
-- [ ] 172. Font optimization
-- [ ] 173. Image lazy loading
-- [ ] 174. Responsive images
-- [ ] 175. WebP/AVIF support
-- [ ] 176. SVG optimization
-- [ ] 177. Icon fonts
-- [ ] 178. Inline SVGs
-- [ ] 179. Sprite sheets
-- [ ] 180. CSS containment
-- [ ] 181. Content-visibility
-- [ ] 182. will-change optimization
-- [ ] 183. GPU acceleration
-- [ ] 184. Layer promotion
-- [ ] 185. Paint holding
-- [ ] 186. Display locking
-- [ ] 187. Input delay reduction
-- [ ] 188. Main thread scheduling
-- [ ] 189. Task prioritization
-- [ ] 190. Idle callbacks
-- [ ] 191. Animation frames
-- [ ] 192. Request animation frame optimization
-- [ ] 193. Request idle callback usage
-- [ ] 194. Web Workers for computation
-- [ ] 195. SharedArrayBuffer
-- [ ] 196. Atomics API
-- [ ] 197. SIMD optimization
-- [ ] 198. WebAssembly modules
-- [ ] 199. WASM SIMD
-- [ ] 200. Threading
+- [x] 171. Critical CSS extraction → `00-Core/028-performance-optimizer`
+- [x] 172. Font optimization → `00-Core/028-performance-optimizer`
+- [x] 173. Image lazy loading → `00-Core/028-performance-optimizer`
+- [x] 174. Responsive images → `00-Core/028-performance-optimizer`
+- [x] 175. WebP/AVIF support → `00-Core/028-performance-optimizer`
+- [x] 176. SVG optimization → `00-Core/028-performance-optimizer`
+- [x] 177. Icon fonts → `00-Core/028-performance-optimizer`
+- [x] 178. Inline SVGs → `00-Core/028-performance-optimizer`
+- [x] 179. Sprite sheets → `00-Core/028-performance-optimizer`
+- [x] 180. CSS containment → `00-Core/028-performance-optimizer`
+- [x] 181. Content-visibility → `00-Core/028-performance-optimizer`
+- [x] 182. will-change optimization → `00-Core/028-performance-optimizer`
+- [x] 183. GPU acceleration → `00-Core/028-performance-optimizer`
+- [x] 184. Layer promotion → `00-Core/028-performance-optimizer`
+- [x] 185. Paint holding → `00-Core/028-performance-optimizer`
+- [x] 186. Display locking → `00-Core/028-performance-optimizer`
+- [x] 187. Input delay reduction → `00-Core/028-performance-optimizer`
+- [x] 188. Main thread scheduling → `00-Core/028-performance-optimizer`
+- [x] 189. Task prioritization → `00-Core/028-performance-optimizer`
+- [x] 190. Idle callbacks → `00-Core/028-performance-optimizer`
+- [x] 191. Animation frames → `00-Core/028-performance-optimizer`
+- [x] 192. Request animation frame optimization → `00-Core/028-performance-optimizer`
+- [x] 193. Request idle callback usage → `00-Core/028-performance-optimizer`
+- [x] 194. Web Workers for computation → `00-Core/028-performance-optimizer`
+- [x] 195. SharedArrayBuffer → `00-Core/028-performance-optimizer`
+- [x] 196. Atomics API → `00-Core/028-performance-optimizer`
+- [x] 197. SIMD optimization → `00-Core/028-performance-optimizer`
+- [x] 198. WebAssembly modules → `00-Core/028-performance-optimizer`
+- [x] 199. WASM SIMD → `00-Core/028-performance-optimizer`
+- [x] 200. Threading → `00-Core/028-performance-optimizer`
