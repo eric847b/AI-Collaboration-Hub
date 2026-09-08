@@ -78,46 +78,46 @@ All 60 modules from the original Module Expansion list exist.
 
 ## UI/UX Improvements (originals 101-140)
 
-- [ ] 101. Dark mode enhancements
-- [ ] 102. Theme synchronization
-- [ ] 103. System theme detection
-- [ ] 104. Custom CSS injection
-- [ ] 105. Tailwind CSS integration
-- [ ] 106. Component library
-- [ ] 107. Design system
-- [ ] 108. Component playground
-- [ ] 109. Storybook integration
-- [ ] 110. Visual regression testing
-- [ ] 111. Screenshot comparison
-- [ ] 112. Pixel-perfect preview
-- [ ] 113. Responsive design testing
-- [ ] 114. Mobile emulation
-- [ ] 115. Touch simulation
-- [ ] 116. Gesture support
-- [ ] 117. Voice commands
-- [ ] 118. Text-to-speech
-- [ ] 119. Speech-to-text
-- [ ] 120. Accessibility tree
-- [ ] 121. Screen reader testing
-- [ ] 122. Color contrast analyzer
-- [ ] 123. Focus management
-- [ ] 124. Keyboard navigation
-- [ ] 125. Skip links
-- [ ] 126. ARIA labels
-- [ ] 127. Live regions
-- [ ] 128. Semantic HTML
-- [ ] 129. Microdata
-- [ ] 130. Schema.org markup
-- [ ] 131. Open Graph tags
-- [ ] 132. Twitter Cards
-- [ ] 133. JSON-LD injection
-- [ ] 134. Meta tag management
-- [ ] 135. SEO optimization
-- [ ] 136. Performance budgets
-- [ ] 137. Lighthouse CI
-- [ ] 138. Core Web Vitals
-- [ ] 139. Bundle analysis
-- [ ] 140. Tree shaking analysis
+- [x] 101. Dark mode enhancements → `00-Core/031-ui-ux-improvements`
+- [x] 102. Theme synchronization → `00-Core/031-ui-ux-improvements`
+- [x] 103. System theme detection → `00-Core/031-ui-ux-improvements`
+- [x] 104. Custom CSS injection → `00-Core/031-ui-ux-improvements`
+- [x] 105. Tailwind CSS integration → `00-Core/031-ui-ux-improvements`
+- [x] 106. Component library → `00-Core/031-ui-ux-improvements`
+- [x] 107. Design system → `00-Core/031-ui-ux-improvements`
+- [x] 108. Component playground → `00-Core/031-ui-ux-improvements`
+- [x] 109. Storybook integration → `00-Core/031-ui-ux-improvements`
+- [x] 110. Visual regression testing → `00-Core/031-ui-ux-improvements`
+- [x] 111. Screenshot comparison → `00-Core/031-ui-ux-improvements`
+- [x] 112. Pixel-perfect preview → `00-Core/031-ui-ux-improvements`
+- [x] 113. Responsive design testing → `00-Core/031-ui-ux-improvements`
+- [x] 114. Mobile emulation → `00-Core/031-ui-ux-improvements`
+- [x] 115. Touch simulation → `00-Core/031-ui-ux-improvements`
+- [x] 116. Gesture support → `00-Core/031-ui-ux-improvements`
+- [x] 117. Voice commands → `00-Core/031-ui-ux-improvements`
+- [x] 118. Text-to-speech → `00-Core/031-ui-ux-improvements`
+- [x] 119. Speech-to-text → `00-Core/031-ui-ux-improvements`
+- [x] 120. Accessibility tree → `00-Core/031-ui-ux-improvements`
+- [x] 121. Screen reader testing → `00-Core/031-ui-ux-improvements`
+- [x] 122. Color contrast analyzer → `00-Core/031-ui-ux-improvements`
+- [x] 123. Focus management → `00-Core/031-ui-ux-improvements`
+- [x] 124. Keyboard navigation → `00-Core/031-ui-ux-improvements`
+- [x] 125. Skip links → `00-Core/031-ui-ux-improvements`
+- [x] 126. ARIA labels → `00-Core/031-ui-ux-improvements`
+- [x] 127. Live regions → `00-Core/031-ui-ux-improvements`
+- [x] 128. Semantic HTML → `00-Core/031-ui-ux-improvements`
+- [x] 129. Microdata → `00-Core/031-ui-ux-improvements`
+- [x] 130. Schema.org markup → `00-Core/031-ui-ux-improvements`
+- [x] 131. Open Graph tags → `00-Core/031-ui-ux-improvements`
+- [x] 132. Twitter Cards → `00-Core/031-ui-ux-improvements`
+- [x] 133. JSON-LD injection → `00-Core/031-ui-ux-improvements`
+- [x] 134. Meta tag management → `00-Core/031-ui-ux-improvements`
+- [x] 135. SEO optimization → `00-Core/031-ui-ux-improvements`
+- [x] 136. Performance budgets → `00-Core/031-ui-ux-improvements`
+- [x] 137. Lighthouse CI → `00-Core/031-ui-ux-improvements`
+- [x] 138. Core Web Vitals → `00-Core/031-ui-ux-improvements`
+- [x] 139. Bundle analysis → `00-Core/031-ui-ux-improvements`
+- [x] 140. Tree shaking analysis → `00-Core/031-ui-ux-improvements`
 
 ---
 
@@ -306,7 +306,7 @@ All 60 modules from the original Module Expansion list exist.
 | Module Expansion (40-100) | 60 | 60 | 0 |
 | Merged Architecture (2026-09) | 6 | 6 | 0 |
 | Feature Enhancements (61-120) | 60 | 3 | 57 |
-| UI/UX Improvements (101-140) | 40 | 0 | 40 |
+| UI/UX Improvements (101-140) | 40 | 40 | 0 |
 | Security Hardening (141-170) | 30 | 2 | 28 |
 | Performance Optimizations (171-200) | 30 | 0 | 30 |
 | Testing & Quality (201-220) | 20 | 1 | 19 |
@@ -317,9 +317,9 @@ All 60 modules from the original Module Expansion list exist.
 | AI/ML Enhancements (301-320) | 20 | 2 | 18 |
 | Infrastructure & DevOps (321-340) | 20 | 0 | 20 |
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
-| **TOTAL** | **386** | **75** | **311** |
+| **TOTAL** | **386** | **115** | **271** |
 
-**Status**: 154/386 implemented (40%) | 357 module files | Suite v1.7.0 | Core modules v2026.09.26.1
+**Status**: 194/386 implemented (50%) | 361 module files | Suite v1.7.0 | Core modules v2026.09.26.1
 **Next priority**: Dashboard-core live wiring + consensus/failure integration
 
 ## Integration Phase Log
@@ -348,6 +348,7 @@ All 60 modules from the original Module Expansion list exist.
 - [x] 027-security-hardening v2026.09.26.1 - ROADMAP 141-170 Security Hardening: CSP builder, nonces, SRI, clickjacking, MIME sniffing, referrer policy, permissions policy, Permissions API, secure context, cert pinning, TLS enforcement, mixed content scan, HSTS, CT, OCSP staleness, DoH, ECH flags, PQ readiness, ZK commitments, E2EE (AES-GCM), key rotation, PFS (ECDH P-256), PBKDF2 KDF, password hashing, salting, pepper, algo capabilities; verified by 12-Testing/016
 - [x] 028-performance-optimizer v2026.09.26.1 - ROADMAP 171-200 Performance: critical CSS, fonts, lazy images, srcset, picture/WebP/AVIF, SVG optimization, icon fonts, SVG sprite sheet, CSS sprites, containment, content-visibility, will-change guard, GPU layers, paint hold, display lock, debounce/throttle/yield, priority scheduling, task queue, idle callbacks + deadline work, rAF batching, animation loop, inline workers, SharedArrayBuffer, Atomics, SIMD probe, WASM loader (cached), concurrency pool; verified by 12-Testing/017
 - [x] 029-monitoring-observability v2026.09.26.1 - ROADMAP 341-360 Monitoring & Observability: distributed tracing (parent-child spans), OTLP/JSON exporter, Jaeger + Zipkin payloads (us durations), Prometheus registry (counters/gauges/histograms + text exposition), Grafana dashboard/annotation builders, Alertmanager rule YAML, PagerDuty/Opsgenie/VictorOps/ServiceNow incident payloads + senders, Splunk/ELK/DataDog/New Relic/Honeycomb log+metric payloads, stack parser, Honeybadger/Sentry/Bugsnag/Rollbar error payloads; verified by 12-Testing/018
+- [x] 031-ui-ux-improvements v2026.09.26.1 - ROADMAP 101-140 UI/UX: theming, component library, visual testing, gestures + color contrast, a11y, semantic HTML + microdata, Schema.org, Open Graph, Twitter Cards, JSON-LD, meta tags, SEO audit, perf budgets, Lighthouse CI, Core Web Vitals, bundle analysis, tree shaking; verified by 12-Testing/020
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
