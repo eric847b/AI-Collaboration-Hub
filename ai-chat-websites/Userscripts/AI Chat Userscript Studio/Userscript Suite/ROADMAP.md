@@ -226,26 +226,26 @@ All 60 modules from the original Module Expansion list exist.
 
 ## AI/ML Enhancements (originals 301-320)
 
-- [ ] 301. Natural language understanding
-- [ ] 302. Intent classification
-- [ ] 303. Entity extraction
-- [ ] 304. Sentiment analysis
-- [ ] 305. Topic modeling
-- [ ] 306. Text summarization
+- [x] 301. Natural language understanding → `00-Core/035-ai-ml-enhancements`
+- [x] 302. Intent classification → `00-Core/035-ai-ml-enhancements`
+- [x] 303. Entity extraction → `00-Core/035-ai-ml-enhancements`
+- [x] 304. Sentiment analysis → `00-Core/035-ai-ml-enhancements`
+- [x] 305. Topic modeling → `00-Core/035-ai-ml-enhancements`
+- [x] 306. Text summarization → `00-Core/035-ai-ml-enhancements`
 - [x] 307. Translation services → `10-Text-Language/011-multi-language-support`
-- [ ] 308. Language detection
-- [ ] 309. Named entity recognition
-- [ ] 310. Part-of-speech tagging
-- [ ] 311. Dependency parsing
-- [ ] 312. Coreference resolution
-- [ ] 313. Question answering
-- [ ] 314. Dialogue management
-- [ ] 315. Context tracking
-- [ ] 316. Memory networks
-- [ ] 317. Knowledge graphs
-- [ ] 318. Reasoning engines
+- [x] 308. Language detection → `00-Core/035-ai-ml-enhancements`
+- [x] 309. Named entity recognition → `00-Core/035-ai-ml-enhancements`
+- [x] 310. Part-of-speech tagging → `00-Core/035-ai-ml-enhancements`
+- [x] 311. Dependency parsing → `00-Core/035-ai-ml-enhancements`
+- [x] 312. Coreference resolution → `00-Core/035-ai-ml-enhancements`
+- [x] 313. Question answering → `00-Core/035-ai-ml-enhancements`
+- [x] 314. Dialogue management → `00-Core/035-ai-ml-enhancements`
+- [x] 315. Context tracking → `00-Core/035-ai-ml-enhancements`
+- [x] 316. Memory networks → `00-Core/035-ai-ml-enhancements`
+- [x] 317. Knowledge graphs → `00-Core/035-ai-ml-enhancements`
+- [x] 318. Reasoning engines → `00-Core/035-ai-ml-enhancements`
 - [x] 319. Planning systems → `02-AI-Agents/007-planning-engine`
-- [ ] 320. Decision support
+- [x] 320. Decision support → `00-Core/035-ai-ml-enhancements`
 
 ---
 
@@ -314,12 +314,12 @@ All 60 modules from the original Module Expansion list exist.
 | Integrations (241-260) | 20 | 20 | 0 |
 | Data & Analytics (261-280) | 20 | 1 | 19 |
 | Extensibility (281-300) | 20 | 20 | 0 |
-| AI/ML Enhancements (301-320) | 20 | 2 | 18 |
+| AI/ML Enhancements (301-320) | 20 | 20 | 0 |
 | Infrastructure & DevOps (321-340) | 20 | 0 | 20 |
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
-| **TOTAL** | **386** | **175** | **211** |
+| **TOTAL** | **386** | **193** | **193** |
 
-**Status**: 175/386 implemented (45%) | 364 module files | Suite v2.1.0 | Core modules v2026.09.26.1
+**Status**: 193/386 implemented (50%) | 365 module files | Suite v2.2.0 | Core modules v2026.09.26.1
 **Next priority**: Dashboard-core live wiring + consensus/failure integration
 
 ## Integration Phase Log
@@ -351,6 +351,7 @@ All 60 modules from the original Module Expansion list exist.
 - [x] 031-ui-ux-improvements v2026.09.26.1 - ROADMAP 101-140 UI/UX: theming, component library, visual testing, gestures + color contrast, a11y, semantic HTML + microdata, Schema.org, Open Graph, Twitter Cards, JSON-LD, meta tags, SEO audit, perf budgets, Lighthouse CI, Core Web Vitals, bundle analysis, tree shaking; verified by 12-Testing/020
 - [x] 033-documentation-integrations v2026.09.26.1 - ROADMAP 221-260 Documentation & Integrations: interactive API explorer, live code examples, embeddable tutorials, video docs, screencast library, GIF demos, animated diagrams, flowcharts, decision trees, troubleshooting guides, FAQ bot, search index, breadcrumbs, TOC, reading progress, reading time estimator, related articles, cross-references, glossary, acronym expander; 20 platform integrations (GitHub, GitLab, Bitbucket, Azure DevOps, Jira, Trello, Asana, Notion, Confluence, Slack, Discord, Teams, Telegram, WhatsApp, Email, Calendar, Drive, Dropbox, OneDrive, Google Drive); verified by 12-Testing/022
 - [x] 034-extensibility v2026.09.26.1 - ROADMAP 281-300 Extensibility: plugin marketplace, extension registry, theme gallery, snippet sharing, template library, workflow marketplace, integration directory, community modules, third-party extensions, partner integrations, API versioning, deprecation policy, breaking change notices, migration guides, upgrade plans, compatibility layers, polyfill management, adapter/facade/strategy patterns; verified by 12-Testing/023
+- [x] 035-ai-ml-enhancements v2026.09.26.1 - ROADMAP 301-320 AI/ML Enhancements: NLU, trainable intent classification, entity extraction, sentiment with negation, topic modeling, extractive summarization, script+lexicon language detection, NER, POS tagging, heuristic dependency parsing, coreference resolution, extractive QA, dialogue sessions with slots, context windows, salience-scored memory, triple knowledge graph with BFS paths, forward-chaining inference, weighted decision support + decision trees; verified by 12-Testing/024
 
 **To-do next (priority order)**
 1. Wire 018-dashboard-core to 016 `getHealth()`/scope for live status panels
