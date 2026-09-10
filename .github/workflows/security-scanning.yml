@@ -9,7 +9,7 @@ jobs:
   dependency-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run Dependabot Check
         continue-on-error: true
         uses: dependency-check/Dependency-Check_Action@main
@@ -33,7 +33,7 @@ jobs:
   npm-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
@@ -45,7 +45,7 @@ jobs:
   python-safety:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
