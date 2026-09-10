@@ -622,6 +622,25 @@ def handle_task(task, profile):
     clean = sanitize_input(title, max_len=500)
     logger.info("Handling task [%s] %s", task.get("type", "generic"), clean)
     try:
+        # Pre-flight self-heal gate (v6.3): never act on a broken codebase.
+        # Repair mechanically-safe classes, then re-check; block if still broken.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import self_heal
+
+        checks_before = sum(len(v) for v in self_heal.run_all_checks().values())
+        repair_count = 0
+        if checks_before > 0:
+            repair_count = len(self_heal.heal())
+            checks_after = sum(len(v) for v in self_heal.run_all_checks().values())
+            logger.warning(
+                "Self-heal gate: %d issue(s) before, %d auto-repairs, %d after",
+                checks_before, repair_count, checks_after,
+            )
+            if checks_after > 0:
+                profile.inc("errors")
+                record_security_event("self_heal_gate_blocked", profile)
+                logger.error("Self-heal gate blocked execution (%d remaining issue(s))", checks_after)
+                return False
         audit = run_self_audit()
         n = sum(len(v) for v in audit.values()) if isinstance(audit, dict) else 0
         logger.info("Self-audit findings: %d", n)
