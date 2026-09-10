@@ -22,12 +22,28 @@ import ast
 import builtins
 import os
 import re
+import subprocess
 import sys
 
 _BUILTIN_NAMES = set(dir(builtins))
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GITHUB_DIR = os.path.join(REPO_ROOT, ".github")
+
+
+def _ruff_config_args() -> list[str]:
+    """Return CLI args that pin ruff to the repo's canonical config.
+
+    Determinism: ruff otherwise discovers config from the CWD / file tree,
+    so running from another directory (e.g. a CI step without checkout) would
+    silently use a different rule set. Use the repo config when present,
+    otherwise --isolated so behavior is identical everywhere.
+    """
+    for name in ("pyproject.toml", "ruff.toml", ".ruff.toml"):
+        cfg = os.path.join(REPO_ROOT, name)
+        if os.path.isfile(cfg):
+            return ["--config", cfg]
+    return ["--isolated"]
 
 UTCNOW_RE = re.compile(r"datetime\.utcnow\(\)")
 UTCNOW_REPLACEMENT = "datetime.now(timezone.utc)"
@@ -131,6 +147,33 @@ def check_lint_patterns() -> list[str]:
     return failures
 
 
+def check_ruff() -> list[str]:
+    """Bug class 3b: run the authoritative ruff linter over .github (as CI does).
+
+    Catches every lint class at once (F401/F841/SIM/UP/I/...), not just the
+    hand-rolled patterns in check_lint_patterns. Skips if ruff is not
+    installed locally — the CI gate covers it there.
+    """
+    failures = []
+    try:
+        import ruff  # noqa: F401 - availability probe
+    except ImportError:
+        return []  # ruff not installed locally; CI covers this
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", GITHUB_DIR, "--output-format", "concise", *_ruff_config_args()],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        out = (result.stdout or "") + (result.stderr or "")
+        for line in out.splitlines():
+            # concise format: path:line:col: CODE description
+            if re.match(r"^[^ ]+:\d+:\d+: [A-Z]+\d+", line) or re.match(r"^Found \d+ error", line):
+                failures.append(line.rstrip())
+    return failures
+
+
 def check_deprecated_datetime() -> list[str]:
     """Bug class 4: AST scan for actual calls to deprecated datetime.utcnow().
 
@@ -211,7 +254,13 @@ def check_core_imports() -> list[str]:
 
 
 def heal() -> list[str]:
-    """Apply mechanically safe repairs; never write a file that fails compile."""
+    """Apply mechanically safe repairs; never write a file that fails compile.
+
+    Two paths:
+      1. utcnow -> now(timezone.utc) (text-level, matches the AST detector).
+      2. ruff --fix (safe fixes only) across .github when ruff is installed,
+         followed by a re-check so only genuinely-repaired files pass.
+    """
     repairs = []
     for path in _iter_py_files():
         try:
@@ -233,6 +282,21 @@ def heal() -> list[str]:
                 continue  # never corrupt a file
             with open(path, "w", encoding="utf-8", newline="") as f:
                 f.write(fixed)
+    try:
+        import ruff  # noqa: F401 - availability probe
+    except ImportError:
+        return repairs
+    fix = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", GITHUB_DIR, "--fix", *_ruff_config_args()],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if fix.returncode == 0:
+        # ruff reports fixed files in its output
+        for line in (fix.stdout or "").splitlines():
+            if "fixed" in line.lower():
+                repairs.append(f"ruff --fix: {line.strip()}")
     return repairs
 
 
@@ -241,6 +305,7 @@ def run_all_checks() -> dict[str, list[str]]:
         "syntax": check_syntax(),
         "undefined_names": check_undefined_names(),
         "lint": check_lint_patterns(),
+        "ruff": check_ruff(),
         "deprecated_datetime": check_deprecated_datetime(),
         "workflows": check_workflows(),
         "imports": check_core_imports(),
