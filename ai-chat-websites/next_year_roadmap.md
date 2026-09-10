@@ -237,7 +237,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 ## ONGOING INITIATIVES (Throughout the Year)
 
 ### Testing & Quality
-- [ ] Maintain 80%+ code coverage
+- [x] Maintain 80%+ code coverage
 - [ ] Weekly regression testing
 - [ ] Cross-browser testing on every release
 - [ ] Performance budget monitoring (target: <300 KB)
@@ -246,7 +246,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 - [ ] Keep API docs in sync with code
 - [ ] Video tutorials for common tasks
 - [ ] Migration guides for each major version
-- [ ] Architecture decision records (ADRs)
+- [x] Architecture decision records (ADRs)
 
 ### Community
 - [ ] Monthly community calls
@@ -265,10 +265,10 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 ## SUCCESS METRICS
 
 ### By End of Q3 2026 (v2.2.0)
-- [ ] 80% code coverage
-- [ ] CI pipeline with automated tests
-- [ ] Published API documentation
-- [ ] Contribution guidelines established
+- [x] 80% code coverage
+- [x] CI pipeline with automated tests
+- [x] Published API documentation
+- [x] Contribution guidelines established
 
 ### By End of Q4 2026 (v2.3.0)
 - [ ] 50+ community templates
