@@ -9,7 +9,7 @@ open a non-draft GitHub issue tagged for human attention.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from github import Github
@@ -23,11 +23,11 @@ except ImportError:
     load_ledger = None  # type: ignore
 
 
-def escalate_reappears(dry_run: bool = False) -> List[Dict[str, Any]]:
+def escalate_reappears(dry_run: bool = False) -> list[dict[str, Any]]:
     if load_ledger is None:
         return []
     data = load_ledger()
-    created: List[Dict[str, Any]] = []
+    created: list[dict[str, Any]] = []
     for e in data.get("entries", []):
         if e.get("status") != "reappeared":
             continue
@@ -63,7 +63,7 @@ def escalate_reappears(dry_run: bool = False) -> List[Dict[str, Any]]:
             e["escalated_issue"] = issue.number
             e["status"] = "escalated"
             created.append({"title": title, "issue": issue.number})
-        except Exception as ex:
+        except Exception:
             # labels may not exist — retry without
             try:
                 g = Github(token)

@@ -40,9 +40,10 @@ runs:
         if [ -f .github/scripts/agent.py ]; then
           python .github/scripts/agent.py
         else
-          echo "No agent.py found - running placeholder mode"
+          echo "No .github/scripts/agent.py found" >&2
+          exit 1
         fi
 
     - name: Emit status
       shell: bash
-      run: echo "autonomous-agent: completed"
+      run: 'echo "autonomous-agent: completed"'

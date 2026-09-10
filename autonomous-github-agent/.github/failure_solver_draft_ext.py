@@ -3,17 +3,16 @@ Extension mixed into FailureSolver for v3.5 draft-PR auto-fixes.
 Import and call from agent or wrap get_failure_solver.
 """
 from __future__ import annotations
+
 import base64
-import os
 from datetime import datetime
-from typing import Any, Dict, Optional
 
 import requests
 
 SAFE_AUTO_FIX_CLASSES = frozenset({"timeout", "missing_dependency", "missing_file"})
 
 
-def create_draft_pr_for_safe_class(solver, analysis: Dict) -> Optional[Dict]:
+def create_draft_pr_for_safe_class(solver, analysis: dict) -> dict | None:
     """Attach to an existing FailureSolver instance. Creates draft PR with note file only."""
     if not solver.headers:
         return None

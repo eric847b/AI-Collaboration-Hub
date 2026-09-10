@@ -2,7 +2,9 @@
 # Handles failed workflows, PRs, cross-repo
 
 import os
+
 from github import Github
+
 
 def execute(task):
     g = Github(os.getenv("GITHUB_TOKEN"))
@@ -11,7 +13,7 @@ def execute(task):
     try:
         comparison = repo.compare("main", branch_name)
         if comparison.total_commits == 0:
-            issue = repo.create_issue(title=f"[Autonomous] {task.get('title')}", body="Resilient fallback: workflow fixed via evolve script.")
+            repo.create_issue(title=f"[Autonomous] {task.get('title')}", body="Resilient fallback: workflow fixed via evolve script.")
             return {"status": "issue_fallback"}
         else:
             pr = repo.create_pull(title=task.get("title", "Auto-fix workflows"), body="Propagated nexus fixes + agent updates.", head=branch_name, base="main")

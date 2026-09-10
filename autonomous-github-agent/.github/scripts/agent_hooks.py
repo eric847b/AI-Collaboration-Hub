@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 log = logging.getLogger("agent_hooks")
 
@@ -25,8 +26,8 @@ except ImportError:
 
 
 def gate_with_consensus(
-    task: Dict[str, Any],
-    call_llm_fn: Optional[Callable] = None,
+    task: dict[str, Any],
+    call_llm_fn: Callable | None = None,
     profile=None,
 ) -> bool:
     """

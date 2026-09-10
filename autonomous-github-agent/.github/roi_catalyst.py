@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import requests
 
@@ -75,12 +75,12 @@ def _headers() -> dict:
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _is_non_work_issue(issue: Dict[str, Any]) -> bool:
+def _is_non_work_issue(issue: dict[str, Any]) -> bool:
     title = issue.get("title") or ""
-    labels = [str(l.get("name", "")).lower() for l in (issue.get("labels") or [])]
+    labels = [str(lbl.get("name", "")).lower() for lbl in (issue.get("labels") or [])]
     if any(lab in STATUS_LABELS for lab in labels):
         return True
     if any(title.startswith(p) for p in STATUS_TITLE_PREFIXES):
@@ -89,15 +89,13 @@ def _is_non_work_issue(issue: Dict[str, Any]) -> bool:
         return True
     if any(title.startswith(p) for p in NOTIFICATION_TITLE_PREFIXES):
         return True
-    if "notification" in labels and "inbox" in labels:
-        return True
-    return False
+    return "notification" in labels and "inbox" in labels
 
 
-def _score_text(blob: str) -> Tuple[float, List[str]]:
+def _score_text(blob: str) -> tuple[float, list[str]]:
     lower = (blob or "").lower()
     score = 0.0
-    cats: List[str] = []
+    cats: list[str] = []
     if any(k in lower for k in CURRENCY_KW):
         score += 40.0
         cats.append("currency")
@@ -110,10 +108,10 @@ def _score_text(blob: str) -> Tuple[float, List[str]]:
     return score, cats
 
 
-def _score_issue(issue: Dict[str, Any], repo: str) -> Dict[str, Any]:
+def _score_issue(issue: dict[str, Any], repo: str) -> dict[str, Any]:
     title = issue.get("title") or ""
     body = (issue.get("body") or "")[:2000]
-    labels = [str(l.get("name", "")).lower() for l in (issue.get("labels") or [])]
+    labels = [str(lbl.get("name", "")).lower() for lbl in (issue.get("labels") or [])]
     blob = f"{title}\n{body}\n{' '.join(labels)}"
 
     score, cats = _score_text(blob)
@@ -150,7 +148,7 @@ def _score_issue(issue: Dict[str, Any], repo: str) -> Dict[str, Any]:
     }
 
 
-def fetch_open_issues(repo: str, per_page: int = 20) -> List[Dict[str, Any]]:
+def fetch_open_issues(repo: str, per_page: int = 20) -> list[dict[str, Any]]:
     headers = _headers()
     if not headers:
         return []
@@ -174,9 +172,9 @@ def fetch_open_issues(repo: str, per_page: int = 20) -> List[Dict[str, Any]]:
         return []
 
 
-def rank_fleet_roi(max_per_repo: int = 12) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    work: List[Dict[str, Any]] = []
-    non_work: List[Dict[str, Any]] = []
+def rank_fleet_roi(max_per_repo: int = 12) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    work: list[dict[str, Any]] = []
+    non_work: list[dict[str, Any]] = []
     for repo in FLEET:
         issues = fetch_open_issues(repo, per_page=max_per_repo)
         for issue in issues:
@@ -186,7 +184,7 @@ def rank_fleet_roi(max_per_repo: int = 12) -> Tuple[List[Dict[str, Any]], List[D
                     "number": issue.get("number"),
                     "title": (issue.get("title") or "")[:160],
                     "html_url": issue.get("html_url"),
-                    "labels": [str(l.get("name", "")).lower() for l in (issue.get("labels") or [])],
+                    "labels": [str(lbl.get("name", "")).lower() for lbl in (issue.get("labels") or [])],
                     "is_status": True,
                 })
                 continue
@@ -195,7 +193,7 @@ def rank_fleet_roi(max_per_repo: int = 12) -> Tuple[List[Dict[str, Any]], List[D
     return work, non_work
 
 
-def build_next_prompt(top: Optional[Dict[str, Any]]) -> str:
+def build_next_prompt(top: dict[str, Any] | None) -> str:
     if not top:
         return (
             "No high-ROI open work issue across fleet (status + notification triage excluded). "
@@ -214,7 +212,7 @@ def build_next_prompt(top: Optional[Dict[str, Any]]) -> str:
     )
 
 
-def find_roi_issue(headers: dict) -> Optional[int]:
+def find_roi_issue(headers: dict) -> int | None:
     try:
         resp = requests.get(
             f"https://api.github.com/repos/{HOST_REPO}/issues",
@@ -242,10 +240,10 @@ def find_roi_issue(headers: dict) -> Optional[int]:
 
 
 def upsert_roi_issue(
-    ranked: List[Dict[str, Any]],
-    top: Optional[Dict[str, Any]],
-    status_issues: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    ranked: list[dict[str, Any]],
+    top: dict[str, Any] | None,
+    status_issues: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     headers = _headers()
     if not headers:
         return {"error": "NO_TOKEN"}
@@ -340,8 +338,8 @@ def upsert_roi_issue(
 
 
 def run_roi_catalyst(
-    profile: Optional[Dict[str, Any]] = None,
-    record_error: Optional[Any] = None,
+    profile: dict[str, Any] | None = None,
+    record_error: Any | None = None,
 ) -> str:
     record = record_error or (lambda e, c="": print(f"[ERROR:{c}] {e}"))
     profile = profile if profile is not None else {}

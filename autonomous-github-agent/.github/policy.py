@@ -27,9 +27,12 @@ def score(task):
 
     return base - task.get("risk", 0)
 
-def select_task(tasks):
+def select_task(tasks, scorer=None):
     """
     Select the single highest-scoring task.
     This ensures we always tackle the most valuable catalyst action available.
     """
-    return max(tasks, key=score) if tasks else None
+    if not tasks:
+        return None
+    scorer = scorer or score
+    return max(tasks, key=scorer) if tasks else None

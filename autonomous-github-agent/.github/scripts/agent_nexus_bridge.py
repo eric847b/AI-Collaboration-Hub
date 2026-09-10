@@ -13,7 +13,8 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS not in sys.path:
@@ -31,9 +32,9 @@ USE_CONSENSUS = os.getenv("NEXUS_CONSENSUS", "1") == "1"
 def consult_nexus(
     title: str,
     body: str = "",
-    call_llm_fn: Optional[Callable] = None,
+    call_llm_fn: Callable | None = None,
     profile=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run multi-role consensus; returns approve/confidence/actions/echo."""
     if not USE_CONSENSUS or not HAS_CONSENSUS or call_llm_fn is None:
         return {
@@ -65,7 +66,7 @@ def consult_nexus(
         }
 
 
-def should_proceed(consensus: Dict[str, Any], min_confidence: float = 0.45) -> bool:
+def should_proceed(consensus: dict[str, Any], min_confidence: float = 0.45) -> bool:
     if consensus.get("skipped"):
         return True
     if consensus.get("approve") is False and consensus.get("confidence", 0) < 0.7:

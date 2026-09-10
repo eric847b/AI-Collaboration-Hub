@@ -14,8 +14,8 @@ import argparse
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import requests
 
@@ -58,8 +58,8 @@ class Finding:
 class RepoReport:
     repo: str
     ok: bool
-    findings: List[Finding] = field(default_factory=list)
-    error: Optional[str] = None
+    findings: list[Finding] = field(default_factory=list)
+    error: str | None = None
 
 
 def _headers() -> dict:
@@ -73,10 +73,10 @@ def _headers() -> dict:
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _list_root(repo: str, headers: dict) -> Optional[List[str]]:
+def _list_root(repo: str, headers: dict) -> list[str] | None:
     try:
         resp = requests.get(
             f"https://api.github.com/repos/{repo}/contents/",
@@ -90,7 +90,7 @@ def _list_root(repo: str, headers: dict) -> Optional[List[str]]:
         return None
 
 
-def inspect_repo(repo: str, headers: Optional[dict] = None) -> RepoReport:
+def inspect_repo(repo: str, headers: dict | None = None) -> RepoReport:
     headers = headers or _headers()
     if not headers:
         return RepoReport(repo=repo, ok=False, error="NO_TOKEN")
@@ -99,7 +99,7 @@ def inspect_repo(repo: str, headers: Optional[dict] = None) -> RepoReport:
     if names is None:
         return RepoReport(repo=repo, ok=False, error="list_root_failed")
 
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     name_set = set(names)
 
     for path in REQUIRED_ROOT_FILES:
@@ -131,10 +131,10 @@ def inspect_repo(repo: str, headers: Optional[dict] = None) -> RepoReport:
     return RepoReport(repo=repo, ok=True, findings=findings)
 
 
-def inspect_fleet(fleet: Optional[List[str]] = None) -> Dict[str, Any]:
+def inspect_fleet(fleet: list[str] | None = None) -> dict[str, Any]:
     headers = _headers()
     repos = fleet or list(FLEET)
-    reports: List[RepoReport] = [inspect_repo(r, headers) for r in repos]
+    reports: list[RepoReport] = [inspect_repo(r, headers) for r in repos]
 
     all_findings = [f for r in reports for f in r.findings]
     high = sum(1 for f in all_findings if f.severity == "high")
@@ -167,13 +167,13 @@ def inspect_fleet(fleet: Optional[List[str]] = None) -> Dict[str, Any]:
     }
 
 
-def apply_safe(report: Optional[Dict[str, Any]] = None, dry_run: bool = True) -> Dict[str, Any]:
+def apply_safe(report: dict[str, Any] | None = None, dry_run: bool = True) -> dict[str, Any]:
     """
     Safe apply path. Currently limited to reporting; LICENSE auto-write is
     intentionally disabled (no-op) until policy explicitly enables it.
     """
     report = report or inspect_fleet()
-    actions: List[Dict[str, Any]] = []
+    actions: list[dict[str, Any]] = []
 
     for repo_block in report.get("repos") or []:
         for finding in repo_block.get("findings") or []:

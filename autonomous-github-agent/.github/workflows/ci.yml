@@ -19,7 +19,29 @@ jobs:
       - name: Validate Python syntax
         run: |
           set -euo pipefail
-          python -m py_compile .github/controller.py .github/executor.py .github/policy.py .github/router.py
+          mapfile -d '' python_files < <(find .github/scripts .github -maxdepth 1 -type f -name '*.py' \
+            -not -path './.git/*' \
+            -not -path './.venv/*' \
+            -not -path './venv/*' \
+            -not -path './__pycache__/*' -print0)
+          if [ "${#python_files[@]}" -eq 0 ]; then
+            echo "No Python files found"
+            exit 1
+          fi
+          python -m py_compile "${python_files[@]}"
+
+      - name: Check with Ruff
+        run: |
+          pip install ruff
+          ruff check .github
+
+      - name: Lint workflows with actionlint
+        run: |
+          # Install actionlint if not present
+          if ! command -v actionlint &> /dev/null; then
+            curl -sSL https://raw.githubusercontent.com/rhysd/dot.actionlint/main/install.sh | sh -s -- latest
+          fi
+          actionlint .github/workflows/*.yml
 
       - name: Agent CI status
         run: |

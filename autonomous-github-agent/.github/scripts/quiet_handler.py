@@ -7,9 +7,14 @@ Intercepts errors, warnings, test failures and notifications before they spam th
 - Only surfaces critical failures
 - Absorbs common test-runner exit codes (pytest, npm test, etc.)
 """
-import os, json, time, logging, requests, subprocess
-from datetime import datetime, timedelta
+import json
+import logging
+import os
+import subprocess
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import requests
 
 LOG = Path(".agent_quiet.log")
 STATE = Path(".agent_quiet_state.json")
@@ -21,30 +26,41 @@ log = logging.getLogger("quiet")
 
 def load_state():
     if STATE.exists():
-        try: return json.loads(STATE.read_text())
-        except: pass
+        try:
+            return json.loads(STATE.read_text())
+        except (OSError, json.JSONDecodeError):
+            pass
     return {"alerts": [], "last_mark_read": None, "test_failures": 0}
 
 def save_state(s):
     STATE.write_text(json.dumps(s, indent=2))
 
+def _parse_ts(value):
+    """Parse an ISO timestamp; treat naive values as UTC (legacy state files)."""
+    dt = datetime.fromisoformat(value)
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
+
+
 def can_alert(state):
-    now = datetime.utcnow()
-    recent = [a for a in state["alerts"] if now - datetime.fromisoformat(a) < timedelta(hours=1)]
+    now = datetime.now(UTC)
+    recent = [a for a in state["alerts"] if now - _parse_ts(a) < timedelta(hours=1)]
     state["alerts"] = recent
     return len(recent) < MAX_ALERTS_PER_HOUR
 
 def mark_notifications_read(token):
-    if not token: return 0
+    if not token:
+        return 0
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
     try:
         r = requests.get("https://api.github.com/notifications", headers=headers, params={"all": "false", "per_page": 50}, timeout=15)
-        if not r.ok: return 0
+        if not r.ok:
+            return 0
         notes = r.json()
-        if not notes: return 0
+        if not notes:
+            return 0
         requests.put("https://api.github.com/notifications",
                      headers=headers,
-                     json={"last_read_at": datetime.utcnow().isoformat() + "Z"},
+                     json={"last_read_at": datetime.now(UTC).isoformat()},
                      timeout=15)
         log.info(f"Quiet: marked {len(notes)} notifications as read")
         return len(notes)
@@ -60,7 +76,7 @@ def handle_failure(msg, critical=False, is_test=False):
         # Test failures are absorbed silently unless critical + rate allows
         critical = critical and state["test_failures"] % 5 == 0  # only every 5th becomes candidate
     if critical and can_alert(state):
-        state["alerts"].append(datetime.utcnow().isoformat())
+        state["alerts"].append(datetime.now(UTC).isoformat())
         save_state(state)
         log.error(f"CRITICAL (allowed): {msg}")
         return True
@@ -75,7 +91,7 @@ def absorb_test_exit(cmd, cwd=None):
             handle_failure(f"test exit {r.returncode}: {cmd}\n{r.stderr[-500:]}", is_test=True)
             return False
         return True
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError) as e:
         handle_failure(str(e), is_test=True)
         return False
 

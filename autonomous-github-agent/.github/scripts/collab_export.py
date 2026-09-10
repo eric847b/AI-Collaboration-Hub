@@ -11,20 +11,20 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Dict
+from typing import Any
 
 
 def _load(path: str) -> Any:
     if not os.path.isfile(path):
         return None
     try:
-        with open(path, "r") as fh:
+        with open(path) as fh:
             return json.load(fh)
     except Exception:
         return None
 
 
-def export_state(out_path: str = "nexus-export.json") -> Dict[str, Any]:
+def export_state(out_path: str = "nexus-export.json") -> dict[str, Any]:
     data = {
         "version": "5.1",
         "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

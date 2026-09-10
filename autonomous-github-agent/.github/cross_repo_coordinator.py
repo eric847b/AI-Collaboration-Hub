@@ -4,10 +4,14 @@ Cross-repo FailureSolver Coordinator v1.5
 Scans fleet + opens/updates one consolidated fleet-status issue + health pulse.
 """
 from __future__ import annotations
-import json, os, sys
+
+import json
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -29,8 +33,8 @@ def _headers():
         return {}
     return {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
 
-def scan_repo(repo: str) -> Dict[str, Any]:
-    profile: Dict[str, Any] = {}
+def scan_repo(repo: str) -> dict[str, Any]:
+    profile: dict[str, Any] = {}
     def record(e, c=""):
         print(f"[{repo}] ERROR:{c} {e}")
     try:
@@ -55,7 +59,7 @@ def scan_repo(repo: str) -> Dict[str, Any]:
     except Exception as e:
         return {"repo": repo, "ok": False, "error": str(e)[:200]}
 
-def find_fleet_issue(headers: dict) -> Optional[int]:
+def find_fleet_issue(headers: dict) -> int | None:
     try:
         resp = requests.get(f"https://api.github.com/repos/{HOST_REPO}/issues",
                             headers=headers, params={"state": "open", "per_page": 50, "labels": "fleet-status"}, timeout=20)
@@ -73,14 +77,14 @@ def find_fleet_issue(headers: dict) -> Optional[int]:
         print(f"find_fleet_issue: {e}")
     return None
 
-def upsert_fleet_issue(report: Dict[str, Any]) -> Optional[Dict]:
+def upsert_fleet_issue(report: dict[str, Any]) -> dict | None:
     headers = _headers()
     if not headers:
         return {"error": "NO_TOKEN"}
     summary = report.get("summary") or {}
     lines = [
         f"**Generated:** `{report.get('generated_at')}`  ",
-        f"**Coordinator:** v1.5  ",
+        "**Coordinator:** v1.5  ",
         f"**Repos OK:** {summary.get('repos_ok')}/{summary.get('repos_scanned')}  ",
         f"**Failed runs seen:** {summary.get('total_failed_runs_seen')}  ",
         f"**Items created this pass:** {summary.get('items_created')}",

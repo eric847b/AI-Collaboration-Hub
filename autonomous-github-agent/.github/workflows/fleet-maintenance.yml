@@ -36,7 +36,9 @@ jobs:
   maintenance:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    working-directory: autonomous-github-agent
+    defaults:
+      run:
+        working-directory: autonomous-github-agent
     steps:
       - name: Checkout
         uses: actions/checkout@v4

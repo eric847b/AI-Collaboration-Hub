@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from github import Github
@@ -23,7 +23,7 @@ except ImportError:
 REPORT_PATH = "multi-repo-report.json"
 
 
-def list_sibling_repos(limit: int = 20) -> List[Dict[str, Any]]:
+def list_sibling_repos(limit: int = 20) -> list[dict[str, Any]]:
     if not GITHUB_AVAILABLE:
         return []
     token = os.getenv("GITHUB_TOKEN")
@@ -52,10 +52,10 @@ def list_sibling_repos(limit: int = 20) -> List[Dict[str, Any]]:
     return out
 
 
-def scan_siblings_metadata(limit: int = 15) -> Dict[str, Any]:
+def scan_siblings_metadata(limit: int = 15) -> dict[str, Any]:
     """Metadata-only scan (no clone) — safe and cheap."""
     enabled = os.getenv("MULTI_REPO", "0") == "1"
-    report: Dict[str, Any] = {
+    report: dict[str, Any] = {
         "version": "6.0",
         "enabled": enabled,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

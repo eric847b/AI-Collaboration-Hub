@@ -6,18 +6,16 @@ v3.5.0 — draft-PR remediation for timeout / missing_dependency / missing_file.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
-import base64
 import uuid
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import requests
 
-FAILURE_PATTERNS: List[Tuple[str, str, float]] = [
+FAILURE_PATTERNS: list[tuple[str, str, float]] = [
     (r"ModuleNotFoundError|No module named|ImportError", "missing_dependency", 90.0),
     (r"pip install.*failed|Could not find a version that satisfies", "pip_resolution", 85.0),
     (r"Timeout|timed out|Read timed out|ConnectTimeout", "timeout", 80.0),
@@ -37,7 +35,7 @@ FAILURE_PATTERNS: List[Tuple[str, str, float]] = [
 
 DRAFT_PR_CLASSES = frozenset({"timeout", "missing_dependency", "missing_file"})
 
-COMMON_REMEDIATIONS: Dict[str, Dict[str, Any]] = {
+COMMON_REMEDIATIONS: dict[str, dict[str, Any]] = {
     "missing_dependency": {
         "description": "Add missing package to requirements.txt and ensure install step runs",
         "safe_actions": ["update_requirements", "create_issue", "draft_pr"],
@@ -77,7 +75,7 @@ COMMON_REMEDIATIONS: Dict[str, Dict[str, Any]] = {
 
 
 class FailureSolver:
-    def __init__(self, repo_name: str, profile: Optional[Dict] = None, record_error=None):
+    def __init__(self, repo_name: str, profile: dict | None = None, record_error=None):
         self.repo_name = repo_name
         self.profile = profile if profile is not None else {}
         self.record_error = record_error or (lambda e, c="": None)
@@ -86,7 +84,7 @@ class FailureSolver:
         if self.token:
             self.headers = {"Authorization": f"token {self.token}", "Accept": "application/vnd.github+json"}
 
-    def _gh_get(self, url: str, params: Optional[Dict] = None) -> Tuple[int, Any]:
+    def _gh_get(self, url: str, params: dict | None = None) -> tuple[int, Any]:
         if not self.headers:
             return 0, None
         try:
@@ -96,7 +94,7 @@ class FailureSolver:
             self.record_error(e, "failure_solver_get")
             return 0, None
 
-    def _gh_post(self, url: str, payload: Dict) -> Tuple[int, Any]:
+    def _gh_post(self, url: str, payload: dict) -> tuple[int, Any]:
         if not self.headers:
             return 0, None
         try:
@@ -108,7 +106,7 @@ class FailureSolver:
             self.record_error(e, "failure_solver_post")
             return 0, None
 
-    def list_recent_failed_runs(self, max_runs: int = 15) -> List[Dict]:
+    def list_recent_failed_runs(self, max_runs: int = 15) -> list[dict]:
         url = f"https://api.github.com/repos/{self.repo_name}/actions/runs"
         status, data = self._gh_get(url, {"per_page": max_runs, "status": "completed"})
         if status != 200 or not data:
@@ -120,12 +118,12 @@ class FailureSolver:
                 failed.append({"id": run.get("id"), "name": run.get("name"), "conclusion": conclusion, "html_url": run.get("html_url"), "created_at": run.get("created_at"), "head_branch": run.get("head_branch"), "head_sha": run.get("head_sha"), "event": run.get("event"), "run_attempt": run.get("run_attempt", 1),})
         return failed
 
-    def get_run_jobs(self, run_id: int) -> List[Dict]:
+    def get_run_jobs(self, run_id: int) -> list[dict]:
         url = f"https://api.github.com/repos/{self.repo_name}/actions/runs/{run_id}/jobs"
         status, data = self._gh_get(url, {"per_page": 20})
         return (data.get("jobs") or []) if status == 200 and data else []
 
-    def classify_log_snippet(self, text: str) -> List[Dict]:
+    def classify_log_snippet(self, text: str) -> list[dict]:
         if not text:
             return []
         matches = []
@@ -141,7 +139,7 @@ class FailureSolver:
                 best[c] = m
         return sorted(best.values(), key=lambda x: x["score"], reverse=True)
 
-    def analyze_run(self, run: Dict) -> Dict:
+    def analyze_run(self, run: dict) -> dict:
         jobs = self.get_run_jobs(run["id"])
         classifications, failing_steps = [], []
         for job in jobs:
@@ -161,7 +159,7 @@ class FailureSolver:
                 unique.append(c)
         return {"run": run, "failing_steps": failing_steps, "classifications": unique[:5], "top_class": unique[0]["class"] if unique else "unknown", "top_score": unique[0]["score"] if unique else 40.0}
 
-    def scan_and_prioritize(self, max_runs: int = 10) -> List[Dict]:
+    def scan_and_prioritize(self, max_runs: int = 10) -> list[dict]:
         analyses = []
         for run in self.list_recent_failed_runs(max_runs=max_runs):
             try:
@@ -171,7 +169,7 @@ class FailureSolver:
         analyses.sort(key=lambda a: a.get("top_score", 0), reverse=True)
         return analyses
 
-    def create_remediation_issue(self, analysis: Dict) -> Optional[Dict]:
+    def create_remediation_issue(self, analysis: dict) -> dict | None:
         if not self.headers:
             return None
         run = analysis.get("run") or {}
@@ -191,7 +189,7 @@ class FailureSolver:
         status, _ = self._gh_post(f"https://api.github.com/repos/{self.repo_name}/git/refs", {"ref": f"refs/heads/{branch}", "sha": from_sha})
         return status in (200, 201)
 
-    def _put_file(self, path: str, content: str, branch: str, message: str, sha: Optional[str] = None) -> bool:
+    def _put_file(self, path: str, content: str, branch: str, message: str, sha: str | None = None) -> bool:
         payload = {"message": message, "content": base64.b64encode(content.encode("utf-8")).decode("ascii"), "branch": branch}
         if sha:
             payload["sha"] = sha
@@ -202,14 +200,14 @@ class FailureSolver:
             self.record_error(e, "put_file")
             return False
 
-    def _create_draft_pr(self, title: str, body: str, head: str, base: str = "main") -> Optional[Dict]:
+    def _create_draft_pr(self, title: str, body: str, head: str, base: str = "main") -> dict | None:
         status, data = self._gh_post(f"https://api.github.com/repos/{self.repo_name}/pulls", {"title": title, "body": body, "head": head, "base": base, "draft": True})
         if status in (200, 201) and isinstance(data, dict):
             self.profile["draft_prs_created"] = self.profile.get("draft_prs_created", 0) + 1
             return {"number": data.get("number"), "html_url": data.get("html_url")}
         return None
 
-    def _safe_fix_content(self, cls: str, analysis: Dict) -> Optional[Tuple[str, str]]:
+    def _safe_fix_content(self, cls: str, analysis: dict) -> tuple[str, str] | None:
         if cls == "timeout":
             content = '"""Minimal retry helper auto-added by FailureSolver v3.5 for timeout class.\nSafe, zero side-effects beyond increased resilience on network/API calls.\n"""\nimport time\nfrom typing import Callable, TypeVar\n\nT = TypeVar("T")\n\ndef retry_with_backoff(fn: Callable[[], T], max_attempts: int = 3, base_delay: float = 1.0) -> T:\n    last_exc = None\n    for attempt in range(max_attempts):\n        try:\n            return fn()\n        except Exception as e:\n            last_exc = e\n            if attempt < max_attempts - 1:\n                time.sleep(base_delay * (2 ** attempt))\n    raise last_exc  # type: ignore\n'
             return (".github/auto_fix/retry_helper.py", content)
@@ -221,7 +219,7 @@ class FailureSolver:
             return (".github/auto_fix/path_guard.py", content)
         return None
 
-    def create_remediation_draft_pr(self, analysis: Dict) -> Optional[Dict]:
+    def create_remediation_draft_pr(self, analysis: dict) -> dict | None:
         if not self.headers:
             return None
         cls = analysis.get("top_class") or "unknown"
@@ -279,7 +277,7 @@ class FailureSolver:
         return f"Scanned {len(analyses)} failures; no new high-signal items created"
 
 
-def get_failure_solver(repo_name: str, profile: Optional[Dict] = None, record_error=None) -> FailureSolver:
+def get_failure_solver(repo_name: str, profile: dict | None = None, record_error=None) -> FailureSolver:
     return FailureSolver(repo_name, profile=profile, record_error=record_error)
 
 

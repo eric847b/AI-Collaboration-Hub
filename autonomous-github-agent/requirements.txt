@@ -1,3 +1,5 @@
 # Runtime dependency for the mirrored fleet-maintenance engine.
 # fleet_maintenance.py imports `requests` (mirrored from standalone PR 322).
-requests>=2.34.2
+# NOTE: aligned with pyproject.toml; do NOT pin versions that don't exist on PyPI.
+requests>=2.28.0
+pytest>=8.0.0

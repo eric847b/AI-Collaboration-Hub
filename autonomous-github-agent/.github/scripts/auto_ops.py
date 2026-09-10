@@ -19,15 +19,16 @@ Env:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
 import re
 import time
 from collections import defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("auto_ops")
@@ -105,27 +106,24 @@ def _lockfile_key(title: str) -> str:
     return "other:" + t[:50].lower()
 
 
-def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
+def close_duplicate_bot_drafts(r=None) -> dict[str, Any]:
     r = r or _repo()
     result = {"closed": [], "kept": [], "errors": []}
     if not r:
         return result
-    groups: Dict[str, list] = defaultdict(list)
+    groups: dict[str, list] = defaultdict(list)
     try:
         for pr in r.get_pulls(state="open"):
             title = pr.title or ""
             head = ""
-            try:
+            with contextlib.suppress(Exception):
                 head = pr.head.ref if pr.head else ""
-            except Exception:
-                pass
             if head.startswith("dependabot/"):
                 continue
             if not (title.startswith("🤖") or head.startswith("auto-fix")):
                 continue
-            if not pr.draft and not title.startswith("🤖 Lockfile"):
-                if not title.startswith("🤖"):
-                    continue
+            if not pr.draft and not title.startswith("🤖"):
+                continue
             key = _lockfile_key(title)
             groups[key].append(pr)
     except Exception as e:
@@ -141,12 +139,10 @@ def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
                 continue
             try:
                 old.edit(state="closed")
-                try:
+                with contextlib.suppress(Exception):
                     old.create_issue_comment(
                         f"Closed by auto_ops: duplicate bot/lockfile draft (kept #{prs_sorted[0].number})."
                     )
-                except Exception:
-                    pass
                 result["closed"].append({"number": old.number, "key": key})
                 log.info("Closed duplicate draft PR #%s (key=%s)", old.number, key)
             except Exception as e:
@@ -154,7 +150,7 @@ def close_duplicate_bot_drafts(r=None) -> Dict[str, Any]:
     return result
 
 
-def close_all_lockfile_spam(r=None) -> Dict[str, Any]:
+def close_all_lockfile_spam(r=None) -> dict[str, Any]:
     r = r or _repo()
     result = {"closed": [], "errors": []}
     if not r:
@@ -177,12 +173,10 @@ def close_all_lockfile_spam(r=None) -> Dict[str, Any]:
                 continue
             try:
                 pr.edit(state="closed")
-                try:
+                with contextlib.suppress(Exception):
                     pr.create_issue_comment(
                         "Closed by auto_ops: lockfile drafts for root/Userscripts paths are skipped by policy."
                     )
-                except Exception:
-                    pass
                 result["closed"].append({"number": pr.number, "title": title})
                 log.info("Closed policy-spam lockfile PR #%s", pr.number)
             except Exception as e:
@@ -215,7 +209,7 @@ def _is_patch_bump(title: str) -> bool:
     return a == d and b == e and f > c
 
 
-def _pr_checks_green(pr) -> Tuple[bool, str]:
+def _pr_checks_green(pr) -> tuple[bool, str]:
     try:
         status = pr.get_commits().reversed[0].get_combined_status()
         if status.state == "failure":
@@ -255,13 +249,13 @@ def _pr_age_days(pr) -> float:
     try:
         created = pr.created_at
         if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        return (datetime.now(timezone.utc) - created).total_seconds() / 86400.0
+            created = created.replace(tzinfo=UTC)
+        return (datetime.now(UTC) - created).total_seconds() / 86400.0
     except Exception:
         return 0.0
 
 
-def handle_conflicted_dependabot(r=None) -> Dict[str, Any]:
+def handle_conflicted_dependabot(r=None) -> dict[str, Any]:
     """
     Free GitHub path: ask Dependabot to rebase or recreate conflicted PRs.
     No LLM. Markers prevent comment spam on every Self-Heal cycle.
@@ -322,7 +316,7 @@ def handle_conflicted_dependabot(r=None) -> Dict[str, Any]:
     return result
 
 
-def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
+def auto_merge_safe_dependabot(r=None) -> dict[str, Any]:
     r = r or _repo()
     result = {"merged": [], "skipped": [], "errors": []}
     if not r or not AUTO_MERGE_DEPENDABOT:
@@ -377,7 +371,7 @@ def auto_merge_safe_dependabot(r=None) -> Dict[str, Any]:
     return result
 
 
-def cleanup_stale_autofix_branches(r=None) -> Dict[str, Any]:
+def cleanup_stale_autofix_branches(r=None) -> dict[str, Any]:
     r = r or _repo()
     result = {"deleted": [], "errors": []}
     if not r:
@@ -412,7 +406,7 @@ def cleanup_stale_autofix_branches(r=None) -> Dict[str, Any]:
     return result
 
 
-def ensure_actionlint_config(root: str = ".") -> Dict[str, Any]:
+def ensure_actionlint_config(root: str = ".") -> dict[str, Any]:
     path = Path(root) / ".github" / "actionlint.yaml"
     result = {"path": str(path), "action": "none"}
     try:
@@ -434,7 +428,7 @@ def ensure_actionlint_config(root: str = ".") -> Dict[str, Any]:
     return result
 
 
-def run_all() -> Dict[str, Any]:
+def run_all() -> dict[str, Any]:
     log.info(
         "auto_ops v%s starting (DRY_RUN=%s AUTO_MERGE=%s CONFLICT_RECREATE_DAYS=%s)",
         VERSION,
@@ -443,7 +437,7 @@ def run_all() -> Dict[str, Any]:
         CONFLICT_RECREATE_DAYS,
     )
     r = _repo()
-    report: Dict[str, Any] = {
+    report: dict[str, Any] = {
         "version": VERSION,
         "dry_run": DRY_RUN,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

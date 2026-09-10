@@ -12,9 +12,8 @@ actionable consensus with confidence score.
 from __future__ import annotations
 
 import json
-import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 ROLE_PROVIDER = {
     "Planner": "auto",
@@ -55,7 +54,7 @@ def _safe_json(text: str) -> Any:
     text = (text or "").strip()
     if text.startswith("```"):
         lines = text.split("\n")
-        lines = [l for l in lines if not l.strip().startswith("```")]
+        lines = [ln for ln in lines if not ln.strip().startswith("```")]
         text = "\n".join(lines)
     try:
         return json.loads(text)
@@ -67,14 +66,14 @@ def run_consensus(
     task: str,
     call_llm_fn,
     profile=None,
-    roles: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    roles: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Run multi-role consensus on a task string.
     call_llm_fn(prompt, provider='auto', profile=None) -> str
     """
     roles = roles or list(ROLE_PROMPTS.keys())
-    transcript: List[Dict[str, str]] = []
+    transcript: list[dict[str, str]] = []
     context = f"TASK:\n{task}\n"
 
     for role in roles:

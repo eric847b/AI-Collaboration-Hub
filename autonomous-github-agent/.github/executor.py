@@ -1,4 +1,6 @@
 # executor.py — enhanced for nexus/self-evolve-dash
+from datetime import UTC, datetime
+
 M={"roi":{}, "ctx":{}, "n":0}
 
 def run_task(t):
@@ -20,7 +22,7 @@ def run_task(t):
     return r
 
 def score(t,r): return (r.get("new_commits",0)*3 + r.get("warnings",0)*-2 + r.get("latency",1)**-1)
-def ctx(t,r): return {"repo":t.get("repo"), "branch":t.get("branch"), "errors":r.get("errors"), "ts":now()}
+def ctx(t,r): return {"repo":t.get("repo"), "branch":t.get("branch"), "errors":r.get("errors"), "ts":datetime.now(UTC).isoformat()}
 def dispatch(t,r): return [c for c in["gh","gl","fs","mem","local"] if use(c,t,r)]
 def xsync(t,r,M): return {k:v for k,v in M["ctx"].items() if v.get("repo")!=t.get("repo")}
 def notify(r): pass

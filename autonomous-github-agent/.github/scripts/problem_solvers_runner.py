@@ -16,11 +16,12 @@ Supports DRY_RUN=1, MAX_SOLVER_TASKS (default 8), writes agent-report.json.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import logging
 import os
 import sys
 import time
-import logging
 from collections import Counter
 
 _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
@@ -28,19 +29,19 @@ if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
 from problem_solvers import (  # noqa: E402
-    scan_python_syntax,
-    scan_peer_dependency_conflicts,
-    fix_peer_conflict_in_package_json,
-    scan_lockfile_gaps_smart,
     create_minimal_lockfile,
-    scan_missing_requirements,
-    fix_missing_requirements,
-    scan_gha_deprecations,
     fix_gha_version,
+    fix_missing_requirements,
+    fix_peer_conflict_in_package_json,
+    scan_gha_deprecations,
+    scan_lockfile_gaps_smart,
+    scan_missing_requirements,
+    scan_peer_dependency_conflicts,
+    scan_python_syntax,
 )
 
 try:
-    from closed_loop import record_fix, mark_verified, note_reappear
+    from closed_loop import note_reappear, record_fix
     CLOSED_LOOP = True
 except ImportError:
     CLOSED_LOOP = False
@@ -99,10 +100,8 @@ def open_bot_pr_exists_for(needle: str) -> bool:
         for pr in r.get_pulls(state="open"):
             t = (pr.title or "").lower()
             head = ""
-            try:
+            with contextlib.suppress(Exception):
                 head = (pr.head.ref or "").lower()
-            except Exception:
-                pass
             is_bot = t.startswith("🤖") or "lockfile" in t or head.startswith("auto-fix")
             if not is_bot:
                 continue
@@ -137,10 +136,8 @@ def _branch_and_pr(title: str, body: str, branch: str) -> bool:
         pr = r.create_pull(title=title, body=body, head=branch, base="main", draft=True)
         log.info(f"Opened PR #{pr.number}: {title}")
         if CLOSED_LOOP:
-            try:
+            with contextlib.suppress(Exception):
                 record_fix("auto_pr", title, pr_number=pr.number)
-            except Exception:
-                pass
         return True
     except Exception as e:
         log.warning(f"PR create failed: {e}")
@@ -295,10 +292,8 @@ def main():
     if CLOSED_LOOP:
         types_seen = {t.get("type") for t in tasks}
         for ttype in types_seen:
-            try:
+            with contextlib.suppress(Exception):
                 note_reappear(ttype)
-            except Exception:
-                pass
 
     report = {
         "version": VERSION,
@@ -342,10 +337,8 @@ def main():
                 solved += 1
                 entry["success"] = True
                 if CLOSED_LOOP:
-                    try:
+                    with contextlib.suppress(Exception):
                         record_fix(ttype, t.get("title", ""))
-                    except Exception:
-                        pass
         except Exception as e:
             log.warning("Task error: %s", e)
             entry["error"] = str(e)

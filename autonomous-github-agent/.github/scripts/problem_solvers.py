@@ -13,11 +13,10 @@ Works with problem_solvers_runner v6.1 + auto_ops.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
-import hashlib
-from typing import Dict, List, Optional, Set
 
 SKIP_DIRS = {
     ".git", "node_modules", "Archive", "dist", "build", "__pycache__",
@@ -90,7 +89,7 @@ def _path_skipped(path: str) -> bool:
     return any(t in lower for t in SKIP_PATH_TOKENS)
 
 
-def _walk_files(root: str, suffixes: tuple) -> List[str]:
+def _walk_files(root: str, suffixes: tuple) -> list[str]:
     out = []
     for r, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
@@ -105,7 +104,7 @@ def _walk_files(root: str, suffixes: tuple) -> List[str]:
 
 def package_has_deps(pkg_path: str) -> bool:
     try:
-        with open(pkg_path, "r", errors="ignore") as fh:
+        with open(pkg_path, errors="ignore") as fh:
             data = json.load(fh)
         return bool(
             data.get("dependencies")
@@ -123,11 +122,11 @@ def has_node_lockfile(dir_path: str) -> bool:
     return False
 
 
-def scan_python_syntax(root: str = ".") -> List[Dict]:
+def scan_python_syntax(root: str = ".") -> list[dict]:
     tasks = []
     for path in _walk_files(root, (".py",)):
         try:
-            with open(path, "r", errors="ignore") as fh:
+            with open(path, errors="ignore") as fh:
                 src = fh.read()
             ast.parse(src, filename=path)
         except SyntaxError as e:
@@ -153,20 +152,20 @@ def scan_python_syntax(root: str = ".") -> List[Dict]:
     return tasks
 
 
-def _parse_semver_major(spec: str) -> Optional[int]:
+def _parse_semver_major(spec: str) -> int | None:
     if not spec:
         return None
     m = re.search(r"(\d+)", str(spec))
     return int(m.group(1)) if m else None
 
 
-def scan_peer_dependency_conflicts(root: str = ".") -> List[Dict]:
+def scan_peer_dependency_conflicts(root: str = ".") -> list[dict]:
     tasks = []
     for path in _walk_files(root, ("package.json",)):
         if "node_modules" in path:
             continue
         try:
-            with open(path, "r", errors="ignore") as fh:
+            with open(path, errors="ignore") as fh:
                 data = json.load(fh)
         except Exception:
             continue
@@ -205,10 +204,10 @@ def scan_peer_dependency_conflicts(root: str = ".") -> List[Dict]:
     return tasks
 
 
-def fix_peer_conflict_in_package_json(pkg_path: str, peer: str, pin: str) -> Dict:
+def fix_peer_conflict_in_package_json(pkg_path: str, peer: str, pin: str) -> dict:
     result = {"success": False, "output": "", "error": ""}
     try:
-        with open(pkg_path, "r", errors="ignore") as fh:
+        with open(pkg_path, errors="ignore") as fh:
             data = json.load(fh)
         changed = False
         for section in ("devDependencies", "dependencies", "optionalDependencies"):
@@ -231,10 +230,10 @@ def fix_peer_conflict_in_package_json(pkg_path: str, peer: str, pin: str) -> Dic
     return result
 
 
-def fix_python_syntax_file(path: str, content_hint: str = "") -> Dict:
+def fix_python_syntax_file(path: str, content_hint: str = "") -> dict:
     result = {"success": False, "output": "", "error": ""}
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with open(path, errors="ignore") as fh:
             src = fh.read()
         try:
             ast.parse(src)
@@ -250,7 +249,7 @@ def fix_python_syntax_file(path: str, content_hint: str = "") -> Dict:
     return result
 
 
-def scan_lockfile_gaps_smart(root: str = ".") -> List[Dict]:
+def scan_lockfile_gaps_smart(root: str = ".") -> list[dict]:
     """Only flag missing lockfiles when package.json has real dependencies.
 
     Always skip monorepo root `.` — workspace shell, EBADENGINE noise, not a
@@ -296,7 +295,7 @@ def scan_lockfile_gaps_smart(root: str = ".") -> List[Dict]:
     return tasks
 
 
-def create_minimal_lockfile(project_dir: str) -> Dict:
+def create_minimal_lockfile(project_dir: str) -> dict:
     result = {"success": False, "output": "", "error": ""}
     try:
         if project_dir in (".", "", os.getcwd()):
@@ -304,7 +303,7 @@ def create_minimal_lockfile(project_dir: str) -> Dict:
             result["error"] = "root monorepo lockfile skipped by policy"
             return result
         pkg = os.path.join(project_dir, "package.json")
-        with open(pkg, "r") as fh:
+        with open(pkg) as fh:
             data = json.load(fh)
         name = data.get("name") or os.path.basename(project_dir) or "package"
         version = data.get("version") or "1.0.0"
@@ -338,10 +337,10 @@ def create_minimal_lockfile(project_dir: str) -> Dict:
     return result
 
 
-def _collect_third_party_imports(py_path: str) -> Set[str]:
-    found: Set[str] = set()
+def _collect_third_party_imports(py_path: str) -> set[str]:
+    found: set[str] = set()
     try:
-        with open(py_path, "r", errors="ignore") as fh:
+        with open(py_path, errors="ignore") as fh:
             src = fh.read()
         tree = ast.parse(src, filename=py_path)
     except Exception:
@@ -352,11 +351,10 @@ def _collect_third_party_imports(py_path: str) -> Set[str]:
                 top = alias.name.split(".")[0]
                 if top and not top.startswith("_"):
                     found.add(top)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and node.level == 0:
-                top = node.module.split(".")[0]
-                if top and not top.startswith("_"):
-                    found.add(top)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            top = node.module.split(".")[0]
+            if top and not top.startswith("_"):
+                found.add(top)
     stdlibish = {
         "os", "sys", "re", "json", "ast", "hashlib", "typing", "collections",
         "pathlib", "datetime", "time", "logging", "subprocess", "shutil",
@@ -375,9 +373,9 @@ def _collect_third_party_imports(py_path: str) -> Set[str]:
     return {m for m in found if m not in stdlibish}
 
 
-def scan_missing_requirements(root: str = ".") -> List[Dict]:
+def scan_missing_requirements(root: str = ".") -> list[dict]:
     tasks = []
-    candidates: Dict[str, Set[str]] = {}
+    candidates: dict[str, set[str]] = {}
     for path in _walk_files(root, (".py",)):
         d = os.path.dirname(path) or "."
         proj = d
@@ -422,7 +420,7 @@ def scan_missing_requirements(root: str = ".") -> List[Dict]:
     return tasks
 
 
-def fix_missing_requirements(project_dir: str, pins: List[str]) -> Dict:
+def fix_missing_requirements(project_dir: str, pins: list[str]) -> dict:
     result = {"success": False, "output": "", "error": ""}
     try:
         path = os.path.join(project_dir, "requirements.txt")
@@ -435,10 +433,10 @@ def fix_missing_requirements(project_dir: str, pins: List[str]) -> Dict:
     return result
 
 
-def scan_gha_deprecations(root: str = ".") -> List[Dict]:
+def scan_gha_deprecations(root: str = ".") -> list[dict]:
     tasks = []
     workflow_dirs = []
-    for r, dirs, files in os.walk(root):
+    for r, dirs, _files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
         if os.path.basename(r) == "workflows" and ".github" in r.replace("\\", "/"):
             workflow_dirs.append(r)
@@ -448,7 +446,7 @@ def scan_gha_deprecations(root: str = ".") -> List[Dict]:
                 continue
             path = os.path.join(wdir, fname)
             try:
-                with open(path, "r", errors="ignore") as fh:
+                with open(path, errors="ignore") as fh:
                     content = fh.read()
             except Exception:
                 continue
@@ -477,10 +475,10 @@ def scan_gha_deprecations(root: str = ".") -> List[Dict]:
     return tasks
 
 
-def fix_gha_version(path: str, action: str, new_ref: str) -> Dict:
+def fix_gha_version(path: str, action: str, new_ref: str) -> dict:
     result = {"success": False, "output": "", "error": ""}
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with open(path, errors="ignore") as fh:
             content = fh.read()
         pattern = re.compile(rf"(uses:\s*{re.escape(action)}@)v?\d+")
         new_content, n = pattern.subn(rf"\g<1>{new_ref}", content)

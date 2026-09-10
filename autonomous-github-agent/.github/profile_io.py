@@ -13,7 +13,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 import requests
 
@@ -40,7 +40,7 @@ COUNTER_FIELDS = (
     "fleet_coordinator_runs",
 )
 
-VOLATILE_FIELDS: Set[str] = {
+VOLATILE_FIELDS: set[str] = {
     "runs",
     "last_run",
     "evolution_velocity",
@@ -66,7 +66,7 @@ def gh_headers() -> dict:
     return {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
 
 
-def load_local_profile() -> Dict[str, Any]:
+def load_local_profile() -> dict[str, Any]:
     try:
         if PROFILE_PATH.exists():
             return json.loads(PROFILE_PATH.read_text())
@@ -75,15 +75,15 @@ def load_local_profile() -> Dict[str, Any]:
     return {}
 
 
-def save_local_profile(profile: Dict[str, Any]) -> None:
+def save_local_profile(profile: dict[str, Any]) -> None:
     PROFILE_PATH.write_text(json.dumps(profile, indent=2) + "\n")
 
 
 def merge_profiles(
-    base: Dict[str, Any],
-    overlay: Dict[str, Any],
-    preserve_fleet_from: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    base: dict[str, Any],
+    overlay: dict[str, Any],
+    preserve_fleet_from: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     out = dict(base)
     out.update(overlay)
     src = preserve_fleet_from if preserve_fleet_from is not None else base
@@ -102,7 +102,7 @@ def merge_profiles(
     return out
 
 
-def _prefer_newer_fleet(merged: Dict[str, Any], local: Dict[str, Any], remote: Dict[str, Any]) -> None:
+def _prefer_newer_fleet(merged: dict[str, Any], local: dict[str, Any], remote: dict[str, Any]) -> None:
     try:
         lr = local.get("last_fleet_run")
         rr = remote.get("last_fleet_run")
@@ -125,7 +125,7 @@ def _normalize_for_compare(value: Any) -> str:
         return str(value)
 
 
-def material_delta(local: Dict[str, Any], remote: Dict[str, Any]) -> bool:
+def material_delta(local: dict[str, Any], remote: dict[str, Any]) -> bool:
     keys = set(local.keys()) | set(remote.keys())
     for k in keys:
         if k in VOLATILE_FIELDS:
@@ -135,7 +135,7 @@ def material_delta(local: Dict[str, Any], remote: Dict[str, Any]) -> bool:
     return False
 
 
-def should_persist(local: Dict[str, Any], remote: Dict[str, Any]) -> tuple:
+def should_persist(local: dict[str, Any], remote: dict[str, Any]) -> tuple:
     if not remote:
         return True, "no_remote_profile"
     if material_delta(local, remote):
@@ -146,7 +146,7 @@ def should_persist(local: Dict[str, Any], remote: Dict[str, Any]) -> tuple:
     return False, "volatile_only_skip"
 
 
-def fetch_remote_profile(repo_name: Optional[str] = None) -> tuple:
+def fetch_remote_profile(repo_name: str | None = None) -> tuple:
     headers = gh_headers()
     if not headers:
         return None, {}
@@ -167,9 +167,9 @@ def fetch_remote_profile(repo_name: Optional[str] = None) -> tuple:
 
 
 def persist_merged_profile(
-    local: Dict[str, Any],
-    repo_name: Optional[str] = None,
-    message: Optional[str] = None,
+    local: dict[str, Any],
+    repo_name: str | None = None,
+    message: str | None = None,
     force: bool = False,
 ) -> str:
     headers = gh_headers()
@@ -216,7 +216,7 @@ def persist_merged_profile(
                 return f"PERSISTED:{put.status_code}"
             if put.status_code == 409 and attempt < PERSIST_MAX_ATTEMPTS - 1:
                 time.sleep(PERSIST_BASE_DELAY_S * (2 ** attempt))
-                last_err = f"PUT_FAIL:409:retrying"
+                last_err = "PUT_FAIL:409:retrying"
                 continue
             last_err = f"PUT_FAIL:{put.status_code}:{put.text[:120]}"
             if put.status_code != 409:

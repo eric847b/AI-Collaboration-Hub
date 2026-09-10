@@ -12,22 +12,22 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 LEDGER_PATH = "auto-fix-ledger.json"
 
 
-def load_ledger(path: str = LEDGER_PATH) -> Dict[str, Any]:
+def load_ledger(path: str = LEDGER_PATH) -> dict[str, Any]:
     if os.path.isfile(path):
         try:
-            with open(path, "r") as fh:
+            with open(path) as fh:
                 return json.load(fh)
         except Exception:
             pass
     return {"version": "6.0", "entries": []}
 
 
-def save_ledger(data: Dict[str, Any], path: str = LEDGER_PATH) -> None:
+def save_ledger(data: dict[str, Any], path: str = LEDGER_PATH) -> None:
     data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     data["version"] = data.get("version") or "6.0"
     with open(path, "w") as fh:
@@ -37,8 +37,8 @@ def save_ledger(data: Dict[str, Any], path: str = LEDGER_PATH) -> None:
 def record_fix(
     problem_type: str,
     title: str,
-    pr_number: Optional[int] = None,
-    merge_sha: Optional[str] = None,
+    pr_number: int | None = None,
+    merge_sha: str | None = None,
     path: str = LEDGER_PATH,
 ) -> None:
     data = load_ledger(path)
@@ -67,7 +67,7 @@ def mark_verified(problem_type: str, path: str = LEDGER_PATH) -> int:
         save_ledger(data, path)
     return n
 
-def note_reappear(problem_type: str, path: str = LEDGER_PATH) -> List[Dict]:
+def note_reappear(problem_type: str, path: str = LEDGER_PATH) -> list[dict]:
     """If a fixed problem type reappears, increment counter; escalate at >= 2."""
     data = load_ledger(path)
     escalations = []
