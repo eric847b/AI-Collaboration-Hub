@@ -22,6 +22,7 @@ import ast
 import builtins
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -239,6 +240,73 @@ def check_workflows() -> list[str]:
     return failures
 
 
+def check_workflows_actionlint() -> list[str]:
+    """Bug class 5b: run actionlint over all workflows (definitive checker).
+
+    Catches every workflow class (bad runs-on, malformed steps, bad triggers,
+    invalid expressions...) not just the pattern-scan in check_workflows.
+    Uses ACTIONLINT env var (CI may install it), else shutil.which to the
+    actionlint binary; skips if unavailable locally (CI covers it there).
+    """
+    failures = []
+    wf_dir = os.path.join(GITHUB_DIR, "workflows")
+    if not os.path.isdir(wf_dir):
+        return [".github/workflows directory missing"]
+    exe = os.environ.get("ACTIONLINT") or shutil.which("actionlint")
+    if not exe:
+        return []  # actionlint not installed locally; CI covers this
+
+    for fn in sorted(os.listdir(wf_dir)):
+        if not (fn.endswith(".yml") or fn.endswith(".yaml")):
+            continue
+        path = os.path.join(wf_dir, fn)
+        try:
+            result = subprocess.run(
+                [exe, path],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except (OSError, subprocess.SubprocessError):
+            failures.append(f"actionlint invocation failed for {fn}")
+            continue
+        if result.returncode != 0:
+            out = (result.stdout or "") + (result.stderr or "")
+            for line in out.splitlines():
+                if line.strip():
+                    failures.append(f".github/workflows/{fn}: {line.strip()}")
+    return failures
+    """Bug class 5: invalid YAML or known-invalid workflow patterns."""
+    failures = []
+    wf_dir = os.path.join(GITHUB_DIR, "workflows")
+    if not os.path.isdir(wf_dir):
+        return [".github/workflows directory missing"]
+    try:
+        import yaml  # type: ignore[import-untyped]
+    except ImportError:
+        return []  # yaml not installed locally; CI covers this
+    for fn in sorted(os.listdir(wf_dir)):
+        if not (fn.endswith(".yml") or fn.endswith(".yaml")):
+            continue
+        path = os.path.join(wf_dir, fn)
+        try:
+            with open(path, encoding="utf-8") as f:
+                doc = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            failures.append(f".github/workflows/{fn}: invalid YAML: {e}")
+            continue
+        jobs = (doc or {}).get("jobs", {}) or {}
+        for job_name, job in jobs.items():
+            if not isinstance(job, dict):
+                continue
+            if "working-directory" in job:
+                failures.append(
+                    f".github/workflows/{fn}: job '{job_name}' has invalid job-level "
+                    "working-directory (use defaults.run.working-directory)"
+                )
+    return failures
+
+
 def check_core_imports() -> list[str]:
     """Bug class 6: import core modules; catches NameError at import time."""
     failures = []
@@ -308,6 +376,7 @@ def run_all_checks() -> dict[str, list[str]]:
         "ruff": check_ruff(),
         "deprecated_datetime": check_deprecated_datetime(),
         "workflows": check_workflows(),
+        "actionlint": check_workflows_actionlint(),
         "imports": check_core_imports(),
     }
 
