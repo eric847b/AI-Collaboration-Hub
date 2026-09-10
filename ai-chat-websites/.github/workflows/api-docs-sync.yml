@@ -1,0 +1,70 @@
+name: API Docs Sync Check
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/**'
+      - 'ai-chat-websites/docs/API.md'
+  pull_request:
+    paths:
+      - 'Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/**'
+      - 'ai-chat-websites/docs/API.md'
+
+jobs:
+  docs-sync:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'Userscripts/AI Chat Userscript Studio/Userscript Suite'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify all modules have API doc entries
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const modulesDir = path.join(__dirname, 'Modules');
+            const apiDocsPath = path.join(__dirname, '..', '..', '..', '..', 'docs', 'API.md');
+            
+            // Count module files
+            const moduleFiles = fs.readdirSync(modulesDir)
+              .filter(f => f.endsWith('.module.user.js'));
+            const moduleCount = moduleFiles.length;
+            
+            // Count documented modules in API.md
+            const apiDocs = fs.readFileSync(apiDocsPath, 'utf-8');
+            const documentedModules = apiDocs.match(/### \d{2,3}-/g) || [];
+            
+            console.log('Modules found:', moduleCount);
+            console.log('Modules documented:', documentedModules.length);
+            
+            if (documentedModules.length < moduleCount) {
+              console.warn('⚠️ API.md may be out of sync — modules:', moduleCount, 'documented:', documentedModules.length);
+            }
+            
+            // Extract all module names and check each has an entry
+            const moduleNames = moduleFiles.map(f => {
+              const content = fs.readFileSync(path.join(modulesDir, f), 'utf-8');
+              const nameMatch = content.match(/@name\s+(.+?)$/m);
+              return nameMatch ? nameMatch[1].trim() : null;
+            }).filter(Boolean);
+            
+            const missing = moduleNames.filter(name => !apiDocs.includes(name));
+            if (missing.length > 0) {
+              console.log('Modules missing from API.md:');
+              missing.forEach(m => console.log('  -', m));
+            }
+          "
+
+      - name: Run tests
+        run: npm test --if-available
