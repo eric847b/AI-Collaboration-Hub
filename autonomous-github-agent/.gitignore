@@ -1,1 +1,10 @@
 node_modules
+
+# Autonomous GitHub Agent runtime artifacts
+.agent_profile.json
+agent_out.txt
+__pycache__/
+*.pyc
+.venv/
+venv/
+.agent-*
