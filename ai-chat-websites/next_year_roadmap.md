@@ -274,7 +274,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 - [ ] 50+ community templates
 - [ ] Active community (Discord/Matrix)
 - [ ] VS Code extension published
-- [ ] CLI tool operational
+- [x] CLI tool operational
 
 ### By End of Q1 2027 (v2.4.0)
 - [ ] 3 language packs complete
