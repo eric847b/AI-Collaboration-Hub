@@ -240,10 +240,10 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 - [x] Maintain 80%+ code coverage
 - [ ] Weekly regression testing
 - [ ] Cross-browser testing on every release
-- [ ] Performance budget monitoring (target: <300 KB)
+- [x] Performance budget monitoring (target: <300 KB)
 
 ### Documentation
-- [ ] Keep API docs in sync with code
+- [x] Keep API docs in sync with code
 - [ ] Video tutorials for common tasks
 - [ ] Migration guides for each major version
 - [x] Architecture decision records (ADRs)
@@ -255,8 +255,8 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 - [ ] Public roadmap updates quarterly
 
 ### Infrastructure
-- [ ] Automated dependency updates
-- [ ] Security audit automation in CI
+- [x] Automated dependency updates
+- [x] Security audit automation in CI
 - [ ] Performance monitoring and alerting
 - [ ] Error tracking with privacy guarantees
 

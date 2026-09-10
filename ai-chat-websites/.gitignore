@@ -43,6 +43,17 @@ temp/
 *.tmp
 *.temp
 
+# Test output
+jest-out.txt
+jest-*.txt
+
+# Temp scripts
+_sg.py
+tmp_fix_pkg.cjs
+run-all-tests.cjs
+run-test.cjs
+tmp-jest.cjs
+
 # Logs
 **/*.log
 npm-debug.log*

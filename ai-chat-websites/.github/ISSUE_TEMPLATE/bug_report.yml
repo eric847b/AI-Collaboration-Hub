@@ -1,0 +1,66 @@
+name: Bug Report
+description: Report a bug in the AI Chat Userscript Suite
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: input
+    id: module
+    attributes:
+      label: Module
+      description: Which module is affected?
+      placeholder: "e.g., 016-hub-orchestrator"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Paste any relevant console error logs (remove sensitive info first)
+      placeholder: "Paste from browser DevTools console..."
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-checks
+      options:
+        - label: I searched existing issues to avoid duplicates
+          required: false
+        - label: I removed all sensitive data from logs
+          required: false

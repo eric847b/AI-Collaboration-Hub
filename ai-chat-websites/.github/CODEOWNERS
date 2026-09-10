@@ -1,0 +1,24 @@
+# Default owners for the entire repository
+* @eric847b
+
+# GitHub configuration files
+.github/ @eric847b
+
+# Documentation
+docs/ @eric847b
+*.md @eric847b
+
+# Source code
+src/ @eric847b
+
+# Workflows and CI
+.github/workflows/ @eric847b
+
+# Testing
+tests/ @eric847b
+test/ @eric847b
+
+# Module configurations
+package.json @eric847b
+tsconfig.json @eric847b
+jest.config.* @eric847b
