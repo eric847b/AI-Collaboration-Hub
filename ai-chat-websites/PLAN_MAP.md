@@ -17,7 +17,7 @@
 
 | # | File | Scope | Status | See Also (relative) |
 |---|------|-------|--------|---------------------|
-| 1 | `Userscripts/AI Chat Userscript Studio/Userscript Suite/ROADMAP.md` | **Userscript Suite** module feature queue (386 items, 357 modules on disk, 75 done) | ACTIVE — single source of truth for suite modules | `../ROADMAP.md` header → `PLAN_MAP.md` at repo root (`../../../PLAN_MAP.md`①, `NEXT_100_SUGGESTIONS_ARCHIVED.md` (superseded list) |
+| 1 | `Userscripts/AI Chat Userscript Studio/Userscript Suite/ROADMAP.md` | **Userscript Suite** module feature queue (386 items, 366 modules on disk, **386 done — 100% complete**) | ACTIVE — single source of truth for suite modules, NOW COMPLETE | `../ROADMAP.md` header → `PLAN_MAP.md` at repo root (`../../../PLAN_MAP.md`①, `NEXT_100_SUGGESTIONS_ARCHIVED.md` (superseded list) |
 | 2 | `next_year_roadmap.md` | **Unified AI Assistant Suite** trajectory v2.1.0 → v3.0.0 (2026-07 → 2027-07) | ACTIVE | `Userscripts/docs/INDEX.md`、`Userscripts/README.md`、`.todo_list.json` |
 | 3 | `.todo_list.json` | **Unified AI Assistant Suite** action queue (task-level) | ACTIVE | `next_year_roadmap.md`、`Userscripts/docs/INDEX.md` |
 | 4 | `Userscripts/docs/INDEX.md` | **Unified AI Assistant Suite** docs & architecture index | ACTIVE | `../next_year_roadmap.md`、`../README.md` |
