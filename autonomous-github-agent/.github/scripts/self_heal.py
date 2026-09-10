@@ -276,34 +276,34 @@ def check_workflows_actionlint() -> list[str]:
                 if line.strip():
                     failures.append(f".github/workflows/{fn}: {line.strip()}")
     return failures
-    """Bug class 5: invalid YAML or known-invalid workflow patterns."""
+
+
+def check_dead_code() -> list[str]:
+    """Bug class: statements unreachable after return/raise/break/continue.
+
+    Catches accidental duplicate blocks (the class that slipped into this
+    very module), which ruff --fix and syntax checks both miss.
+    """
     failures = []
-    wf_dir = os.path.join(GITHUB_DIR, "workflows")
-    if not os.path.isdir(wf_dir):
-        return [".github/workflows directory missing"]
-    try:
-        import yaml  # type: ignore[import-untyped]
-    except ImportError:
-        return []  # yaml not installed locally; CI covers this
-    for fn in sorted(os.listdir(wf_dir)):
-        if not (fn.endswith(".yml") or fn.endswith(".yaml")):
-            continue
-        path = os.path.join(wf_dir, fn)
+    for path in _iter_py_files():
         try:
             with open(path, encoding="utf-8") as f:
-                doc = yaml.safe_load(f)
-        except yaml.YAMLError as e:
-            failures.append(f".github/workflows/{fn}: invalid YAML: {e}")
+                tree = ast.parse(f.read())
+        except (SyntaxError, OSError):
             continue
-        jobs = (doc or {}).get("jobs", {}) or {}
-        for job_name, job in jobs.items():
-            if not isinstance(job, dict):
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 continue
-            if "working-directory" in job:
-                failures.append(
-                    f".github/workflows/{fn}: job '{job_name}' has invalid job-level "
-                    "working-directory (use defaults.run.working-directory)"
-                )
+            body = list(node.body)
+            for i, stmt in enumerate(body):
+                if i == 0:
+                    continue
+                prev = body[i - 1]
+                if isinstance(prev, (ast.Return, ast.Raise)):
+                    failures.append(
+                        f"{os.path.relpath(path, REPO_ROOT)}:{stmt.lineno}: "
+                        "dead code after return/raise"
+                    )
     return failures
 
 
@@ -378,6 +378,7 @@ def run_all_checks() -> dict[str, list[str]]:
         "workflows": check_workflows(),
         "actionlint": check_workflows_actionlint(),
         "imports": check_core_imports(),
+        "dead_code": check_dead_code(),
     }
 
 

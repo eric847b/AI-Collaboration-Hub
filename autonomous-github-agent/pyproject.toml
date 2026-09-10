@@ -30,3 +30,8 @@ ignore = ["E501", "B008"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = [".github/tests", ".github/actions"]
+addopts = "-ra"
+pythonpath = [".github/scripts"]
