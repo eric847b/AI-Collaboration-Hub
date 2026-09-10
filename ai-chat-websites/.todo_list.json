@@ -6,7 +6,7 @@
     "trajectory_roadmap": "../next_year_roadmap.md",
     "docs_index": "../Userscripts/docs/INDEX.md"
   },
-  "last_updated": "2026-09-26T14:30:00-05:00",
+  "last_updated": "2026-09-27T00:00:00-05:00",
   "core_module_wiring_2026_09": {
     "status": "completed",
     "completed_at": "2026-09-26T14:30:00-05:00",
@@ -123,14 +123,6 @@
       "index.js"
     ]
   },
-  "hindsight_lessons_applied": [
-    "Tools first (build/validate scripts already existed)",
-    "Read existing code before modifying (ui.js)",
-    "One feature at a time (tab -> content -> styles -> events)",
-    "Test after each change (validation passes each time)",
-    "Document as you go (updated TODO throughout)",
-    "Incremental commits (logical grouping of changes)"
-  ],
   "integration_wiring_2026_09_04": {
     "status": "completed",
     "completed_at": "2026-09-26T18:00:00-05:00",
