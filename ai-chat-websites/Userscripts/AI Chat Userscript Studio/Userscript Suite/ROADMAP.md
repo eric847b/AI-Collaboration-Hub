@@ -251,26 +251,26 @@ All 60 modules from the original Module Expansion list exist.
 
 ## Infrastructure & DevOps (originals 321-340)
 
-- [ ] 321. Container orchestration
-- [ ] 322. Kubernetes manifests
-- [ ] 323. Helm charts
-- [ ] 324. Terraform modules
-- [ ] 325. Ansible playbooks
-- [ ] 326. Puppet modules
-- [ ] 327. Chef recipes
-- [ ] 328. SaltStack states
-- [ ] 329. CloudFormation templates
-- [ ] 330. ARM templates
-- [ ] 331. Bicep files
-- [ ] 332. Pulumi programs
-- [ ] 333. CDK constructs
-- [ ] 334. Serverless Framework
-- [ ] 335. Architect framework
-- [ ] 336. SST framework
-- [ ] 337. Architectures diagrams
-- [ ] 338. Infrastructure mapping
-- [ ] 339. Service catalog
-- [ ] 340. Asset inventory
+- [x] 321. Container orchestration → `00-Core/036-infra-devops`
+- [x] 322. Kubernetes manifests → `00-Core/036-infra-devops`
+- [x] 323. Helm charts → `00-Core/036-infra-devops`
+- [x] 324. Terraform modules → `00-Core/036-infra-devops`
+- [x] 325. Ansible playbooks → `00-Core/036-infra-devops`
+- [x] 326. Puppet modules → `00-Core/036-infra-devops`
+- [x] 327. Chef recipes → `00-Core/036-infra-devops`
+- [x] 328. SaltStack states → `00-Core/036-infra-devops`
+- [x] 329. CloudFormation templates → `00-Core/036-infra-devops`
+- [x] 330. ARM templates → `00-Core/036-infra-devops`
+- [x] 331. Bicep files → `00-Core/036-infra-devops`
+- [x] 332. Pulumi programs → `00-Core/036-infra-devops`
+- [x] 333. CDK constructs → `00-Core/036-infra-devops`
+- [x] 334. Serverless Framework → `00-Core/036-infra-devops`
+- [x] 335. Architect framework → `00-Core/036-infra-devops`
+- [x] 336. SST framework → `00-Core/036-infra-devops`
+- [x] 337. Architectures diagrams → `00-Core/036-infra-devops`
+- [x] 338. Infrastructure mapping → `00-Core/036-infra-devops`
+- [x] 339. Service catalog → `00-Core/036-infra-devops`
+- [x] 340. Asset inventory → `00-Core/036-infra-devops`
 
 ---
 
@@ -315,12 +315,12 @@ All 60 modules from the original Module Expansion list exist.
 | Data & Analytics (261-280) | 20 | 1 | 19 |
 | Extensibility (281-300) | 20 | 20 | 0 |
 | AI/ML Enhancements (301-320) | 20 | 20 | 0 |
-| Infrastructure & DevOps (321-340) | 20 | 0 | 20 |
+| Infrastructure & DevOps (321-340) | 20 | 20 | 0 |
 | Monitoring & Observability (341-360) | 20 | 0 | 20 |
-| **TOTAL** | **386** | **193** | **193** |
+| **TOTAL** | **386** | **213** | **173** |
 
-**Status**: 193/386 implemented (50%) | 365 module files | Suite v2.2.0 | Core modules v2026.09.26.1
-**Next priority**: Dashboard-core live wiring + consensus/failure integration
+**Status**: 213/386 implemented (55%) | 366 module files | Suite v2.2.0 | Core modules v2026.09.27.1
+**Next priority**: Monitoring & Observability (341-360) → 037 module, then Feature Enhancements (61-120, 57 remaining)
 
 ## Integration Phase Log
 
