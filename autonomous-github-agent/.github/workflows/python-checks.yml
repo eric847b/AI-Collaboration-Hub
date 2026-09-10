@@ -45,3 +45,7 @@ jobs:
       - name: Check with Ruff
         run: |
           ruff check .github
+
+      - name: Self-heal regression tests
+        run: |
+          python -m pytest .github/tests -q

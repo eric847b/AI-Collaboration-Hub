@@ -43,6 +43,12 @@ jobs:
           fi
           actionlint .github/workflows/*.yml
 
+      - name: Self-heal regression tests
+        run: |
+          set -euo pipefail
+          python -m pip install pytest
+          python -m pytest .github/tests -q
+
       - name: Self-heal bug-class gate
         run: |
           set -euo pipefail
