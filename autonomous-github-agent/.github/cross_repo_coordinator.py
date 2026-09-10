@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -138,7 +138,7 @@ def upsert_fleet_issue(report: dict[str, Any]) -> dict | None:
         return {"error": str(e)[:120]}
 
 def main():
-    report = {"generated_at": datetime.utcnow().isoformat() + "Z", "version": "1.5", "fleet": FLEET, "results": []}
+    report = {"generated_at": datetime.now(UTC).isoformat() + "Z", "version": "1.5", "fleet": FLEET, "results": []}
     for repo in FLEET:
         print(f"=== Scanning {repo} ===")
         report["results"].append(scan_repo(repo))

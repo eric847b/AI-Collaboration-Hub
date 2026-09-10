@@ -539,8 +539,18 @@ def _repo_root() -> str:
 
 
 def run_self_audit() -> dict[str, Any]:
-    """Audit the agent's own codebase for issues (scoped to repo root)."""
-    results = {"syntax_errors": [], "missing_deps": [], "gha_issues": []}
+    """Audit the agent's own codebase for issues (scoped to repo root).
+
+    v6.3: folds the full self_heal bug-class gate (syntax, undefined names,
+    lint patterns, deprecated datetime, workflows, core imports) into the
+    agent's own audit loop so every cycle re-verifies every known bug class.
+    """
+    results: dict[str, Any] = {
+        "syntax_errors": [],
+        "missing_deps": [],
+        "gha_issues": [],
+        "bug_classes": [],
+    }
     try:
         from problem_solvers import (
             scan_gha_deprecations,
@@ -553,6 +563,14 @@ def run_self_audit() -> dict[str, Any]:
         results["gha_issues"] = scan_gha_deprecations(root)
     except Exception:
         pass
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import self_heal
+
+        for name, issues in self_heal.run_all_checks().items():
+            results["bug_classes"].extend(f"[{name}] {i}" for i in issues)
+    except Exception as e:
+        results["bug_classes"].append(f"[self_heal_module] {type(e).__name__}: {e}")
     return results
 
 

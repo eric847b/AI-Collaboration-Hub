@@ -5,7 +5,7 @@ Import and call from agent or wrap get_failure_solver.
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import UTC, datetime
 
 import requests
 
@@ -22,7 +22,7 @@ def create_draft_pr_for_safe_class(solver, analysis: dict) -> dict | None:
         return None
     run = analysis.get("run") or {}
     run_id = run.get("id", "unknown")
-    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     path = f"docs/auto-remediation/{cls}-{run_id}-{ts}.md"
     notes = {
         "timeout": "Raise timeouts on HTTP calls to 60-120s; add 2-3 retries with backoff; check workflow timeout-minutes.",
@@ -38,7 +38,7 @@ def create_draft_pr_for_safe_class(solver, analysis: dict) -> dict | None:
         f"- Branch: `{run.get('head_branch')}`\n\n"
         f"Safe draft PR artifact only. No production code modified automatically.\n"
     )
-    branch_name = f"auto-fix/{cls}-{run_id}-{datetime.utcnow().strftime('%H%M%S')}"
+    branch_name = f"auto-fix/{cls}-{run_id}-{datetime.now(UTC).strftime('%H%M%S')}"
     try:
         status, ref_data = solver._gh_get(f"https://api.github.com/repos/{solver.repo_name}/git/ref/heads/main")
         if status != 200 or not ref_data:

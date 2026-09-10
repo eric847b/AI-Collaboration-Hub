@@ -165,7 +165,23 @@ def main():
     profile_ok, profile_msg = verify_profile_structure()
     print(f"\n[PROFILE] {'OK' if profile_ok else 'FAIL'} {profile_msg}")
 
-    all_ok = syntax_ok and features_ok and workflow_ok and profile_ok
+    # Self-heal bug-class gate (v6.3): syntax, undefined names, lint,
+    # deprecated datetime, workflow validity, import smoke tests
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import self_heal
+
+        checks = self_heal.run_all_checks()
+        self_heal_issues = [f"[{k}] {v}" for k, vals in checks.items() for v in vals]
+    except Exception as e:  # noqa: BLE001 - verifier must never crash the gate
+        self_heal_issues = [f"self_heal module error: {type(e).__name__}: {e}"]
+
+    self_heal_ok = not self_heal_issues
+    print(f"\n[SELF-HEAL] {'OK' if self_heal_ok else 'FAIL'} ({len(self_heal_issues)} bug-class issue(s))")
+    for issue in self_heal_issues[:15]:
+        print(f"  - {issue}")
+
+    all_ok = syntax_ok and features_ok and workflow_ok and profile_ok and self_heal_ok
     print("\n" + "=" * 60)
     if all_ok:
         print("PERFECT: All systems infallible")

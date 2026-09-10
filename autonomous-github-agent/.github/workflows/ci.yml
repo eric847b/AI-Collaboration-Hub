@@ -43,6 +43,11 @@ jobs:
           fi
           actionlint .github/workflows/*.yml
 
+      - name: Self-heal bug-class gate
+        run: |
+          set -euo pipefail
+          python .github/scripts/self_heal.py
+
       - name: Agent CI status
         run: |
           echo "✅ Autonomous GitHub Agent CI passed"
