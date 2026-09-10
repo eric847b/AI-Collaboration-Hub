@@ -11,9 +11,14 @@ permissions:
   issues: write
   actions: read
 
+concurrency:
+  group: codex-loop-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +29,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install PyGithub
+      - run: pip install -r requirements.txt
 
       - name: Run Agent
         env:

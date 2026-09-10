@@ -32,6 +32,10 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: fleet-maintenance-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   maintenance:
     runs-on: ubuntu-latest
