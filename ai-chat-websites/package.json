@@ -24,9 +24,12 @@
     "security:audit:scripts": "node scripts/security-audit.cjs",
     "consolidate-duplicates": "node scripts/consolidate-all.cjs",
     "autonomous-check": "node scripts/autonomous-check.cjs",
-    "test:modules": "npx jest --runInBand --testMatch \"**/tests/**/*.test.js\""
+    "test:modules": "npx jest --runInBand --testMatch \"**/tests/**/*.test.js\"",
+    "test:coverage": "npx jest --runInBand --coverage --testMatch \"**/tests/**/*.test.js\""
   },
   "jest": {
+    "rootDir": ".",
+    "roots": ["<rootDir>/tests"],
     "setupFilesAfterEnv": [
       "<rootDir>/Userscripts/AI Chat Userscript Studio/Userscript Suite/scripts/jest-setup.js"
     ],
@@ -39,7 +42,24 @@
     },
     "moduleNameMapper": {
       "^../Userscripts/modules/(.*)$": "<rootDir>/Userscripts/modules/$1"
-    }
+    },
+    "collectCoverageFrom": [
+      "Userscripts/modules/**/*.js",
+      "!Userscripts/modules/**/*.test.js",
+      "!Userscripts/modules/**/*.spec.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
+    "coverageReporters": [
+      "text",
+      "lcov"
+    ]
   },
   "main": "_check_state.js",
   "repository": {
@@ -68,6 +88,7 @@
     "eslint": "^10.6.0",
     "ini": "^7.0.0",
     "jest": "^30.5.1",
+    "jest-environment-jsdom": "^30.5.1",
     "markdownlint-cli": "^0.49.0",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
