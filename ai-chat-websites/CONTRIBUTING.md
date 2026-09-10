@@ -2,13 +2,14 @@
 
 Thank you for your interest in contributing! This guide will help you get started.
 
-## 📋 Table of Contents
+## ┌─ Table of Contents
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
 - [Making Changes](#making-changes)
 - [Testing](#testing)
+- [Code Coverage](#code-coverage)
 - [Submitting Changes](#submitting-changes)
 - [Style Guide](#style-guide)
 
@@ -29,39 +30,50 @@ Thank you for your interest in contributing! This guide will help you get starte
 - Node.js 18+ and npm
 - Git
 - Code editor (VS Code recommended)
-- Tampermonkey or Violentmonkey for testing
+- Tampermonkey or Violentmonkey for manual user-script testing
 
 ### Fork and Clone
-```bash
-# Fork the repository on GitHub, then:
+`ash
 git clone https://github.com/YOUR_USERNAME/ai-chat-websites.git
 cd ai-chat-websites
 git remote add upstream https://github.com/eric847b/ai-chat-websites.git
-```
+`
 
 ---
 
 ## Development Setup
 
 ### 1. Install Dependencies
-```bash
+`ash
 npm install
-```
+`
 
 ### 2. Create Your Branch
-```bash
+`ash
 git checkout -b feature/your-feature-name
 # or
 git checkout -b fix/your-bug-fix
-```
+`
 
 ### 3. Available Scripts
-```bash
-# Run tests
+`ash
+# Run all tests (Userscript Suite test runner)
 npm test
 
-# Build single-file userscript from modules
-npm run build
+# Run tests with coverage report
+npm run test:coverage
+
+# Run Jest tests directly
+npm run test:modules
+
+# Validate project structure
+npm run validate:root
+
+# Validate modules
+npm run validate:modules
+
+# Check module dependencies
+npm run check:deps
 
 # Lint code
 npm run lint
@@ -69,222 +81,225 @@ npm run lint
 # Format code
 npm run format
 
-# Validate modules
-npm run validate:modules
+# TypeScript type check
+npm run typecheck
 
-# Check module dependencies
-npm run check:deps
-```
+# Security audit
+npm run security:audit
+`
 
 ---
 
 ## Project Structure
 
-```
-Userscripts/
-├── modules/                    # Modular source code
-│   ├── config.js              # Configuration and constants
-│   ├── state.js               # State management
-│   ├── utilities.js           # Helper functions
-│   ├── storage.js             # GM_storage operations
-│   ├── providers.js           # AI provider implementations
-│   ├── ui.js                  # UI rendering and events
-│   ├── theme.js               # Theme management
-│   ├── versioning.js          # Script versioning
-│   ├── auth.js                # Authentication & security
-│   └── index.js               # Module loader
-│
-├── docs/                      # Documentation
-│   ├── Focus_Chain_List_v1.4.0.md
-│   ├── ...
-│
-├── Unified-AI-Assistant-Suite.user.js  # Single-file build (generated)
-├── package.json               # Dependencies and scripts
-└── CHANGELOG.md              # Version history
-
-Root level:
-├── next_improvement_prompt.md # Feature requirements
-├── next_year_roadmap.md       # Strategic roadmap
-├── docs/                      # Project-wide documentation
-└── scripts/                   # Build and utility scripts
+`
+ai-chat-websites/
+├── .github/workflows/ci.yml      # CI/CD: validate → test → security → release
+├── docs/                         # Project-wide documentation
+│   └── API.md                   # API reference (36 core modules)
+├── Userscripts/
+│   └── AI Chat Userscript Studio/
+│       └── Userscript Suite/
+│           ├── Modules/          # 374 modules across 30 domain folders
+│           │   ├── 00-Core/      # 36 modules: orchestrator, registry, dashboard
+│           │   ├── 01-Chat-Enhancement/   # 26 modules
+│           │   ├── 02-AI-Agents/          # 8 modules
+│           │   ├── 05-Security/          # 23 modules
+│           │   ├── 06-Performance/       # 33 modules
+│           │   └── ... (30 folders total)
+│           ├── 12-Testing/        # Test suites (.cjs)
+│           ├── docs/              # Suite documentation
+│           └── scripts/           # Build, validate, test scripts
+├── tests/                         # Root-level Jest tests
+├── next_year_roadmap.md           # Strategic roadmap
+├── PLAN_MAP.md                    # Master index
+├── package.json                   # Dependencies, scripts, Jest config
+└── CHANGELOG.md                   # Version history
 ```
 
 ---
 
 ## Making Changes
 
-### Module Development
-When modifying or adding modules:
-
-1. **Edit the module file** in `Userscripts/modules/`
-2. **Update the build** to regenerate single-file version:
-   ```bash
-   npm run build
-   ```
-3. **Test the changes** in Tampermonkey/Violentmonkey
-4. **Run the linter**:
-   ```bash
-   npm run lint
-   ```
+### Module Conventions
+- Each module lives in its domain folder: `Modules/00-Core/`, `Modules/01-Chat-Enhancement/`, etc.
+- File naming: `{NNN}-{slug}.module.user.js` (zero-padded 3-digit number)
+- Each module exports functions via `window.ModuleName` or `window.__NEXUS_*__` globals
+- Use `node --check` to validate syntax before committing
 
 ### Adding a New Module
+1. Pick the correct domain folder (see Project Structure)
+2. Use the next available 3-digit number in that folder
+3. Include the userscript header (`// ==UserScript==`) with `@name`, `@namespace`, `@version`, `@description`, `@match`, `@grant`
+4. Wrap code in an IIFE or use `(() => { ... })();`
+5. Add to `Modules/INDEX.md` if one exists in that folder
+6. Add corresponding test in `12-Testing/{NNN}-{slug}-test.cjs`
 
-1. Create `Userscripts/modules/your-module.js`
-2. Export using the standard pattern:
-   ```javascript
-   const YourModule = {
-       // implementation
-   };
-
-   // Export for module system
-   if (typeof module !== 'undefined' && module.exports) {
-       module.exports = { YourModule };
-   }
-
-   // Export for userscript context
-   if (typeof window !== 'undefined') {
-       window.UnifiedSuite.yourModule = YourModule;
-   }
-   ```
-3. Add to `Userscripts/modules/index.js` MODULE_DEFINITIONS
-4. Update build script if needed
-5. Add JSDoc type definitions
-
-### Modifying the Single-File Build
-The single-file build is **generated** from modules. Never edit it directly:
-1. Make changes to the appropriate module in `Userscripts/modules/`
-2. Run `npm run build`
-3. Commit both the module changes and regenerated build
+### Git Workflow
+```bash
+git checkout -b feature/descriptive-name
+# make changes, run tests, validate
+git add <files>
+git commit -m "feat(scope): descriptive message"
+git push -u origin feature/descriptive-name
+# open Pull Request
+```
 
 ---
 
 ## Testing
 
-### Manual Testing
-1. Open Tampermonkey/Violentmonkey dashboard
-2. Create new userscript with content from `Unified-AI-Assistant-Suite.user.js`
-3. Test on various websites
-4. Check browser console for errors
+### Running Tests
+```bash
+# Full Userscript Suite test runner (validates + tests all modules)
+npm test
 
-### Test Checklist
-- [ ] UI loads without errors
-- [ ] All tabs function correctly
-- [ ] AI provider switching works
-- [ ] Script generation completes
-- [ ] Theme toggle works
-- [ ] Versioning functions
-- [ ] Export/import works
-- [ ] No console errors
+# Jest unit tests (root-level tests/ folder)
+npm run test:modules
 
-### Automated Testing (Coming Soon)
-We're working on adding automated tests. Stay tuned!
+# Coverage report (Jest, 80% threshold)
+npm run test:coverage
+```
+
+### Test Structure
+- **Suite tests** (`12-Testing/*.cjs`): Each module has a co-located test file using Node's `assert`
+- **Jest tests** (`tests/**/*.test.js`): Modern test framework for root-level integrations
+- **Smoke tests**: `node --check` validates syntax across all modules
+
+### Writing Tests
+```javascript
+// Example: 12-Testing/001-my-feature-test.cjs
+const assert = require('assert');
+const vm = require('vm');
+const fs = require('fs');
+
+const code = fs.readFileSync(
+  '../Modules/00-Core/001-my-feature.module.user.js', 'utf8'
+);
+const sandbox = { window: {}, assert, console, Array, Object, JSON, Math, Date };
+const ctx = vm.createContext(sandbox);
+vm.runInContext(code, ctx, { filename: '001-my-feature.module.user.js' });
+
+// Test exported functions
+assert.strictEqual(typeof sandbox.MyFeature, 'function', 'exports MyFeature');
+```
+
+### Requirements
+- All tests must pass before merging: `npm test && npm run test:modules`
+- New modules must include a test file in `12-Testing/`
+- Coverage must stay at or above 80% (configured in `package.json` → `jest.coverageThreshold`)
+
+---
+
+## Code Coverage
+
+Coverage is enforced via Jest's `coverageThreshold` in `package.json`:
+
+```json
+"coverageThreshold": {
+  "global": {
+    "branches": 80,
+    "functions": 80,
+    "lines": 80,
+    "statements": 80
+  }
+}
+```
+
+### Viewing Coverage
+```bash
+npm run test:coverage
+# Terminal summary printed automatically
+# HTML report: coverage/lcov-report/index.html
+```
+
+### What's Covered
+- `Userscripts/modules/**/*.js` — all module source files
+- Excludes test files (`*.test.js`, `*.spec.js`)
+
+### If Coverage Drops Below 80%
+- Add tests for uncovered branches/functions
+- Run `npm run test:coverage` locally to see gaps before pushing
+- The CI pipeline will reject PRs that don't meet the threshold
 
 ---
 
 ## Submitting Changes
 
-### 1. Commit Your Changes
-```bash
-git add .
-git commit -m "feat: add template gallery feature"
-# or
-git commit -m "fix: resolve module loading error"
-```
+### Pull Request Process
+1. Fork the repository (external contributors) or create a branch (maintainers)
+2. Make focused, logical commits with descriptive messages
+3. Ensure all tests pass: `npm test`
+4. Ensure validation passes: `npm run validate:root && npm run validate:modules`
+5. Push to your fork/branch and open a PR against `main`
+6. Fill out the PR template with:
+   - What changed and why
+   - Test results (screenshots or output)
+   - Any breaking changes or migration steps
 
 ### Commit Message Format
-- `feat:` New feature
-- `fix:` Bug fix
-- `docs:` Documentation changes
-- `style:` Code style changes (formatting, etc.)
-- `refactor:` Code refactoring
-- `test:` Adding or updating tests
-- `chore:` Maintenance tasks
-
-### 2. Push to Your Fork
-```bash
-git push origin feature/your-feature-name
+```
+feat(scope): add new feature
+fix(scope): resolve a bug
+docs(scope): update documentation
+test(scope): add or fix tests
+chore(scope): tooling, config, or housekeeping
+refactor(scope): code restructuring without behavior change
 ```
 
-### 3. Create Pull Request
-- Go to the original repository on GitHub
-- Click "New Pull Request"
-- Select your branch
-- Fill out the PR template
-- Link related issues
-
-### Pull Request Guidelines
-- Keep PRs focused on a single feature/fix
-- Update documentation if needed
-- Ensure all tests pass
-- Request review from maintainers
+### Review Requirements
+- At least one approving review from a maintainer
+- All CI checks green (validate, test, lint, security audit)
+- No merge conflicts with `base` branch
 
 ---
 
 ## Style Guide
 
-### JavaScript Style
-- Use ES6+ features (const, let, arrow functions, async/await)
-- 2-space indentation
-- Single quotes for strings (unless string contains single quote)
-- Semicolons required
-- camelCase for variables and functions
-- PascalCase for classes and modules
+### JavaScript
+- **Indentation**: 2 spaces
+- **Quotes**: Single quotes for strings (`'hello'`), double quotes only in userscript headers
+- **Semicolons**: Required
+- **Line endings**: LF (enforced by `.husky/pre-commit` and `.editorconfig`)
+- **Variable declarations**: `const` by default, `let` when reassignment needed, no `var`
+- **Functions**: Arrow functions for callbacks; regular functions for module exports
+- **Strict mode**: `'use strict';` at top of every module
 
-### JSDoc Comments
-All public functions and modules must have JSDoc:
+### Userscript Header
+Every `.module.user.js` must include:
 ```javascript
-/**
- * Generate a unique ID
- * @returns {string} Unique identifier
- */
-function generateId() {
-    // ...
-}
+// ==UserScript==
+// @name         Module Name
+// @namespace    https://github.com/eric847b/ai-chat-websites
+// @version      1.0.0
+// @description  Brief description of what this module does
+// @match        *://*/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// ==/UserScript==
 ```
 
-### Module Pattern
-All modules must follow this pattern:
-```javascript
-// Dependencies from global UnifiedSuite
-const CONFIG = window.UnifiedSuite?.CONFIG || {};
-const state = window.UnifiedSuite?.state || {};
+### Naming Conventions
+- Module files: `036-infra-devops.module.user.js`
+- Test files: `025-infra-devops-test.cjs`
+- Functions: camelCase (`runCatalyst`, `healUnhealthy`)
+- Constants: UPPER_SNAKE_CASE (`MAX_RETRIES`, `DEFAULT_TIMEOUT`)
+- Global exports: PascalCase or `__NAMESPACE_*__` for cross-module APIs
 
-const ModuleName = {
-    // Public API
-};
-
-// Export for both contexts
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { ModuleName };
-}
-if (typeof window !== 'undefined') {
-    window.UnifiedSuite.moduleName = ModuleName;
-}
-```
-
-### Security Considerations
-- Never hardcode API keys
-- Sanitize all user inputs
-- Use GM_xmlhttpRequest for network requests
-- Validate all generated scripts
-- Don't use eval() (detected by linter)
+### Documentation
+- Update `docs/API.md` when adding or changing module exports
+- Update `CHANGELOG.md` for any user-facing changes
+- Comment complex logic with inline `//` comments
+- JSDoc for public API functions is encouraged but not required
 
 ---
 
-## Questions?
+## Resources
 
-- Open an issue for bugs or feature requests
-- Check existing documentation in `docs/`
-- Review closed issues for common questions
-- Reach out to maintainers
-
----
-
-## Recognition
-
-Contributors will be:
-- Listed in CHANGELOG.md
-- Mentioned in release notes
-- Invited to maintainer chat (after 3+ contributions)
-
-Thank you for contributing! 🎉
+- **API Reference**: `docs/API.md` — complete exports for all 36 core modules
+- **Developer Guide**: `DEVELOPER_GUIDE.md` — in-depth architecture documentation
+- **Quality Dashboard**: `QUALITY_STATUS.md` — current test/coverage metrics
+- **Strategic Roadmap**: `next_year_roadmap.md` — v2.2.0+ milestones
+- **Master Index**: `PLAN_MAP.md` — every plan file in the repo
+- **Changelog**: `CHANGELOG.md` — version history and release notes
+`
