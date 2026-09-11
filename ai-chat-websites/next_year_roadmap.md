@@ -221,7 +221,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 ### MEDIUM PRIORITY
 
 15. **AI ASSISTANT PLATFORM**
-    - [ ] Multi-model orchestration (best model per task)
+    - [x] Multi-model orchestration (best model per task) — background.js MODEL_LADDER + scoreCapability + orchestrate(), popup 'Auto (cheapest capable)' mode
     - [ ] Custom fine-tuning integration
     - [ ] AI-powered code review for generated scripts
     - [ ] Automated script optimization suggestions

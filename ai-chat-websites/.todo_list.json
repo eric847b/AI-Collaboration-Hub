@@ -250,8 +250,18 @@
     ],
     "validation": "node --check service-worker.js + popup.js; JSON.parse manifest.webmanifest, package.json, manifest.json"
   },
+"v3.0.0_multi_model_orchestration_2026_09_29": {
+    "status": "completed",
+    "completed_at": "2026-09-29T00:00:00-05:00",
+    "summary": "Q2 2027 #15 — multi-model orchestration: cheapest-capable-first routing with escalation ladder in the extension background worker ('auto' provider mode).",
+    "details": [
+      "background.js: MODEL_LADDER (ollama llama3 -> gemini flash -> gpt-4o-mini -> gemini pro -> claude sonnet -> gpt-4o), scoreCapability() prompt-difficulty heuristic (cumulative keyword hints), routedTier() cheapest-capable pick, orchestrate() with up-to-2-step escalation",
+      "popup.html: 'Auto (cheapest capable)' provider option",
+      "Scratch harness verified: simple->ollama, ollama failure->gemini flash, difficulty boundaries 1..5; harness deleted after run",
+      "node --check passed on background.js"
+    ]
+  },
   "next_actions": [
-    "v3.0.0-multi-model-orchestration: Q2 2027 #15 — route each generation to the cheapest capable provider/model with quality fallback ladder (background.js router)",
     "v3.0.0-team-collab: Q2 2027 #16 — WebSocket session scaffold (shared sessions, cursor/generation events), evaluate scope",
     "v2.4.0-plugin-marketplace: Q4 2026 #8 — GitHub Pages marketplace with submission workflow + sandboxed review"
   ]

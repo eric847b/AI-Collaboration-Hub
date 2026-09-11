@@ -44,9 +44,74 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-function handleGenerateScript(payload, sendResponse) {
-  const { provider, prompt, options } = payload;
+/**
+ * Multi-model orchestration (Q2 2027 #15).
+ * Routes each generation to the cheapest capable model for the task, with a
+ * quality escalation ladder on failure. Choose 'auto' in the popup to use the
+ * router; picking a specific provider keeps manual routing.
+ */
 
+const MODEL_LADDER = [
+  // [provider, model, capability: 1 = cheap … 5 = premium]
+  { provider: 'ollama',   model: 'llama3',                    capability: 1 },
+  { provider: 'gemini',   model: 'gemini-1.5-flash',          capability: 2 },
+  { provider: 'openai',   model: 'gpt-4o-mini',               capability: 3 },
+  { provider: 'gemini',   model: 'gemini-1.5-pro',            capability: 4 },
+  { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', capability: 5 },
+  { provider: 'openai',   model: 'gpt-4o',                    capability: 5 }
+];
+
+/** Heuristic difficulty score (1-5) from the prompt content. */
+function scoreCapability(prompt) {
+  const text = (prompt || '').toLowerCase();
+  let score = text.length >= 120 ? 0 : 1;
+  if (text.includes('create a script')) score -= 1;
+  if (text.length > 600) score += 2;
+  if (/\b(simple|basic|quick|short|small|banner|tooltip)\b/.test(text)) score -= 1;
+  const COMPLEX_HINTS = [
+    'complex', 'advanced', 'architect', 'optimize', 'refactor', 'debug',
+    'reason', 'hard', 'async', 'concurrent', 'multi-threaded', 'enterprise', 'ai'
+  ];
+  for (const hint of COMPLEX_HINTS) {
+    if (text.includes(hint)) score += 1;
+  }
+  return Math.max(1, Math.min(5, score));
+}
+
+/** The cheapest ladder tier capable of the prompt's difficulty. */
+function routedTier(prompt) {
+  const need = scoreCapability(prompt);
+  return MODEL_LADDER.find(t => t.capability >= need) || MODEL_LADDER[MODEL_LADDER.length - 1];
+}
+
+/** Try the graded tier; escalate to higher tiers when a call fails. */
+function orchestrate(prompt, options, sendResponse) {
+  const startIndex = MODEL_LADDER.indexOf(routedTier(prompt));
+  let failures = 0;
+
+  const tryTier = (index) => {
+    if (index >= MODEL_LADDER.length) {
+      sendResponse({ error: 'All model tiers failed. Check your provider API keys.' });
+      return;
+    }
+    const tier = MODEL_LADDER[index];
+    const tierOptions = Object.assign({}, options, { model: tier.model });
+    routeToProvider(tier.provider, prompt, tierOptions, (result) => {
+      if (result && result.success) {
+        sendResponse(Object.assign({}, result, { route: tier.provider + '/' + tier.model }));
+      } else if (failures < 2) {
+        failures += 1;
+        tryTier(index + 1);
+      } else {
+        sendResponse(result || { error: 'Generation failed after escalation.' });
+      }
+    });
+  };
+
+  tryTier(Math.max(0, startIndex));
+}
+
+function routeToProvider(provider, prompt, options, sendResponse) {
   switch (provider) {
     case 'openai':
       callOpenAI(prompt, options, sendResponse);
@@ -63,6 +128,22 @@ function handleGenerateScript(payload, sendResponse) {
     default:
       sendResponse({ error: 'Unknown provider: ' + provider });
   }
+}
+
+function handleGenerateScript(payload, sendResponse) {
+  const { provider, prompt, options } = payload;
+
+  if (!prompt) {
+    sendResponse({ error: 'Prompt is required.' });
+    return;
+  }
+
+  if (provider && provider !== 'auto') {
+    routeToProvider(provider, prompt, options, sendResponse);
+    return;
+  }
+
+  orchestrate(prompt, options, sendResponse);
 }
 
 function callOpenAI(prompt, options, sendResponse) {
