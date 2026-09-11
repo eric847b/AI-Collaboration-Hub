@@ -235,7 +235,12 @@
       "icons/: 16/32/48/128 PNG files for toolbar + store listings",
       "All JS validated with node --check"
     ],
-    "validation": "node --check passed on background.js, popup.js, content-script.js; 36/36 modules still passing health check; commits b97e983 + e9da6f5 pushed and synced"
+        "validation": "node --check passed on background.js, popup.js, content-script.js; 36/36 modules still passing health check; commits b97e983 + e9da6f5 pushed and synced"
   },
-  "next_actions": []
+  "next_actions": [
+    "v3.0.0-mobile-responsive-ui: Add responsive CSS + breakpoints to popup.html, touch-friendly button sizing, mobile query viewport",
+    "v3.0.0-pwa-support: Create extension/manifest.webmanifest + service-worker.js for install prompt, offline caching",
+    "v3.0.0-vscode-extension: Q4 2026 item #6 — VS Code extension for template editing and preview",
+    "v3.0.0-analytics-dashboard: Q1 2027 item #12 — generation success rate tracking, provider performance comparison"
+  ]
 }
