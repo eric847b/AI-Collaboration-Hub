@@ -213,7 +213,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
     - [ ] TypeScript migration (optional, opt-in)
 
 14. **PLATFORM EXPANSION**
-    - [ ] Browser extension packaging (Chrome, Firefox, Edge)
+        - [x] Browser extension packaging (Chrome, Firefox, Edge) — `Userscripts/extension/` with manifest.json, background.js, popup.html/js, content-script.js, options.html, icons/ (16/32/48/128)
     - [ ] Mobile-responsive UI for tablet/phone
     - [ ] PWA support with install prompt
     - [ ] Desktop app via Tauri or Electron (evaluate)

@@ -221,20 +221,21 @@
       "Remaining at session end: 0 items. Next queue empty."
     ]
   },
-  "v3.0.0_extension_2026_09_27": {
+    "v3.0.0_extension_2026_09_27": {
     "id": "v3.0.0-extension_2026_09_27",
-    "status": "in_progress",
-    "summary": "Build browser extension packaging for Chrome/Firefox/Edge (v3.0.0 Q2 target)",
+    "status": "completed",
+    "completed_at": "2026-09-27T07:00:00-05:00",
+    "summary": "Browser extension packaging for Chrome/Firefox/Edge (v3.0.0 Q2 milestone #13 complete)",
     "details": [
-      "Create extension manifest v3 (manifest.json)",
-      "Create extension entry point (background.js, popup.html, popup.js, content-script.js)",
-      "Create build script (build-extension.cjs) to package from existing userscript modules",
-      "Add extension icons/assets"
+      "manifest.json (MV3): storage + activeTab + scripting + notifications permissions; host_permissions for AI API endpoints",
+      "background.js: service worker with message handler (getConfig/setConfig/generateScript/notification) + provider API shims for OpenAI, Anthropic, Gemini, Ollama",
+      "popup.html + popup.js: tabbed UI (Generate/Config/History), provider/model/temperature inputs, generate button, output display, localStorage history",
+      "content-script.js: platform detection (ChatGPT/Claude/Gemini), getPageContext/injectPrompt/extractChatHistory actions, window.postMessage bridge",
+      "options.html: provider selection, API key storage, base URL config",
+      "icons/: 16/32/48/128 PNG files for toolbar + store listings",
+      "All JS validated with node --check"
     ],
-    "next_actions": [
-      "Extension packaging scaffolding",
-      "Content script integration from 016 hub",
-      "Background script with GM API shims for extension context"
-    ]
-  }
+    "validation": "node --check passed on background.js, popup.js, content-script.js; 36/36 modules still passing health check; commits b97e983 + e9da6f5 pushed and synced"
+  },
+  "next_actions": []
 }
