@@ -220,5 +220,21 @@
       "032-testing-quality (201-220): existing module, 31/31 tests; 214 canary deployments added",
       "Remaining at session end: 0 items. Next queue empty."
     ]
+  },
+  "v3.0.0_extension_2026_09_27": {
+    "id": "v3.0.0-extension_2026_09_27",
+    "status": "in_progress",
+    "summary": "Build browser extension packaging for Chrome/Firefox/Edge (v3.0.0 Q2 target)",
+    "details": [
+      "Create extension manifest v3 (manifest.json)",
+      "Create extension entry point (background.js, popup.html, popup.js, content-script.js)",
+      "Create build script (build-extension.cjs) to package from existing userscript modules",
+      "Add extension icons/assets"
+    ],
+    "next_actions": [
+      "Extension packaging scaffolding",
+      "Content script integration from 016 hub",
+      "Background script with GM API shims for extension context"
+    ]
   }
 }
