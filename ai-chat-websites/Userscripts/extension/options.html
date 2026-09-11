@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unified AI Assistant Suite - Options</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 500px; padding: 20px;
+      background: #1a1a2e; color: #e0e0e0;
+    }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+    input, select {
+      width: 100%; padding: 10px; border-radius: 6px;
+      background: #16213e; border: 1px solid #333; color: #e0e0e0;
+    }
+    button {
+      padding: 10px 20px; border-radius: 6px;
+      background: #0f3460; color: #fff; border: none; cursor: pointer;
+    }
+    button:hover { background: #1a4a8a; }
+  </style>
+</head>
+<body>
+  <h1 style="margin-bottom:20px;font-size:18px">AI Assistant Suite — Options</h1>
+  <div class="form-group">
+    <label>Default Provider</label>
+    <select id="default-provider">
+      <option value="openai">OpenAI</option>
+      <option value="anthropic">Anthropic</option>
+      <option value="gemini">Google Gemini</option>
+      <option value="ollama">Ollama (Local)</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>API Key</label>
+    <input type="password" id="api-key" placeholder="Enter API key" />
+  </div>
+  <div class="form-group">
+    <label>Base URL (optional, for Ollama/custom)</label>
+    <input type="text" id="base-url" placeholder="http://localhost:11434" />
+  </div>
+  <button onclick="saveOptions()">Save</button>
+  <div id="status" style="margin-top:10px;font-size:13px"></div>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const result = await chrome.storage.local.get(['apiKey', 'apiProvider', 'apiBaseUrl']);
+      if (result.apiProvider) document.getElementById('default-provider').value = result.apiProvider;
+      if (result.apiKey) document.getElementById('api-key').value = result.apiKey;
+      if (result.apiBaseUrl) document.getElementById('base-url').value = result.apiBaseUrl;
+    });
+    async function saveOptions() {
+      const config = {
+        apiKey: document.getElementById('api-key').value,
+        apiProvider: document.getElementById('default-provider').value,
+        apiBaseUrl: document.getElementById('base-url').value
+      };
+      await chrome.storage.local.set(config);
+      const status = document.getElementById('status');
+      status.textContent = 'Settings saved!';
+      status.style.color = '#53d769';
+      setTimeout(() => status.textContent = '', 2000);
+    }
+  </script>
+</body>
+</html>
