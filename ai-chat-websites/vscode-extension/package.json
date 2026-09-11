@@ -1,0 +1,73 @@
+{
+  "name": "unified-ai-assistant-suite",
+  "displayName": "Unified AI Assistant Suite",
+  "description": "AI script generation with provider integrations — template editing and preview extension",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onView:aiAssistantSuite"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "views": {
+      "aiAssistantSuite": [
+        {
+          "id": "dashboard",
+          "name": "Dashboard"
+        },
+        {
+          "id": "templates",
+          "name": "Templates"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "ai-assistant.generateScript",
+        "title": "Generate AI Script"
+      },
+      {
+        "command": "ai-assistant.previewTemplate",
+        "title": "Preview Template"
+      },
+      {
+        "command": "ai-assistant.openOptions",
+        "title": "Open AI Assistant Options"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Unified AI Assistant Suite",
+      "properties": {
+        "aiAssistant.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your AI provider API key"
+        },
+        "aiAssistant.defaultProvider": {
+          "type": "string",
+          "default": "openai",
+          "enum": ["openai", "anthropic", "gemini", "ollama"],
+          "description": "Default AI provider"
+        },
+        "aiAssistant.model": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "Default model name"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "pretest": "npm run compile",
+    "test": "node ./node_modules/vscode/bin/test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vscode-test": "^1.8.0"
+  }
+}

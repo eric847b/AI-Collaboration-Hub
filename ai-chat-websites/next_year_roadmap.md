@@ -147,7 +147,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
    - [ ] Template rating system
 
 6. **INTEGRATION ECOSYSTEM**
-   - [ ] VS Code extension for template editing and preview
+   - [x] VS Code extension for template editing and preview — `vscode-extension/` (package.json, src/extension.ts, tsconfig.json, .vscodeignore, .vscode/launch+tasks, README)
    - [ ] CLI tool for batch operations (build, validate, deploy)
    - [ ] REST API for external tool integration
    - [ ] Webhook support for automation workflows
@@ -194,10 +194,10 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
     - [ ] Community translation framework
 
 12. **ANALYTICS DASHBOARD**
-    - [ ] Generation success rate tracking
-    - [ ] Provider performance comparison (latency, cost, quality)
-    - [ ] Time saved metrics
-    - [ ] Usage pattern analysis (local-only, privacy-first)
+    - [x] Generation success rate tracking — `Userscripts/modules/analytics.js` AnalyticsModule.trackGeneration/getSummary + popup Stats tab
+    - [x] Provider performance comparison (latency, cost, quality) — `Userscripts/modules/analytics.js` getProviderRankings
+    - [x] Time saved metrics — AnalyticsModule.getSummary.timeSaved (5 min/success estimate)
+    - [x] Usage pattern analysis (local-only, privacy-first) — AnalyticsModule.getUsagePatterns (hourly/day-of-week, local storage only)
 
 ---
 
@@ -214,8 +214,8 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
 
 14. **PLATFORM EXPANSION**
         - [x] Browser extension packaging (Chrome, Firefox, Edge) — `Userscripts/extension/` with manifest.json, background.js, popup.html/js, content-script.js, options.html, icons/ (16/32/48/128)
-    - [ ] Mobile-responsive UI for tablet/phone
-    - [ ] PWA support with install prompt
+    - [x] Mobile-responsive UI for tablet/phone — popup.html breakpoints (480px/768px), 44px touch targets, viewport meta
+    - [x] PWA support with install prompt — `manifest.webmanifest` (display standalone, icons, theme) + `service-worker.js` (offline cache, versioned purge)
     - [ ] Desktop app via Tauri or Electron (evaluate)
 
 ### MEDIUM PRIORITY

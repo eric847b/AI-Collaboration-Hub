@@ -10,13 +10,89 @@ document.addEventListener('DOMContentLoaded', async () => {
   tempSlider.addEventListener('input', () => {
     tempValue.textContent = tempSlider.value;
   });
+  await renderStats();
 });
 
-function showTab(tabName) {
+/**
+ * Analytics — record a generation outcome (provider + success) so the Stats
+ * tab can show success rates, provider comparison, and time saved.
+ */
+function recordGeneration(provider, ok) {
+  const events = JSON.parse(localStorage.getItem('analytics_events') || '[]');
+  events.push({
+    provider: provider || 'unknown',
+    success: !!ok,
+    timestamp: Date.now()
+  });
+  localStorage.setItem('analytics_events', JSON.stringify(events.slice(-200)));
+}
+
+/**
+ * Analytics — render the Stats tab: totals, success rate, per-provider bars,
+ * estimated time saved (~5 min per successful generation).
+ */
+function renderStats() {
+  const container = document.getElementById('stats-list');
+  if (!container) return;
+  const events = JSON.parse(localStorage.getItem('analytics_events') || '[]');
+
+  if (events.length === 0) {
+    container.innerHTML =
+      '<div style="color:#888;font-size:12px;padding:8px">No analytics yet — generate a script to start tracking.</div>';
+    return;
+  }
+
+  const byProvider = {};
+  let success = 0;
+  events.forEach(e => {
+    const p = byProvider[e.provider] || (byProvider[e.provider] = { total: 0, ok: 0 });
+    p.total++;
+    if (e.success) {
+      p.ok++;
+      success++;
+    }
+  });
+
+  const total = events.length;
+  const rate = Math.round((success / total) * 100);
+  const savedMin = success * 5;
+
+  let html =
+    '<div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:10px">' +
+    `<span>Total: <b style="color:#0f3460">${total}</b></span>` +
+    `<span>Success: <b style="color:#0f3460">${rate}%</b></span>` +
+    `<span>Saved: <b style="color:#0f3460">~${savedMin}m</b></span>` +
+    '</div>';
+
+  Object.entries(byProvider).forEach(([provider, s]) => {
+    const r = Math.round((s.ok / s.total) * 100);
+    html +=
+      '<div style="background:#16213e;border-radius:4px;padding:8px;margin-bottom:6px">' +
+      `<div style="font-size:12px;color:#e0e0e0">${provider} — ${r}% <span style="color:#888">(${s.ok}/${s.total})</span></div>` +
+      '<div style="height:6px;background:#0d1b2a;border-radius:3px">' +
+      `<div style="width:${r}%;height:6px;background:#1a4a8a;border-radius:3px"></div>` +
+      '</div></div>';
+  });
+
+  html +=
+    '<button onclick="clearStats()" style="margin-top:10px;background:#4a1a1a;color:#fff;' +
+    'border:none;border-radius:6px;padding:8px;font-size:12px;cursor:pointer">Clear Analytics</button>';
+
+  container.innerHTML = html;
+}
+
+/** Analytics — wipe locally stored events and re-render. */
+function clearStats() {
+  localStorage.removeItem('analytics_events');
+  renderStats();
+}
+
+function showTab(tabName, el) {
   document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
   document.getElementById(tabName).classList.add('active');
-  event.currentTarget.classList.add('active');
+  if (el) el.classList.add('active');
+  if (tabName === 'stats') renderStats();
 }
 
 async function loadConfig() {
@@ -76,15 +152,18 @@ async function generateScript() {
 
     if (response.error) {
       output.textContent = 'Error: ' + response.error;
+      recordGeneration(provider, false);
     } else if (response.success) {
       const text = response.response?.choices?.[0]?.message?.content ||
                    response.response?.content?.[0]?.text ||
                    JSON.stringify(response.response);
       output.textContent = text;
+      recordGeneration(provider, true);
       await saveToHistory(provider, prompt, text);
     }
   } catch (err) {
     output.textContent = 'Error: ' + err.message;
+    recordGeneration(provider, false);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Generate Script';
