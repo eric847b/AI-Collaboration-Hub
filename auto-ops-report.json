@@ -1,0 +1,80 @@
+{
+  "version": "1.2.1",
+  "dry_run": false,
+  "scanned_at": "2026-09-11T22:33:14Z",
+  "actionlint": {
+    "path": ".github/actionlint.yaml",
+    "action": "exists"
+  },
+  "duplicate_drafts": {
+    "closed": [],
+    "kept": [],
+    "errors": []
+  },
+  "policy_lockfile_spam": {
+    "closed": [],
+    "errors": []
+  },
+  "stale_branches": {
+    "deleted": [],
+    "errors": []
+  },
+  "dependabot_conflicts": {
+    "rebase_requests": [],
+    "recreate_requests": [],
+    "skipped": [
+      {
+        "number": 524,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 500,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 498,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 497,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 496,
+        "reason": "not-patch-conflict-policy"
+      }
+    ],
+    "errors": []
+  },
+  "dependabot_merges": {
+    "merged": [],
+    "skipped": [
+      {
+        "number": 496,
+        "reason": "not-patch",
+        "title": "chore(deps): bump zod from 4.4.3 to 4.5.4 in /self-evolve-dash"
+      },
+      {
+        "number": 497,
+        "reason": "not-patch",
+        "title": "chore(deps): bump @hookform/resolvers from 5.7.1 to 5.9.1 in /self-evolve-dash"
+      },
+      {
+        "number": 498,
+        "reason": "not-patch",
+        "title": "chore(deps-dev): bump typescript-eslint from 8.66.0 to 8.70.0 in /self-evolve-dash"
+      },
+      {
+        "number": 500,
+        "reason": "not-patch",
+        "title": "chore(deps): bump lucide-react from 1.24.0 to 1.43.0 in /self-evolve-dash"
+      },
+      {
+        "number": 524,
+        "reason": "not-patch",
+        "title": "chore(deps-dev): bump baseline-browser-mapping from 2.10.43 to 2.11.22 in /self-evolve-dash"
+      }
+    ],
+    "errors": []
+  }
+}
