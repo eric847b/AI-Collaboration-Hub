@@ -66,7 +66,7 @@ jobs:
           - [autonomous-github-agent](./autonomous-github-agent/index.html)
           IDX
       - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: 'docs/'
         continue-on-error: true
