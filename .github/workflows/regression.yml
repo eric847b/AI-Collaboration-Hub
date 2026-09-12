@@ -1,0 +1,48 @@
+# Weekly Regression + Cross-browser CI
+name: Regression
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'   # Monday 04:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: Regression suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ai-chat-websites/Userscripts/build/package.json
+      - name: V3 self-test
+        run: node ai-chat-websites/Userscripts/v3/index.js --selftest
+      - name: Regression steps
+        run: node ai-chat-websites/Userscripts/tests/regression.mjs
+
+  cross-browser:
+    name: Cross-browser smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        working-directory: ai-chat-websites/Userscripts/tests
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install -D @playwright/test >/dev/null 2>&1
+          npx playwright install --with-deps chromium firefox webkit >/dev/null 2>&1
+      - name: Run smoke tests
+        working-directory: ai-chat-websites/Userscripts/tests
+        run: npx playwright test --config=playwright.config.js

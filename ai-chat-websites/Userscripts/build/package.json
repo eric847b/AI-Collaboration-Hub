@@ -1,0 +1,20 @@
+{
+  "name": "ai-suite-build",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build tooling for the Unified AI Assistant Suite v3 (ES module migration via Vite/Rollup).",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "selftest": "node ../v3/index.js --selftest",
+    "regression": "node ../tests/regression.mjs",
+    "gate": "npm run selftest && npm run regression"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

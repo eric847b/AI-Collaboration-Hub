@@ -1,0 +1,14 @@
+{
+  "name": "ai-suite-desktop",
+  "productName": "AI Assistant Suite",
+  "version": "0.1.0",
+  "description": "Desktop shell for the Unified AI Assistant Suite (Tauri) — evaluation scaffold for Q2 2027 #14.",
+  "main": "src-tauri/tauri.conf.json",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

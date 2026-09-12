@@ -36,6 +36,10 @@ build/
 dist/
 *.tsbuildinfo
 
+# Exception: Userscripts/build holds build-tool SOURCE configs (vite.config.js,
+# package.json) — only its generated dist/ output stays ignored (via dist/)
+!ai-chat-websites/Userscripts/build/
+
 # IDE
 .vscode/
 .idea/
