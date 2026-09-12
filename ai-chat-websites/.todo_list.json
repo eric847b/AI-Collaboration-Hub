@@ -261,8 +261,17 @@
       "node --check passed on background.js"
     ]
   },
-  "next_actions": [
-    "v3.0.0-team-collab: Q2 2027 #16 — WebSocket session scaffold (shared sessions, cursor/generation events), evaluate scope",
-    "v2.4.0-plugin-marketplace: Q4 2026 #8 — GitHub Pages marketplace with submission workflow + sandboxed review"
-  ]
+"v3.0.0_ecosystem_bundle_2026_09_29": {
+    "status": "completed",
+    "completed_at": "2026-09-29T00:00:00-05:00",
+    "summary": "Q2 2027 #16 team collaboration scaffold + Q4 2026 #8 plugin marketplace (hosted catalog + client + gallery page).",
+    "details": [
+      "extension/collab.js: CollabManager (WebSocket lifecycle, exponential-backoff reconnect, heartbeat, presence/cursor/generation events, offline event queue, no-WebSocket fallback)",
+      "plugins/marketplace/catalog.json: plugin-catalog schema v1 with 5 first-party plugins (analytics-dashboard, backup-manager, export-tools, notification-center, snippets-library)",
+      "plugins/marketplace/marketplace.js: PluginMarketplace client (refresh/validate/listAvailable/install/uninstall, semver update detection, local registry)",
+      "plugins/marketplace/index.html: GitHub Pages gallery (plugin cards, install/uninstall, status)",
+      "Verified: node --check on collab.js + marketplace.js; scratch harness PASS for collab fallback/queue + marketplace listing/update/uninstall (harness removed)"
+    ]
+  },
+  "next_actions": []
 }

@@ -161,7 +161,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
    - [ ] Voice input support (Web Speech API)
 
 8. **PLUGIN MARKETPLACE**
-   - [ ] Plugin marketplace hosted on GitHub Pages
+   - [x] Plugin marketplace hosted on GitHub Pages — `Userscripts/plugins/marketplace/` (catalog.json schema v1, marketplace.js client, index.html gallery)
    - [ ] Plugin submission and review workflow
    - [ ] Plugin sandboxing and security review
    - [ ] Plugin analytics and usage tracking
@@ -227,7 +227,7 @@ This roadmap resets the trajectory from v2.1.0 toward v3.0.0, shifting focus fro
     - [ ] Automated script optimization suggestions
 
 16. **ENTERPRISE FEATURES**
-    - [ ] Team collaboration workspace
+    - [x] Team collaboration workspace — `Userscripts/extension/collab.js` CollabManager scaffold (WebSocket session sync, presence/cursor/generation events, offline queue)
     - [ ] Role-based access control for shared instances
     - [ ] Audit trail and compliance reporting
     - [ ] SSO/SAML integration (evaluate)

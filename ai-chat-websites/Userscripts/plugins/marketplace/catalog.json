@@ -1,0 +1,66 @@
+{
+  "schema": "ai-assistant-suite/plugin-catalog/v1",
+  "generated": "2026-09-29",
+  "plugins": [
+    {
+      "id": "analytics-dashboard",
+      "name": "Analytics Dashboard",
+      "version": "1.0.0",
+      "description": "Visual dashboard with generation statistics, provider rankings, and usage patterns",
+      "author": "AI Assistant Suite",
+      "category": "analytics",
+      "permissions": ["storage", "ui"],
+      "hooks": ["onInit", "onGenerationComplete"],
+      "downloadUrl": "https://raw.githubusercontent.com/eric847b/AI-Collaboration-Hub/main/ai-chat-websites/Userscripts/plugins/analytics-dashboard.plugin.js",
+      "ratings": { "count": 0, "average": 0 }
+    },
+    {
+      "id": "backup-manager",
+      "name": "Backup Manager",
+      "version": "1.0.0",
+      "description": "Automated configuration and script backups",
+      "author": "AI Assistant Suite",
+      "category": "utilities",
+      "permissions": ["storage"],
+      "hooks": ["onInit", "onConfigChange"],
+      "downloadUrl": "https://raw.githubusercontent.com/eric847b/AI-Collaboration-Hub/main/ai-chat-websites/Userscripts/plugins/backup-manager.plugin.js",
+      "ratings": { "count": 0, "average": 0 }
+    },
+    {
+      "id": "export-tools",
+      "name": "Export Tools",
+      "version": "1.0.0",
+      "description": "Batch export/import of generated scripts in multiple formats",
+      "author": "AI Assistant Suite",
+      "category": "utilities",
+      "permissions": ["storage", "downloads"],
+      "hooks": ["onInit", "onExport"],
+      "downloadUrl": "https://raw.githubusercontent.com/eric847b/AI-Collaboration-Hub/main/ai-chat-websites/Userscripts/plugins/export-tools.plugin.js",
+      "ratings": { "count": 0, "average": 0 }
+    },
+    {
+      "id": "notification-center",
+      "name": "Notification Center",
+      "version": "1.0.0",
+      "description": "Consolidated in-app notifications and action center",
+      "author": "AI Assistant Suite",
+      "category": "ux",
+      "permissions": ["storage", "notifications"],
+      "hooks": ["onInit", "onNotification"],
+      "downloadUrl": "https://raw.githubusercontent.com/eric847b/AI-Collaboration-Hub/main/ai-chat-websites/Userscripts/plugins/notification-center.plugin.js",
+      "ratings": { "count": 0, "average": 0 }
+    },
+    {
+      "id": "snippets-library",
+      "name": "Snippets Library",
+      "version": "1.0.0",
+      "description": "Reusable code snippets with tagging and search",
+      "author": "AI Assistant Suite",
+      "category": "productivity",
+      "permissions": ["storage"],
+      "hooks": ["onInit", "onInsertSnippet"],
+      "downloadUrl": "https://raw.githubusercontent.com/eric847b/AI-Collaboration-Hub/main/ai-chat-websites/Userscripts/plugins/snippets-library.plugin.js",
+      "ratings": { "count": 0, "average": 0 }
+    }
+  ]
+}

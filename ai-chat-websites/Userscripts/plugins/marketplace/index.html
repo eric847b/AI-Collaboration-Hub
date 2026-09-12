@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assistant Suite — Plugin Marketplace</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: #1a1a2e; color: #e0e0e0; padding: 24px; max-width: 960px; margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    h1 { font-size: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card { background: #16213e; border: 1px solid #333; border-radius: 8px; padding: 16px; }
+    .card h3 { font-size: 15px; margin-bottom: 6px; }
+    .card .meta { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .card p { font-size: 13px; color: #aaa; margin-bottom: 12px; }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-right: 6px; }
+    .badge.cat { background: #0f3460; color: #fff; }
+    .badge.installed { background: #1a4a1a; color: #9f9; }
+    .badge.update { background: #4a4a1a; color: #ff9; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; background: #0f3460; color: #fff;
+             cursor: pointer; font-size: 13px; }
+    button:hover { background: #1a4a8a; }
+    button.danger { background: #4a1a1a; }
+    #status { font-size: 13px; color: #888; min-height: 20px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧩 Plugin Marketplace</h1>
+    <button onclick="refresh()">Refresh Catalog</button>
+  </header>
+  <div id="status">Loading catalog…</div>
+  <div id="catalog" class="grid"></div>
+
+  <script src="marketplace.js"></script>
+  <script>
+    const mkt = new PluginMarketplace();
+    const status = document.getElementById('status');
+    const grid = document.getElementById('catalog');
+
+    function setStatus(msg) {
+      status.textContent = msg;
+    }
+
+    function badgeFor(item) {
+      const parts = ['<span class="badge cat">' + item.category + '</span>'];
+      if (item.installed && item.updateAvailable) {
+        parts.push('<span class="badge update">Update ' + item.version + '</span>');
+      } else if (item.installed) {
+        parts.push('<span class="badge installed">Installed v' + item.version + '</span>');
+      }
+      return parts.join('');
+    }
+
+    function render(items) {
+      grid.innerHTML = items.map(item => `
+        <div class="card">
+          <h3>${item.name}</h3>
+          <div class="meta">${badgeFor(item)} v${item.version} · by ${item.author}</div>
+          <p>${item.description}</p>
+          <button onclick="toggle('${item.id}')">${item.installed ? 'Uninstall' : 'Install'}</button>
+        </div>
+      `).join('');
+    }
+
+    async function refresh() {
+      setStatus('Refreshing catalog…');
+      try {
+        await mkt.refresh();
+        render(mkt.listAvailable());
+        setStatus(mkt.catalog.length + ' plugin(s) available');
+      } catch (err) {
+        setStatus('Error: ' + err.message);
+      }
+    }
+
+    async function toggle(id) {
+      const item = mkt.listAvailable().find(p => p.id === id);
+      if (!item) return;
+      try {
+        if (item.installed) {
+          await mkt.uninstall(id);
+          setStatus('Uninstalled ' + id);
+        } else {
+          await mkt.install(id);
+          setStatus('Installed ' + id);
+        }
+        render(mkt.listAvailable());
+      } catch (err) {
+        setStatus('Error: ' + err.message);
+      }
+    }
+
+    refresh();
+  </script>
+</body>
+</html>
