@@ -19,6 +19,7 @@
       this.samples = [];
       this.alerts = [];
       this._memErrors = [];
+      this._bootAt = Date.now();
     }
 
     _now() { return Date.now(); }
@@ -94,6 +95,24 @@
       } catch {
         return this._memErrors;
       }
+    }
+
+    /** Render-ready dashboard payload (perf-monitoring dashboard, Q3 2026 #3). */
+    dashboard() {
+      const metrics = this.summary();
+      const sparklines = {};
+      this.samples.slice(-100).forEach(s => {
+        sparklines[s.metric] = sparklines[s.metric] || [];
+        sparklines[s.metric].push(s.value);
+      });
+      return {
+        generatedAt: this._now(),
+        uptimeSec: Math.round((this._now() - this._bootAt) / 1000),
+        metrics,
+        sparklines,
+        alerts: this.alerts.slice(-20).map(a => ({ metric: a.metric, value: a.value, threshold: a.threshold, ts: a.ts })),
+        errorCount: this.getErrors().length
+      };
     }
   }
 

@@ -19,7 +19,10 @@ const modules = {
   monitor: require('./monitor.js'),
   localeBundles: require('./locale-bundles.js'),
   translationFramework: require('./translation-framework.js'),
-  apiServer: require('./api-server.js')
+  apiServer: require('./api-server.js'),
+  pluginApiV3: require('./plugin-api-stable.js'),
+  fineTuning: require('./fine-tuning.js'),
+  templateExchange: require('./template-exchange.js')
 };
 
 function selfTest() {
@@ -141,6 +144,55 @@ function selfTest() {
   record('api-server validate', () => {
     const v = modules.apiServer.validateScript('// ==UserScript==\n// @grant none\n(function(){})();');
     assert(v.score > 0, 'score computed');
+  });
+
+  // plugin API v3 — stable
+  record('plugin-api-v3', () => {
+    const P = modules.pluginApiV3.PluginAPIv3;
+    const api = new P();
+    assert(!api.validate({ id: 'Bad ID!' }).ok, 'invalid manifest rejected');
+    api.register({ id: 'dep', version: '2.0.0', name: 'Dep', description: 'dep', author: 'a', permissions: [] }, {});
+    api.register({
+      id: 'main', version: '1.0.0', name: 'Main', description: 'main', author: 'a',
+      permissions: ['storage:local'], dependencies: [{ id: 'dep', version: '^2.0.0' }]
+    }, {
+      onInstall(ctx) { ctx.storage.set('installed', true); },
+      main(ctx, n) { return ctx.storage.get('installed') ? 'ready:' + n : 'no'; }
+    });
+    assert.strictEqual(api.listInstalled().length, 2, 'two plugins installed');
+    api.activate('main');
+    assert.strictEqual(api.invoke('main', 'main', [7]), 'ready:7', 'sandboxed invoke works');
+    assert.strictEqual(api.resolveDependencies('main').join(','), 'dep', 'dependency order');
+    assert.strictEqual(P.VERSION, '3.0.0', 'reports v3 version');
+  });
+
+  // fine-tuning
+  record('fine-tuning', () => {
+    const F = modules.fineTuning.FineTuningManager;
+    const ft = new F();
+    ft.createDataset({ id: 'd1', entries: [{ text: 'Hi', completion: 'Hello!' }] });
+    const j = ft.createJob({ id: 'j1', dataset: 'd1', baseModel: 'gpt-4o-mini' });
+    assert.strictEqual(j.status, 'queued', 'job queued');
+    ft.startJob('j1');
+    ft.completeJob('j1', { loss: 0.1 });
+    assert.strictEqual(ft.getJob('j1').status, 'completed', 'job completed');
+    const cost = ft.estimateCost('j1');
+    assert(cost.totalTokens >= 1, 'cost estimated');
+    assert.strictEqual(JSON.parse(ft.exportDataset('d1', 'jsonl').trim().split('\n')[0]).completion, 'Hello!', 'jsonl export');
+  });
+
+  // template-exchange
+  record('template-exchange', () => {
+    const T = modules.templateExchange.TemplateExchange;
+    const te = new T();
+    assert(te.catalogStats().total >= 50, '50+ templates seeded');
+    te.rate('prod-01', 5, 'u1');
+    te.rate('prod-01', 3, 'u2');
+    const found = te.search('meeting', { category: 'productivity' }).find(t => t.id === 'prod-01');
+    assert(found.stars === 4 && found.ratingCount === 2, 'rating averaged + counted');
+    const round = new T();
+    round.importJson(te.exportJson());
+    assert.strictEqual(round.catalogStats().total, te.catalogStats().total, 'JSON round-trip');
   });
 
   if (failures.length) {

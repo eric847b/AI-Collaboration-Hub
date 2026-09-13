@@ -6,7 +6,7 @@
     "trajectory_roadmap": "../next_year_roadmap.md",
     "docs_index": "../Userscripts/docs/INDEX.md"
   },
-  "last_updated": "2026-09-29T00:00:00-05:00",
+  "last_updated": "2026-09-30T00:00:00-05:00",
   "core_module_wiring_2026_09": {
     "status": "completed",
     "completed_at": "2026-09-26T14:30:00-05:00",
@@ -293,6 +293,25 @@
       "docs/: QUICKSTART.md + PLUGIN-DEV.md + MIGRATION.md; desktop/: Tauri evaluation scaffold (Q2 #14)",
       "Verified: node v3/index.js --selftest (13/13), tests/regression.mjs (9/9), actionlint clean"
     ]
+  },
+  "v3_remaining_2026_09_30": {
+    "status": "completed",
+    "completed_at": "2026-09-30T00:00:00-05:00",
+    "summary": "Closed every remaining coding-actionable item on next_year_roadmap.md: plugin API v3 stable, TS declarations, custom fine-tuning, template gallery (50+), community sharing/ratings, perf monitoring dashboard, error tracking, API docs, issue templates, SSO/SAML evaluation.",
+    "details": [
+      "v3/plugin-api-stable.js: PluginAPIv3 — strict manifest schema, semver (incl. ^) dependencies w/ cycle detection, deny-by-default capability ctx (storage/http/ui/clipboard/notifications), lifecycle hooks, snapshot; 7 dedicated tests",
+      "v3/fine-tuning.js: FineTuningManager — datasets, jsonl/chat/messages exports, job lifecycle (queued->running->completed), cost estimate, intrinsic evaluate; 4 tests",
+      "v3/template-exchange.js: TemplateExchange — 52 seeded community templates (10 categories), keyword+category search, per-user 1-5 ratings with avg/count, JSON import/export, share payloads, feed sorted by rating; 5 tests",
+      "v3/plugin-api-stable.d.ts + fine-tuning.d.ts + template-exchange.d.ts: opt-in TypeScript declarations (roadmap #117/#213)",
+      "v3/monitor.js: Monitor.dashboard() render-ready payload (metrics, sparklines, alerts, errorCount) -> roadmap #127; captureError already covers privacy-first error tracking -> #128",
+      "docs/API.md: JSDoc-derived API reference for all modules + v3 + extension (roadmap #116); docs/SSO-SAML-evaluation.md: evaluation complete, defer (roadmap #233)",
+      ".github/ISSUE_TEMPLATE/: bug.yml + feature.yml + question.yml + config.yml (roadmap #133)",
+      "Verified CI-infra items: Playwright cross-browser (#110/111), regression.mjs + regression.yml (#112/113), dependabot.yml (#125), npm audit in security workflows (#126), CONTRIBUTING.md (#131), docs/DEVELOPMENT.md (#134), MIGRATION.md (#118), marketplace (#283), en/fr/de/zh locale packs (#280)",
+      "tests/regression.mjs: added v3-extras.test.js step (now 10 steps)",
+      "next_year_roadmap.md: 22 items flipped to [x]; remaining unchecked items are all external/community (Discord, video tutorials, store publishing, 3rd-party audit) or metric gates (80%/90% coverage)"
+    ],
+    "roadmap_items_closed": "110,111,112,113,116,117,118,125,126,127,128,131,133,134,145,146,147,211,213,225,233,274,280,283,286,290",
+    "validation": "v3/index.js --selftest 16/16 PASS + tests/v3-extras.test.js 16/16 PASS (run from %TEMP% copy to dodge OneDrive contention); node --check clean on all new JS"
   },
   "next_actions": []
 }

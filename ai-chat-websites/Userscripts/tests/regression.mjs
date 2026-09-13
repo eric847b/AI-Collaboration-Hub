@@ -14,6 +14,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const STEPS = [
   ['v3 self-test', 'node Userscripts/v3/index.js --selftest'],
+  ['v3 extras tests', 'node Userscripts/tests/v3-extras.test.js'],
   ['popup.js syntax', 'node --check Userscripts/extension/popup.js'],
   ['background.js syntax', 'node --check Userscripts/extension/background.js'],
   ['content-script.js syntax', 'node --check Userscripts/extension/content-script.js'],

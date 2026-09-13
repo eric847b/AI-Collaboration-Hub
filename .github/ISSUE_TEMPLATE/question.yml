@@ -1,0 +1,24 @@
+name: Question
+description: Ask about usage, architecture, or contribution
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: Be specific — include versions/URLs if relevant
+      placeholder: "e.g. How do I publish a plugin to the marketplace?"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Userscript suite
+        - Browser extension
+        - VS Code extension
+        - Plugin API / marketplace
+        - Contribution / onboarding
+    validations: []

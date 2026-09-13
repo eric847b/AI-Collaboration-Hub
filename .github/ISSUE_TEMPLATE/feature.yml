@@ -1,0 +1,40 @@
+name: Feature Request
+description: Propose a new capability for the suite
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Help us understand the problem your idea solves.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What pain point does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Sketch the feature and where it would live (module, extension, v3, docs)
+      placeholder: e.g. "A new v3 module `backup.js` that exports all script versions to a JSON bundle"
+    validations: []
+    required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+    validations: []
+    required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know this is done?
+      placeholder: "- [ ] Unit tests pass\n- [ ] Roadmap item checked"
+    validations: []
