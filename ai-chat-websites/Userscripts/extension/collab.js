@@ -179,7 +179,7 @@
       }
       this.stopHeartbeat();
       if (this.ws) {
-        try { this.ws.close(); } catch {}
+        try { this.ws.close(); } catch { /* socket may already be closed */ }
         this.ws = null;
       }
       this.connected = false;

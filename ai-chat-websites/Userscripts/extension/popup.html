@@ -48,6 +48,7 @@
       overflow-y: auto; max-height: 200px; margin-top: 10px;
       border: 1px solid #333;
     }
+    .temp-value { font-size: 11px; color: #888; }
     .touch-btn {
       min-height: 44px;
       min-width: 44px;
@@ -85,8 +86,8 @@
   </div>
   <div id="generate" class="tab-content active">
     <div class="form-group">
-      <label>Provider</label>
-      <select id="provider">
+      <label for="provider">Provider</label>
+      <select id="provider" title="AI provider to use for generation">
         <option value="auto">Auto (cheapest capable)</option>
         <option value="openai">OpenAI (GPT-4o)</option>
         <option value="anthropic">Anthropic (Claude)</option>
@@ -95,29 +96,29 @@
       </select>
     </div>
     <div class="form-group">
-      <label>Model</label>
-      <input type="text" id="model" placeholder="gpt-4o" />
+      <label for="model">Model</label>
+      <input type="text" id="model" title="Model identifier for the selected provider" placeholder="gpt-4o" />
     </div>
     <div class="form-group">
-      <label>Temperature</label>
-      <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7" />
-      <span id="temp-value" style="font-size:11px;color:#888">0.7</span>
+      <label for="temperature">Temperature</label>
+      <input type="range" id="temperature" title="Sampling temperature (0 = deterministic, 1 = creative)" min="0" max="1" step="0.1" value="0.7" />
+      <span id="temp-value" class="temp-value">0.7</span>
     </div>
     <div class="form-group">
-      <label>Your Prompt</label>
-      <textarea id="prompt" placeholder="Describe the script you want to generate..."></textarea>
+      <label for="prompt">Your Prompt</label>
+      <textarea id="prompt" title="Describe the userscript to generate" placeholder="Describe the script you want to generate..."></textarea>
     </div>
     <button id="generate-btn" onclick="generateScript()">Generate Script</button>
     <div class="output" id="output"></div>
   </div>
   <div id="config" class="tab-content">
     <div class="form-group">
-      <label>API Key</label>
-      <input type="password" id="api-key" placeholder="sk-..." />
+      <label for="api-key">API Key</label>
+      <input type="password" id="api-key" title="API key for the selected provider" placeholder="sk-..." />
     </div>
     <div class="form-group">
-      <label>Provider</label>
-      <select id="config-provider">
+      <label for="config-provider">Provider</label>
+      <select id="config-provider" title="Provider whose settings are saved">
         <option value="openai">OpenAI</option>
         <option value="anthropic">Anthropic</option>
         <option value="gemini">Google Gemini</option>
