@@ -19,9 +19,9 @@ concurrency:
 
 jobs:
   gate:
-    name: Suite CI — build:bundle → check:suite → validate
+    name: Suite CI — install → build:bundle → check:suite → validate
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite"
@@ -32,6 +32,21 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/package-lock.json"
+
+      - name: npm ci (retry on rate_limit / network)
+        run: |
+          set -e
+          for i in 1 2 3 4 5; do
+            if npm ci; then
+              exit 0
+            fi
+            echo "npm ci failed (attempt $i); backoff $((i * 15))s"
+            sleep $((i * 15))
+          done
+          echo "npm ci failed after retries; trying npm install"
+          npm install --no-audit --no-fund
 
       - name: build:bundle (dense bundle contracts)
         run: npm run build:bundle
