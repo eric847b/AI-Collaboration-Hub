@@ -363,5 +363,17 @@
       "collabhub-modules/unified-bridge.mjs",
       "AI-Collaboration-Hub/nexus-core/registry.json"
     ]
+  },
+  "unified_core_py_parity_2026_09_30": {
+    "id": "unified-core-py-parity-2026-09-30",
+    "status": "completed",
+    "completed_at": "2026-09-30T00:00:00-05:00",
+    "summary": "Completed Python twin parity in unified-core (commit fd6b54a): call_ai, swarm fan-out, ledger-file roundtrip, UnifiedOrchestrator class, and _selftest; governance role test updated to resolve unified-core+unified-analytics.",
+    "details": [
+      "unified_orchestrator.py +176 lines: module-level call_ai(), swarm(), load_ledger_file()/save_ledger_file(), UnifiedOrchestrator class, _selftest() — mirrors orchestrator.mjs semantics",
+      "test-orchestrator.mjs: modulesByRole governance assertion now [unified-core, unified-analytics] to match manifest",
+      "README.md: documented test_unified_orchestrator.py parity suite",
+      "Validation: node 17/17, python unittest 15 OK, selftest 11/11"
+    ]
   }
 }
