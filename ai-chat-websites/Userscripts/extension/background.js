@@ -88,6 +88,7 @@ function routedTier(prompt) {
 function orchestrate(prompt, options, sendResponse) {
   const startIndex = MODEL_LADDER.indexOf(routedTier(prompt));
   let failures = 0;
+  const startTime = Date.now();
 
   const tryTier = (index) => {
     if (index >= MODEL_LADDER.length) {
@@ -98,7 +99,18 @@ function orchestrate(prompt, options, sendResponse) {
     const tierOptions = Object.assign({}, options, { model: tier.model });
     routeToProvider(tier.provider, prompt, tierOptions, (result) => {
       if (result && result.success) {
-        sendResponse(Object.assign({}, result, { route: tier.provider + '/' + tier.model }));
+        const latencyMs = Date.now() - startTime;
+        const content = result.response?.choices?.[0]?.message?.content ||
+                        result.response?.content?.[0]?.text ||
+                        JSON.stringify(result.response);
+        sendResponse(Object.assign({}, result, {
+          routedProvider: tier.provider,
+          routedModel: tier.model,
+          route: tier.provider + '/' + tier.model,
+          latencyMs,
+          tokenCount: Math.ceil((prompt.length + (content?.length || 0)) / 4),
+          estimatedCost: calculateCost(tier.provider, prompt.length, content?.length || 0)
+        }));
       } else if (failures < 2) {
         failures += 1;
         tryTier(index + 1);
@@ -109,6 +121,13 @@ function orchestrate(prompt, options, sendResponse) {
   };
 
   tryTier(Math.max(0, startIndex));
+}
+
+/** Rough cost estimate per provider (USD). */
+function calculateCost(provider, promptLen, outputLen) {
+  const tokens = Math.ceil((promptLen + outputLen) / 4);
+  const rates = { openai: 0.015, anthropic: 0.003, gemini: 0.0005, ollama: 0.0 };
+  return (tokens / 1000) * (rates[provider.toLowerCase()] || 0.005);
 }
 
 function routeToProvider(provider, prompt, options, sendResponse) {

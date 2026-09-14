@@ -6,7 +6,7 @@
     "trajectory_roadmap": "../next_year_roadmap.md",
     "docs_index": "../Userscripts/docs/INDEX.md"
   },
-  "last_updated": "2026-09-27T12:30:00-05:00",
+  "last_updated": "2026-09-27T14:05:00-05:00",
   "core_module_wiring_2026_09": {
     "status": "completed",
     "completed_at": "2026-09-26T14:30:00-05:00",
@@ -172,32 +172,25 @@
   },
   "next_actions": [
     {
-      "id": "v3.0.0-multi-model-api",
-      "title": "Integrate multi-model orchestration into popup.js and background.js",
-      "priority": "high",
-      "status": "todo",
-      "description": "Wire 037 module into the extension popup and background scripts so the generate button uses route() with failover"
-    },
-    {
       "id": "v3.0.0-multi-model-dashboard",
-      "title": "Add multi-model analytics panel to popup",
+      "title": "Add multi-model analytics panel to popup stats tab",
       "priority": "medium",
       "status": "todo",
-      "description": "Display provider routing stats, failover rates, cost estimates in the analytics dashboard"
+      "description": "Show provider routing stats, failover rates, cost per generation in analytics dashboard"
     },
     {
       "id": "v3.0.0-multi-model-config",
-      "title": "Add provider routing config UI",
+      "title": "Add provider routing config UI to options page",
       "priority": "medium",
       "status": "todo",
-      "description": "Allow users to reorder providers per task type via settings/options page"
+      "description": "Allow users to reorder providers per task type via settings"
     },
     {
       "id": "v3.0.0-multi-model-tests",
       "title": "Expand multi-model test coverage",
       "priority": "low",
       "status": "todo",
-      "description": "Add integration tests for route() failover logic and edge cases"
+      "description": "Add integration tests for route() failover logic"
     }
   ],
   "v2_2_0_production_readiness_2026_09_27": {
@@ -281,13 +274,15 @@
   },
   "v3.0.0_multi_model_orchestration_2026_09_29": {
     "status": "completed",
-    "completed_at": "2026-09-29T00:00:00-05:00",
+    "completed_at": "2026-09-27T14:00:00-05:00",
     "summary": "Q2 2027 #15 — multi-model orchestration: cheapest-capable-first routing with escalation ladder in the extension background worker ('auto' provider mode).",
     "details": [
       "background.js: MODEL_LADDER (ollama llama3 -> gemini flash -> gpt-4o-mini -> gemini pro -> claude sonnet -> gpt-4o), scoreCapability() prompt-difficulty heuristic (cumulative keyword hints), routedTier() cheapest-capable pick, orchestrate() with up-to-2-step escalation",
       "popup.html: 'Auto (cheapest capable)' provider option",
       "Scratch harness verified: simple->ollama, ollama failure->gemini flash, difficulty boundaries 1..5; harness deleted after run",
-      "node --check passed on background.js"
+      "node --check passed on background.js",
+      "Integrated 037 module routing into background.js orchestrate() with routedProvider/routedModel/latencyMs/tokenCount/estimatedCost metadata",
+      "Updated popup.js generateScript() to record actual routed provider and pass analytics meta"
     ]
   },
   "v3.0.0_ecosystem_bundle_2026_09_29": {

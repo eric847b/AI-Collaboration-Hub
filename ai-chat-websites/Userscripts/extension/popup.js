@@ -191,7 +191,7 @@ async function generateScript() {
       }
     });
 
-    if (response.error) {
+         if (response.error) {
       output.textContent = 'Error: ' + response.error;
       recordGeneration(provider, false);
     } else if (response.success) {
@@ -199,9 +199,16 @@ async function generateScript() {
                    response.response?.content?.[0]?.text ||
                    JSON.stringify(response.response);
       output.textContent = text;
-      recordGeneration(provider, true);
-      await saveToHistory(provider, prompt, text);
+      // Record with actual routed provider (background.js may override 'auto')
+      const actualProvider = response.routedProvider || provider;
+      recordGeneration(actualProvider, true, {
+        responseMs: response.latencyMs,
+        tokens: response.tokenCount,
+        costUsd: response.estimatedCost
+      });
+      await saveToHistory(actualProvider, prompt, text);
     }
+    // ... rest of function
   } catch (err) {
     output.textContent = 'Error: ' + err.message;
     recordGeneration(provider, false);
