@@ -12,6 +12,7 @@ rotation logic anymore.**
 | `unified_orchestrator.py` | Python twin — identical semantics. Py ≥ 3.8, zero deps. |
 | `manifest.json` | Fleet manifest (**not** a second registry — canonical registry stays `AI-Collaboration-Hub/nexus-core/registry.json`). |
 | `test-orchestrator.mjs` | Test harness for the JS engine incl. manifest-parity checks. |
+| `test_unified_orchestrator.py` | unittest parity suite for the Python twin (incl. `UnifiedOrchestrator`, ledger-file roundtrip). |
 | `cross-training.md` | Which upstream pattern each piece was trained from. |
 
 ## The ladder (free-provider rotation, cap-aware)

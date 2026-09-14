@@ -116,9 +116,9 @@ t('manifest model_ladder mirrors MODEL_LADDER exactly', () => {
   assert.deepEqual(m.model_ladder, MODEL_LADDER.map(({ id, model, cap }) => ({ id, model, cap })));
 });
 
-t('modulesByRole resolves governance -> unified-core', () => {
+t('modulesByRole resolves governance -> unified-core + unified-analytics', () => {
   const m = loadManifest();
-  assert.deepEqual(modulesByRole(m, 'governance'), ['unified-core']);
+  assert.deepEqual(modulesByRole(m, 'governance'), ['unified-core', 'unified-analytics']);
 });
 
 t('manifest cross_training bridges all exist on disk', async () => {
