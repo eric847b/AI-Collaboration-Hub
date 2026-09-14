@@ -8,7 +8,9 @@ on:
 jobs:
   lint-fix:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         project: [nexus-infinity-hub, self-evolve-dash]
     steps:
@@ -22,9 +24,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '${{ matrix.project }}/package-lock.json'
 
-      - name: Install dependencies
+      - name: Install dependencies (retry on rate_limit)
         working-directory: ${{ matrix.project }}
-        run: npm ci --prefer-offline
+        run: |
+          set -e
+          for i in 1 2 3 4 5; do
+            if npm ci --prefer-offline; then
+              exit 0
+            fi
+            echo "npm ci failed (attempt $i); backoff ${i}0s"
+            sleep $((i * 10))
+          done
+          echo "npm ci failed after retries"
+          exit 1
 
       - name: Run ESLint autofix
         working-directory: ${{ matrix.project }}

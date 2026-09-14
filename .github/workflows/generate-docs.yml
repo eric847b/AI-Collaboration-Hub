@@ -6,6 +6,7 @@ on:
 jobs:
   generate-docs:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - name: Setup Node
@@ -13,8 +14,18 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - name: Install dependencies
-        run: npm ci --prefix nexus-infinity-hub || npm install --legacy-peer-deps --prefix nexus-infinity-hub
+      - name: Install dependencies (retry on rate_limit)
+        run: |
+          set -e
+          for i in 1 2 3 4 5; do
+            if npm ci --prefix nexus-infinity-hub || npm install --legacy-peer-deps --prefix nexus-infinity-hub; then
+              exit 0
+            fi
+            echo "npm install failed (attempt $i); backoff ${i}0s"
+            sleep $((i * 10))
+          done
+          echo "npm install failed after retries"
+          exit 1
       - name: Check for TypeDoc
         run: |
           cd nexus-infinity-hub
@@ -22,7 +33,10 @@ jobs:
             echo "TypeDoc is installed"
           else
             echo "Installing TypeDoc..."
-            npm install --save-dev typedoc
+            for i in 1 2 3; do
+              npm install --save-dev typedoc && break
+              sleep $((i * 8))
+            done
           fi
       - name: Generate TypeScript docs
         run: |
