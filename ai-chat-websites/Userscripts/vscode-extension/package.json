@@ -1,0 +1,79 @@
+{
+  "name": "unified-ai-assistant-suite",
+  "displayName": "Unified AI Assistant Suite",
+  "description": "AI script generation with provider integrations (OpenAI, Anthropic, Gemini, Ollama) — template editing and preview",
+  "version": "1.0.0",
+  "publisher": "ai-assistant-suite",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eric847b/AI-Collaboration-Hub.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "AI",
+    "Snippets",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "userscript",
+    "ai",
+    "openai",
+    "anthropic",
+    "gemini",
+    "template"
+  ],
+  "activationEvents": [
+    "onCommand:aisuite.generateScript",
+    "onCommand:aisuite.insertTemplate",
+    "onCommand:aisuite.previewTemplate"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aisuite.generateScript",
+        "title": "AI Suite: Generate Script"
+      },
+      {
+        "command": "aisuite.insertTemplate",
+        "title": "AI Suite: Insert Template"
+      },
+      {
+        "command": "aisuite.previewTemplate",
+        "title": "AI Suite: Preview Template"
+      }
+    ],
+    "configuration": {
+      "title": "Unified AI Assistant Suite",
+      "properties": {
+        "aisuite.provider": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "openai", "anthropic", "gemini", "ollama"],
+          "description": "Default AI provider for script generation"
+        },
+        "aisuite.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the selected provider (stored in VS Code secret storage)"
+        },
+        "aisuite.temperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Sampling temperature"
+        }
+      }
+    },
+    "snippets": [
+      {
+        "language": "javascript",
+        "path": "./snippets/userscript.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "Userscript Header": {
+    "prefix": "userscript-header",
+    "body": [
+      "// ==UserScript==",
+      "// @name         ${1:ScriptName}",
+      "// @namespace    https://github.com/eric847b",
+      "// @version      1.0.0",
+      "// @description  ${2:Description}",
+      "// @match        ${3:*://*/*}",
+      "// @grant        ${4:none}",
+      "// ==/UserScript==",
+      "",
+      "(function() {",
+      "  'use strict';",
+      "  $0",
+      "})();"
+    ],
+    "description": "Standard userscript header"
+  },
+  "GM_setValue": {
+    "prefix": "gm-setvalue",
+    "body": "GM_setValue('${1:key}', ${2:value});",
+    "description": "Greasemonkey storage setter"
+  },
+  "GM_getValue": {
+    "prefix": "gm-getvalue",
+    "body": "GM_getValue('${1:key}', ${2:defaultValue});",
+    "description": "Greasemonkey storage getter"
+  }
+}

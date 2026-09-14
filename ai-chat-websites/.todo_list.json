@@ -6,7 +6,7 @@
     "trajectory_roadmap": "../next_year_roadmap.md",
     "docs_index": "../Userscripts/docs/INDEX.md"
   },
-  "last_updated": "2026-09-30T00:00:00-05:00",
+  "last_updated": "2026-09-27T12:30:00-05:00",
   "core_module_wiring_2026_09": {
     "status": "completed",
     "completed_at": "2026-09-26T14:30:00-05:00",
@@ -170,7 +170,36 @@
     ],
     "validation": "node --check on suite-cli.cjs; all 7 commands execute; 36/36 health, 15/15 test suites"
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "id": "v3.0.0-multi-model-api",
+      "title": "Integrate multi-model orchestration into popup.js and background.js",
+      "priority": "high",
+      "status": "todo",
+      "description": "Wire 037 module into the extension popup and background scripts so the generate button uses route() with failover"
+    },
+    {
+      "id": "v3.0.0-multi-model-dashboard",
+      "title": "Add multi-model analytics panel to popup",
+      "priority": "medium",
+      "status": "todo",
+      "description": "Display provider routing stats, failover rates, cost estimates in the analytics dashboard"
+    },
+    {
+      "id": "v3.0.0-multi-model-config",
+      "title": "Add provider routing config UI",
+      "priority": "medium",
+      "status": "todo",
+      "description": "Allow users to reorder providers per task type via settings/options page"
+    },
+    {
+      "id": "v3.0.0-multi-model-tests",
+      "title": "Expand multi-model test coverage",
+      "priority": "low",
+      "status": "todo",
+      "description": "Add integration tests for route() failover logic and edge cases"
+    }
+  ],
   "v2_2_0_production_readiness_2026_09_27": {
     "status": "completed",
     "completed_at": "2026-09-27T05:00:00-05:00",
@@ -329,7 +358,9 @@
       "registry roles reconciled: governance/coordinate/execution/ui/automation/memory all populated; no mismatch between registry.roles and registry.modules"
     ],
     "validation": "node unified-core/test-orchestrator.mjs 17/17 PASS; python unified-core/unified_orchestrator.py --selftest PASS; registry↔manifest module parity (14==14, 0 missing); orchestrator.mjs ESM load OK (v1.0.0); python_compile clean on both .py files",
-    "commits": ["f7f9a15"],
+    "commits": [
+      "f7f9a15"
+    ],
     "files": [
       "unified-core/orchestrator.mjs",
       "unified-core/unified_orchestrator.py",
