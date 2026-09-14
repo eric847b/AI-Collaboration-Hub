@@ -1,7 +1,8 @@
 {
   "system": "nexus-core",
-  "version": "2.8",
+  "version": "2.9",
   "modules": [
+    {"name": "unified-core", "role": "governance", "entrypoint": "node unified-core/test-orchestrator.mjs", "deps": []},
     {"name": "autonomous-github-agent", "role": "execution", "entrypoint": "python -m agent", "deps": []},
     {"name": "singularity-operator", "role": "execution", "entrypoint": "python singularity_operator.py", "deps": []},
     {"name": "self-evolve-dash", "role": "execution", "entrypoint": "npm run dev", "deps": ["nexus-infinity-hub"]},
@@ -9,16 +10,20 @@
     {"name": "collabhub-modules", "role": "automation", "entrypoint": "npx", "deps": []},
     {"name": "VectorFS", "role": "memory", "entrypoint": "./build/vectorfs", "deps": []},
     {"name": "AI-Collaboration-Hub", "role": "coordination", "entrypoint": "python nexus-core/orchestrator.py", "deps": ["*"]},
+    {"name": "ai-chat-websites", "role": "ui", "entrypoint": "node Userscripts/tools/suite-cli.cjs health", "deps": []},
+    {"name": "nexus-core", "role": "coordination", "entrypoint": "python nexus-core/orchestrator.py", "deps": ["*"]},
+    {"name": "modular-hub-modernization", "role": "automation", "entrypoint": "npx", "deps": []},
     {"name": "third-door-blink-controller", "role": "ui", "entrypoint": "npx expo start", "deps": []},
     {"name": "third-door-system", "role": "automation", "entrypoint": "python main.py", "deps": []},
     {"name": "solutions-dynamics", "role": "execution", "entrypoint": "python runtime_failure_handler.py", "deps": []}
   ],
   "roles": {
-    "execution": ["autonomous-github-agent", "singularity-operator", "self-evolve-dash", "solutions-dynamics"],
-    "coordination": ["AI-Collaboration-Hub"],
-    "memory": ["VectorFS"],
-    "ui": ["nexus-infinity-hub", "third-door-blink-controller"],
-    "automation": ["collabhub-modules", "third-door-system"]
+    "governance": ["unified-core"],
+    "coordination": ["AI-Collaboration-Hub", "nexus-core"],
+    "execution": ["singularity-operator", "autonomous-github-agent", "self-evolve-dash", "solutions-dynamics"],
+    "ui": ["ai-chat-websites", "nexus-infinity-hub", "third-door-blink-controller"],
+    "automation": ["collabhub-modules", "third-door-system", "modular-hub-modernization"],
+    "memory": ["VectorFS"]
   },
   "rules": [
     "All execution flows MUST register here",

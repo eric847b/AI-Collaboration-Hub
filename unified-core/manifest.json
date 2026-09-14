@@ -1,0 +1,54 @@
+{
+  "system": "unified-core",
+  "version": "1.0.0",
+  "canonical_registry": "AI-Collaboration-Hub/nexus-core/registry.json",
+  "note": "This is a MANIFEST, not a registry. Nexus-core remains the single canonical registry (rule: 'Only one canonical registry'). Code is source of truth for the ladder; this file mirrors it for humans and cross-language twins.",
+  "model_ladder": [
+    { "id": "cline", "model": "stealth/ox-alpha", "cap": 100 },
+    { "id": "huggingface", "model": "deepseek-ai/DeepSeek-V4-Flash-0731", "cap": 50 },
+    { "id": "gemini", "model": "gemini-2.5-flash", "cap": 200 },
+    { "id": "openrouter", "model": "nvidia/nemotron-3.5-lightning:free", "cap": 45 },
+    { "id": "openai-compatible", "model": "qwen2.5-coder:3b", "cap": 9999 }
+  ],
+  "result_contract": {
+    "response": "string (always present, '[offline-fallback]...' or '[error]...' when not ok)",
+    "provider": "ladder id used",
+    "model": "model id used",
+    "latency_s": "float seconds",
+    "error": "null | string",
+    "ok": "boolean"
+  },
+  "modules": [
+    { "name": "unified-core", "role": "governance", "languages": ["node", "python"], "entrypoint": "node unified-core/test-orchestrator.mjs | python unified-core/unified_orchestrator.py --selftest" },
+    { "name": "AI-Collaboration-Hub", "role": "coordination", "contributes": ["canonical registry", "resilient-git sync", "model-governor rotation policy"] },
+    { "name": "singularity-operator", "role": "execution", "contributes": ["offline-fallback contract", "swarm fan-out", "groq multi-model fallback"], "consumes": ["unified-core ladder via unified_bridge.py"] },
+    { "name": "ai-chat-websites", "role": "ui", "contributes": ["analytics module patterns", "extension provider shims"], "consumes": ["unified-core ladder via Userscripts/tools/unified-bridge.cjs"] },
+    { "name": "collabhub-modules", "role": "automation", "contributes": ["module rotation + evolve harness"], "consumes": ["unified-core via unified-bridge.mjs"] },
+    { "name": "autonomous-github-agent", "role": "execution", "contributes": ["quiet/free/cron agent lifecycle"] },
+    { "name": "nexus-core", "role": "coordination", "contributes": ["canonical registry v2.9", "scope/health checks"] },
+    { "name": "self-evolve-dash", "role": "ui", "contributes": ["self-evolution dashboard"] },
+    { "name": "nexus-infinity-hub", "role": "ui", "contributes": ["hub UI"] },
+    { "name": "VectorFS", "role": "memory", "contributes": ["vector memory"] },
+    { "name": "third-door-blink-controller", "role": "ui", "contributes": ["expo controller"] },
+    { "name": "third-door-system", "role": "automation", "contributes": ["python automation"] },
+    { "name": "solutions-dynamics", "role": "execution", "contributes": ["runtime failure handling"] },
+    { "name": "modular-hub-modernization", "role": "automation", "contributes": ["hub modernization"] }
+  ],
+  "roles": {
+    "governance": ["unified-core"],
+    "coordination": ["AI-Collaboration-Hub", "nexus-core"],
+    "execution": ["singularity-operator", "autonomous-github-agent", "solutions-dynamics"],
+    "ui": ["ai-chat-websites", "self-evolve-dash", "nexus-infinity-hub", "third-door-blink-controller"],
+    "automation": ["collabhub-modules", "third-door-system", "modular-hub-modernization"],
+    "memory": ["VectorFS"]
+  },
+  "cross_training": {
+    "policy": "Every repo consumes the same ladder + result contract; no repo forks rotation logic. Bridges are additive and dependency-free.",
+    "bridges": {
+      "python": "singularity-operator/unified_bridge.py",
+      "node_cjs": "ai-chat-websites/Userscripts/tools/unified-bridge.cjs",
+      "node_esm": "collabhub-modules/unified-bridge.mjs"
+    },
+    "updated": "2026-09-27"
+  }
+}
