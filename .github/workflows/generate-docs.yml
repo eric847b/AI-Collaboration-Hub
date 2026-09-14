@@ -3,6 +3,13 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
+# Artifact upload works without Pages; deploy is best-effort.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   generate-docs:
     runs-on: ubuntu-latest
@@ -84,9 +91,13 @@ jobs:
         with:
           path: 'docs/'
         continue-on-error: true
+
   deploy-pages:
     needs: generate-docs
     runs-on: ubuntu-latest
+    # Soft-fail: Pages env/auth often unset on private or unconfigured repos.
+    # Docs still ship as workflow artifacts.
+    continue-on-error: true
     if: github.ref == 'refs/heads/main'
     permissions:
       pages: write
@@ -98,3 +109,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        continue-on-error: true
