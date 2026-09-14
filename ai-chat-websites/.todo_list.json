@@ -6,7 +6,7 @@
     "trajectory_roadmap": "../next_year_roadmap.md",
     "docs_index": "../Userscripts/docs/INDEX.md"
   },
-  "last_updated": "2026-09-27T14:05:00-05:00",
+  "last_updated": "2026-09-27T15:00:00-05:00",
   "core_module_wiring_2026_09": {
     "status": "completed",
     "completed_at": "2026-09-26T14:30:00-05:00",
@@ -172,13 +172,6 @@
   },
   "next_actions": [
     {
-      "id": "v3.0.0-multi-model-dashboard",
-      "title": "Add multi-model analytics panel to popup stats tab",
-      "priority": "medium",
-      "status": "todo",
-      "description": "Show provider routing stats, failover rates, cost per generation in analytics dashboard"
-    },
-    {
       "id": "v3.0.0-multi-model-config",
       "title": "Add provider routing config UI to options page",
       "priority": "medium",
@@ -190,7 +183,7 @@
       "title": "Expand multi-model test coverage",
       "priority": "low",
       "status": "todo",
-      "description": "Add integration tests for route() failover logic"
+      "description": "Add integration tests for failover logic"
     }
   ],
   "v2_2_0_production_readiness_2026_09_27": {
@@ -282,7 +275,8 @@
       "Scratch harness verified: simple->ollama, ollama failure->gemini flash, difficulty boundaries 1..5; harness deleted after run",
       "node --check passed on background.js",
       "Integrated 037 module routing into background.js orchestrate() with routedProvider/routedModel/latencyMs/tokenCount/estimatedCost metadata",
-      "Updated popup.js generateScript() to record actual routed provider and pass analytics meta"
+      "Updated popup.js generateScript() to record actual routed provider and pass analytics meta",
+      "Dashboard: renderMultiModelStats() panel added to stats tab showing provider distribution, avg cost, total tokens, routed call count"
     ]
   },
   "v3.0.0_ecosystem_bundle_2026_09_29": {

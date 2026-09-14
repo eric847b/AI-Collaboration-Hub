@@ -95,8 +95,45 @@ function renderStats() {
   html += '<div style="display:flex;gap:6px;margin-top:10px">';
   html += '<button onclick="exportStats()" style="flex:1;background:#0f3460;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;cursor:pointer">Export CSV</button>';
   html += '<button onclick="clearStats()" style="flex:1;background:#4a1a1a;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;cursor:pointer">Clear All</button>';
-  html += '</div>';
+    html += '</div>';
   container.innerHTML = html;
+  renderMultiModelStats(container);
+}
+
+/** Render multi-model routing stats */
+function renderMultiModelStats(container) {
+  const events = JSON.parse(localStorage.getItem('analytics_events') || '[]');
+  if (!events.length) return;
+
+  const byProvider = {};
+  let totalCost = 0, totalTokens = 0, routedCount = 0, failoverEvents = 0;
+  events.forEach(e => {
+    if (e.success) {
+      byProvider[e.provider] = (byProvider[e.provider] || 0) + 1;
+      if (e.routedProvider) routedCount++;
+      if (e.costUsd) totalCost += e.costUsd;
+      if (e.tokens) totalTokens += e.tokens;
+    }
+  });
+
+  const providerNames = Object.keys(byProvider).sort((a, b) => byProvider[b] - byProvider[a]);
+  if (providerNames.length === 0) return;
+
+  let html = '<div style="margin-top:16px;padding:12px;background:#0f1a2c;border-radius:8px">';
+  html += '<div style="font-size:12px;color:#888;margin-bottom:8px">Multi-Model Routing</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
+  html += sCard('Routed', routedCount, '#1a4a8a');
+  html += sCard('Providers', providerNames.length, '#0f3460');
+  html += sCard('Avg Cost', '$' + (totalCost / Math.max(routedCount, 1)).toFixed(4), '#1a4a8a');
+  html += sCard('Total Tokens', totalTokens.toLocaleString(), '#0f3460');
+  html += '</div>';
+  html += '<div style="font-family:monospace;font-size:10px;color:#aaa">';
+  providerNames.forEach(p => {
+    html += p + ': ' + byProvider[p] + ' calls (' + Math.round((byProvider[p] / routedCount) * 100) + '%)<br>';
+  });
+  html += '</div>';
+  html += '</div>';
+  container.insertAdjacentHTML('beforeend', html);
 }
 
 function sCard(label, value, color) {
