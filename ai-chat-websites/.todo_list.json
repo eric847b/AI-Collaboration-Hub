@@ -221,7 +221,7 @@
       "Remaining at session end: 0 items. Next queue empty."
     ]
   },
-    "v3.0.0_extension_2026_09_27": {
+  "v3.0.0_extension_2026_09_27": {
     "id": "v3.0.0-extension_2026_09_27",
     "status": "completed",
     "completed_at": "2026-09-27T07:00:00-05:00",
@@ -235,7 +235,7 @@
       "icons/: 16/32/48/128 PNG files for toolbar + store listings",
       "All JS validated with node --check"
     ],
-        "validation": "node --check passed on background.js, popup.js, content-script.js; 36/36 modules still passing health check; commits b97e983 + e9da6f5 pushed and synced"
+    "validation": "node --check passed on background.js, popup.js, content-script.js; 36/36 modules still passing health check; commits b97e983 + e9da6f5 pushed and synced"
   },
   "v3.0.0_idea_bundle_2026_09_29": {
     "status": "completed",
@@ -250,7 +250,7 @@
     ],
     "validation": "node --check service-worker.js + popup.js; JSON.parse manifest.webmanifest, package.json, manifest.json"
   },
-"v3.0.0_multi_model_orchestration_2026_09_29": {
+  "v3.0.0_multi_model_orchestration_2026_09_29": {
     "status": "completed",
     "completed_at": "2026-09-29T00:00:00-05:00",
     "summary": "Q2 2027 #15 — multi-model orchestration: cheapest-capable-first routing with escalation ladder in the extension background worker ('auto' provider mode).",
@@ -261,7 +261,7 @@
       "node --check passed on background.js"
     ]
   },
-"v3.0.0_ecosystem_bundle_2026_09_29": {
+  "v3.0.0_ecosystem_bundle_2026_09_29": {
     "status": "completed",
     "completed_at": "2026-09-29T00:00:00-05:00",
     "summary": "Q2 2027 #16 team collaboration scaffold + Q4 2026 #8 plugin marketplace (hosted catalog + client + gallery page).",
@@ -273,7 +273,7 @@
       "Verified: node --check on collab.js + marketplace.js; scratch harness PASS for collab fallback/queue + marketplace listing/update/uninstall (harness removed)"
     ]
   },
-"v3_accelerator_2026_09_29": {
+  "v3_accelerator_2026_09_29": {
     "status": "completed",
     "completed_at": "2026-09-29T00:00:00-05:00",
     "summary": "Acceleration pass: implemented the remaining high-value roadmap items as the Userscripts/v3 package + build/test/docs/CI/desktop infrastructure. 13 modules all pass self-test.",
@@ -313,5 +313,15 @@
     "roadmap_items_closed": "110,111,112,113,116,117,118,125,126,127,128,131,133,134,145,146,147,211,213,225,233,274,280,283,286,290",
     "validation": "v3/index.js --selftest 16/16 PASS + tests/v3-extras.test.js 16/16 PASS (run from %TEMP% copy to dodge OneDrive contention); node --check clean on all new JS"
   },
-  "next_actions": []
+  "module_test_harness_2026_09_30": {
+    "status": "completed",
+    "completed_at": "2026-09-30T00:00:00-05:00",
+    "summary": "Module-level spec runner + V8 coverage harness for Userscripts/modules/*.js (complements suite self-tests and tests/regression.mjs).",
+    "details": [
+      "tests/modules/run-all.mjs: discovers *.spec.mjs, runs each, exits non-zero on failure",
+      "tests/modules/coverage.mjs: node:vm + V8 coverage — reports per-module byte coverage from loaded scripts",
+      "tests/modules/utilities.spec.mjs: first spec — exercises utilities.js exports; fixed NUL-byte artifact via temp-script rewrite"
+    ],
+    "validation": "run-all.mjs 1/1 PASS; coverage.mjs reports utilities.js at 100.0% (4453/4453 bytes)"
+  }
 }
