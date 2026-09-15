@@ -18,6 +18,7 @@
     "lint:fix": "eslint . --fix || true",
     "test": "vitest run",
     "check": "npm run lint && npm run test && npm run build",
+    "test:e2e": "playwright test",
     "ci": "npm run check",
     "ai": "node ..\\collabhub-modules\\run-ai.js"
   },
@@ -77,6 +78,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/typography": "^0.5.20",
     "@testing-library/jest-dom": "^7.0.1",

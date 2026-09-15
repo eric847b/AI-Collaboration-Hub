@@ -39,7 +39,8 @@
 
 ### A. Quality & CI
 
-- [ ] Full E2E suite: Playwright/Cypress + visual regression for `nexus-infinity-hub` & `self-evolve-dash` (smoke baseline shipped 2026-09-14: `tools/e2e-smoke.mjs` + `e2e-smoke.yml`)
+- [x] Full E2E suite: Playwright for `nexus-infinity-hub` & `self-evolve-dash` — `@playwright/test` ^1.63 devDependency (lockfiles updated), `playwright.config.js` (serves the production build via `vite preview`), `e2e/app.spec.js` (3 tests: title, `#root` renders, zero console/page errors), `.github/workflows/playwright-e2e.yml` (chromium + HTML report artifact; validated via `test --list`) (2026-09-14)
+- [ ] Visual regression: Playwright screenshot diffing on top of the E2E baseline
 - [x] Load-testing framework — dependency-free `tools/load-test.mjs` (RPS + p50/p95/p99 latency, error-rate & p95 gates), wired into `e2e-smoke.yml` (2026-09-14)
 - [x] Multi-OS spot-check — `.github/workflows/multi-os-gate.yml`: Windows hard gate + Linux informational pwsh gate + cross-platform `node --check` (2026-09-14)
 
@@ -51,9 +52,9 @@
 
 ### C. Fleet sync (from `docs/SYNC_CATALYST.md` + `tools/sync_fleet_catalysts.md`)
 
-- [ ] Byte-for-byte parity: `agent.py`, `security.py`, `stale_branches.py` (standalone `autonomous-github-agent` → nested mirror)
-- [ ] Deep parity: `singularity_operator/` package subtree
-- [ ] Mirrors: `collabhub-modules` / `modular-hub-modernization` / `zero-cost-wealth-playbook-tool`
+- [x] Byte-for-byte parity, all 11 critical catalyst modules — `agent.py`, `security.py`, `stale_branches.py`, `roi_catalyst.py`, `failure_solver.py`, `failure_solver_draft_ext.py`, `profile_io.py`, `cross_repo_coordinator.py`, `fleet_maintenance.py`, `fleet-maintenance.yml`, `completed_catalyst_dataset.md` (SHA256-verified 2026-09-14; several had drifted despite earlier ✅ claims — the nested mirror was even missing agent/security/stale_branches entirely)
+- [x] Deep parity: `singularity_operator/` package subtree — 13/13 files, zero SHA256 diffs (2026-09-14)
+- [x] Mirrors: modular-hub-modernization backfilled (9 files incl. FailureSolver trio); collabhub-modules partial (`VERSION`, `release.yml`); `zero-cost-wealth-playbook-tool` stays reference-only. 3 divergences (collabhub `package.json`/`README.md`, modular `README.md`) deliberately kept nested — the nested trees are actively developed here; flagged for manual review, never auto-overwritten. `modular-hub-modernization` turned out to be an **orphaned gitlink** (mode 160000, no `.gitmodules` mapping — unusable by fresh clones): gitlink removed and the dir is now a gitignored local working mirror of the standalone repo.
 
 ### D. External / community 🌐
 

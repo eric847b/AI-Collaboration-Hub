@@ -1,7 +1,7 @@
 """
 Proactive Runtime Failure Solver for Autonomous GitHub Agent.
 Detects, classifies, and remediates (or proposes) runtime failures of all common types.
-v3.5.0 — draft-PR remediation for timeout / missing_dependency / missing_file.
+v3.5.4 — ignore cancelled runs; draft-PR remediation; unknown floor 40; run-id de-dupe; real job-log classification.
 """
 
 from __future__ import annotations
@@ -29,11 +29,15 @@ FAILURE_PATTERNS: list[tuple[str, str, float]] = [
     (r"out of memory|OOM|Killed|MemoryError", "oom", 85.0),
     (r"disk space|No space left on device|ENOSPC", "disk", 90.0),
     (r"YAML|yaml\.load|ScannerError|ParserError", "yaml", 68.0),
+    (r"deprecated version of.*upload-artifact|automatically failed because it uses a deprecated", "deprecated_action", 92.0),
     (r"Action failed|Process completed with exit code [1-9]", "generic_exit", 55.0),
     (r"Connection refused|Connection reset|Network is unreachable", "network", 77.0),
 ]
 
 DRAFT_PR_CLASSES = frozenset({"timeout", "missing_dependency", "missing_file"})
+
+# Hard failures only. Cancelled = concurrency/supersede noise (not actionable).
+HARD_FAIL_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
 
 COMMON_REMEDIATIONS: dict[str, dict[str, Any]] = {
     "missing_dependency": {
@@ -69,6 +73,11 @@ COMMON_REMEDIATIONS: dict[str, dict[str, Any]] = {
     "oom": {"description": "OOM kill", "safe_actions": ["create_issue"], "example_fix": "Reduce memory footprint."},
     "disk": {"description": "Disk full", "safe_actions": ["create_issue"], "example_fix": "Clean caches early."},
     "yaml": {"description": "Invalid YAML", "safe_actions": ["create_issue"], "example_fix": "Validate with yamllint."},
+    "deprecated_action": {
+        "description": "Bump the GitHub Action to a non-deprecated major version",
+        "safe_actions": ["create_issue"],
+        "example_fix": "Replace actions/upload-pages-artifact@v2 with @v3 (and deploy-pages@v4).",
+    },
     "network": {"description": "Transient network", "safe_actions": ["add_retry", "create_issue"], "example_fix": "Retry with backoff."},
     "generic_exit": {"description": "Non-zero exit", "safe_actions": ["create_issue"], "example_fix": "Inspect full logs."},
 }
@@ -114,7 +123,8 @@ class FailureSolver:
         failed = []
         for run in data.get("workflow_runs") or []:
             conclusion = (run.get("conclusion") or "").lower()
-            if conclusion in ("failure", "timed_out", "cancelled", "startup_failure"):
+            # Cancelled = concurrency/supersede noise — do not open runtime-failure issues.
+            if conclusion in HARD_FAIL_CONCLUSIONS:
                 failed.append({"id": run.get("id"), "name": run.get("name"), "conclusion": conclusion, "html_url": run.get("html_url"), "created_at": run.get("created_at"), "head_branch": run.get("head_branch"), "head_sha": run.get("head_sha"), "event": run.get("event"), "run_attempt": run.get("run_attempt", 1),})
         return failed
 
@@ -122,6 +132,36 @@ class FailureSolver:
         url = f"https://api.github.com/repos/{self.repo_name}/actions/runs/{run_id}/jobs"
         status, data = self._gh_get(url, {"per_page": 20})
         return (data.get("jobs") or []) if status == 200 and data else []
+
+    def get_job_log_tail(self, job_id: int, max_chars: int = 8000) -> str:
+        """Best-effort fetch of job log text (tail). Returns '' on failure or binary zip."""
+        if not self.headers or not job_id:
+            return ""
+        url = f"https://api.github.com/repos/{self.repo_name}/actions/jobs/{job_id}/logs"
+        try:
+            resp = requests.get(url, headers=self.headers, timeout=20, allow_redirects=True)
+            if resp.status_code != 200:
+                return ""
+            ctype = (resp.headers.get("Content-Type") or "").lower()
+            # Logs API often redirects to a zip; skip binary
+            if "zip" in ctype or "octet-stream" in ctype:
+                # Try decode as text anyway — sometimes plain
+                raw = resp.content[: max_chars * 2]
+                try:
+                    text = raw.decode("utf-8", errors="ignore")
+                except Exception:
+                    return ""
+            else:
+                text = resp.text
+            if not text or text.startswith("PK\x03\x04"):
+                return ""
+            # Prefer the tail (errors usually at the end)
+            if len(text) > max_chars:
+                text = text[-max_chars:]
+            return text
+        except Exception as e:
+            self.record_error(e, "failure_solver_job_logs")
+            return ""
 
     def classify_log_snippet(self, text: str) -> list[dict]:
         if not text:
@@ -143,13 +183,16 @@ class FailureSolver:
         jobs = self.get_run_jobs(run["id"])
         classifications, failing_steps = [], []
         for job in jobs:
-            if (job.get("conclusion") or "").lower() not in ("failure", "timed_out", "cancelled"):
+            if (job.get("conclusion") or "").lower() not in ("failure", "timed_out"):
                 continue
             for step in job.get("steps") or []:
                 if (step.get("conclusion") or "").lower() in ("failure", "timed_out"):
                     failing_steps.append({"job": job.get("name"), "step": step.get("name"), "conclusion": step.get("conclusion"), "number": step.get("number")})
+            # Prefer real log tail over name-only proxy
+            log_text = self.get_job_log_tail(job.get("id") or 0)
             proxy = " ".join([run.get("name") or "", job.get("name") or "", " ".join(s.get("name") or "" for s in job.get("steps") or [])])
-            classifications.extend(self.classify_log_snippet(proxy))
+            blob = (log_text + "\n" + proxy) if log_text else proxy
+            classifications.extend(self.classify_log_snippet(blob))
         if run.get("conclusion") == "timed_out":
             classifications.append({"class": "timeout", "score": 85.0, "context": "run conclusion timed_out", "remediation": COMMON_REMEDIATIONS["timeout"]})
         seen, unique = set(), []
@@ -169,15 +212,36 @@ class FailureSolver:
         analyses.sort(key=lambda a: a.get("top_score", 0), reverse=True)
         return analyses
 
+    def _existing_issue_for_run(self, run_id: int) -> dict | None:
+        """Return an open runtime-failure issue that already tracks this run_id, if any."""
+        if not self.headers or not run_id:
+            return None
+        q = f"repo:{self.repo_name} is:issue is:open label:runtime-failure #{run_id}"
+        status, data = self._gh_get("https://api.github.com/search/issues", {"q": q, "per_page": 5})
+        if status != 200 or not data:
+            return None
+        items = data.get("items") or []
+        for it in items:
+            title = it.get("title") or ""
+            body = it.get("body") or ""
+            if f"#{run_id}" in title or f"#{run_id}" in body or str(run_id) in title:
+                return {"number": it.get("number"), "html_url": it.get("html_url"), "class": "existing"}
+        return None
+
     def create_remediation_issue(self, analysis: dict) -> dict | None:
         if not self.headers:
             return None
         run = analysis.get("run") or {}
+        run_id = run.get("id")
+        existing = self._existing_issue_for_run(run_id) if run_id else None
+        if existing:
+            self.profile["failures_deduped"] = self.profile.get("failures_deduped", 0) + 1
+            return existing
         top = analysis.get("classifications") or [{}]
         cls = top[0].get("class", "unknown") if top else "unknown"
         rem = top[0].get("remediation") or {} if top else {}
         title = f"🛠️ Runtime failure: {cls} — {run.get('name', 'workflow')} #{run.get('id')}"
-        body = f"**Run:** [{run.get('name')}]({run.get('html_url')})\n**Conclusion:** `{run.get('conclusion')}`\n**Branch:** `{run.get('head_branch')}`\n**Detected class:** `{cls}` (score {analysis.get('top_score', 0):.0f})\n\n### Suggested remediation\n{rem.get('description', 'Investigate.')}\n\n**Example:** {rem.get('example_fix', 'Add guards.')}\n\n### Failing steps\n" + "\n".join(f"- `{s.get('job')}` / `{s.get('step')}` → `{s.get('conclusion')}`" for s in (analysis.get('failing_steps') or [])) + "\n\n---\nAuto-created by **FailureSolver v3.5.0**."
+        body = f"**Run:** [{run.get('name')}]({run.get('html_url')})\n**Conclusion:** `{run.get('conclusion')}`\n**Branch:** `{run.get('head_branch')}`\n**Detected class:** `{cls}` (score {analysis.get('top_score', 0):.0f})\n\n### Suggested remediation\n{rem.get('description', 'Investigate.')}\n\n**Example:** {rem.get('example_fix', 'Add guards.')}\n\n### Failing steps\n" + "\n".join(f"- `{s.get('job')}` / `{s.get('step')}` → `{s.get('conclusion')}`" for s in (analysis.get('failing_steps') or [])) + "\n\n---\nAuto-created by **FailureSolver v3.5.4**."
         status, data = self._gh_post(f"https://api.github.com/repos/{self.repo_name}/issues", {"title": title[:200], "body": body, "labels": ["runtime-failure", "self-heal", "catalyst", cls]})
         if status in (200, 201) and isinstance(data, dict):
             self.profile["failures_triaged"] = self.profile.get("failures_triaged", 0) + 1
@@ -209,13 +273,13 @@ class FailureSolver:
 
     def _safe_fix_content(self, cls: str, analysis: dict) -> tuple[str, str] | None:
         if cls == "timeout":
-            content = '"""Minimal retry helper auto-added by FailureSolver v3.5 for timeout class.\nSafe, zero side-effects beyond increased resilience on network/API calls.\n"""\nimport time\nfrom typing import Callable, TypeVar\n\nT = TypeVar("T")\n\ndef retry_with_backoff(fn: Callable[[], T], max_attempts: int = 3, base_delay: float = 1.0) -> T:\n    last_exc = None\n    for attempt in range(max_attempts):\n        try:\n            return fn()\n        except Exception as e:\n            last_exc = e\n            if attempt < max_attempts - 1:\n                time.sleep(base_delay * (2 ** attempt))\n    raise last_exc  # type: ignore\n'
+            content = '"""Minimal retry helper auto-added by FailureSolver v3.5.4 for timeout class.\nSafe, zero side-effects beyond increased resilience on network/API calls.\n"""\nimport time\nfrom typing import Callable, TypeVar\n\nT = TypeVar("T")\n\ndef retry_with_backoff(fn: Callable[[], T], max_attempts: int = 3, base_delay: float = 1.0) -> T:\n    last_exc = None\n    for attempt in range(max_attempts):\n        try:\n            return fn()\n        except Exception as e:\n            last_exc = e\n            if attempt < max_attempts - 1:\n                time.sleep(base_delay * (2 ** attempt))\n    raise last_exc  # type: ignore\n'
             return (".github/auto_fix/retry_helper.py", content)
         if cls == "missing_dependency":
-            content = "# Auto-added by FailureSolver v3.5 (missing_dependency class)\n# Review and pin the actual missing package, then remove this comment block.\n# requests>=2.31.0\n"
+            content = "# Auto-added by FailureSolver v3.5.4 (missing_dependency class)\n# Review and pin the actual missing package, then remove this comment block.\n# requests>=2.31.0\n"
             return (".github/auto_fix/requirements_stub.txt", content)
         if cls == "missing_file":
-            content = '"""Path-guard helper auto-added by FailureSolver v3.5 for missing_file class.\nSafe: only creates empty placeholders under allowed relative paths.\n"""\nfrom pathlib import Path\n\ndef ensure_file(path: str, default_content: str = "") -> Path:\n    p = Path(path)\n    if not p.is_absolute():\n        p = Path.cwd() / p\n    try:\n        p.resolve().relative_to(Path.cwd().resolve())\n    except ValueError:\n        raise ValueError(f"Path escapes repo root: {path}")\n    p.parent.mkdir(parents=True, exist_ok=True)\n    if not p.exists():\n        p.write_text(default_content)\n    return p\n'
+            content = '"""Path-guard helper auto-added by FailureSolver v3.5.4 for missing_file class.\nSafe: only creates empty placeholders under allowed relative paths.\n"""\nfrom pathlib import Path\n\ndef ensure_file(path: str, default_content: str = "") -> Path:\n    p = Path(path)\n    if not p.is_absolute():\n        p = Path.cwd() / p\n    try:\n        p.resolve().relative_to(Path.cwd().resolve())\n    except ValueError:\n        raise ValueError(f"Path escapes repo root: {path}")\n    p.parent.mkdir(parents=True, exist_ok=True)\n    if not p.exists():\n        p.write_text(default_content)\n    return p\n'
             return (".github/auto_fix/path_guard.py", content)
         return None
 
@@ -242,11 +306,11 @@ class FailureSolver:
             return None
         branch = f"auto-fix/{cls}-{run.get('id', uuid.uuid4().hex[:8])}"
         self._create_branch(branch, base_sha)
-        msg = f"fix({cls}): minimal safe remediation from FailureSolver v3.5 [run {run.get('id')}]"
+        msg = f"fix({cls}): minimal safe remediation from FailureSolver v3.5.4 [run {run.get('id')}]"
         if not self._put_file(path, content, branch, msg):
             return None
         title = f"🛠️ auto-fix({cls}): minimal safe remediation for run #{run.get('id')}"
-        body = f"**Class:** `{cls}` (score {analysis.get('top_score', 0):.0f})\n**Source run:** [{run.get('name')}]({run.get('html_url')})\n\nMinimal safe helper added at `{path}`.\nReview, adapt, and merge only if appropriate. Draft by design.\n\n---\nAuto-created by **FailureSolver v3.5.0**. Zero destructive actions."
+        body = f"**Class:** `{cls}` (score {analysis.get('top_score', 0):.0f})\n**Source run:** [{run.get('name')}]({run.get('html_url')})\n\nMinimal safe helper added at `{path}`.\nReview, adapt, and merge only if appropriate. Draft by design.\n\n---\nAuto-created by **FailureSolver v3.5.4**. Zero destructive actions."
         return self._create_draft_pr(title, body, head=branch, base=default_branch)
 
     def run_proactive_pass(self, max_issues: int = 3) -> str:
@@ -255,14 +319,17 @@ class FailureSolver:
         analyses = self.scan_and_prioritize(max_runs=12)
         if not analyses:
             return "NO_RECENT_FAILURES"
-        created_issues, created_prs = [], []
+        created_issues, created_prs, skipped = [], [], []
         for a in analyses[:max_issues]:
-            if a.get("top_score", 0) < 50:
+            if a.get("top_score", 0) < 40:
                 continue
             result = self.create_remediation_issue(a)
             if result and result.get("number"):
-                created_issues.append(f"#{result['number']} ({result.get('class')})")
-            if a.get("top_class") in DRAFT_PR_CLASSES:
+                if result.get("class") == "existing":
+                    skipped.append(f"#{result['number']}")
+                else:
+                    created_issues.append(f"#{result['number']} ({result.get('class')})")
+            if a.get("top_class") in DRAFT_PR_CLASSES and result and result.get("class") != "existing":
                 pr = self.create_remediation_draft_pr(a)
                 if pr and pr.get("number"):
                     created_prs.append(f"PR#{pr['number']}")
@@ -272,8 +339,10 @@ class FailureSolver:
             parts.append(f"issues: {', '.join(created_issues)}")
         if created_prs:
             parts.append(f"draft-PRs: {', '.join(created_prs)}")
+        if skipped:
+            parts.append(f"deduped: {', '.join(skipped)}")
         if parts:
-            return "Created " + "; ".join(parts)
+            return "Created " + "; ".join(parts) if created_issues or created_prs else "Deduped " + "; ".join(parts)
         return f"Scanned {len(analyses)} failures; no new high-signal items created"
 
 
@@ -284,4 +353,4 @@ def get_failure_solver(repo_name: str, profile: dict | None = None, record_error
 if __name__ == "__main__":
     repo = os.getenv("GITHUB_REPOSITORY", "eric847b/autonomous-github-agent")
     solver = FailureSolver(repo)
-    print(json.dumps({"recent_failed": len(solver.list_recent_failed_runs()), "status": "ready", "version": "3.5.0", "draft_pr_classes": list(DRAFT_PR_CLASSES)}, indent=2))
+    print(json.dumps({"recent_failed": len(solver.list_recent_failed_runs()), "status": "ready", "version": "3.5.4", "draft_pr_classes": list(DRAFT_PR_CLASSES), "hard_fail": list(HARD_FAIL_CONCLUSIONS)}, indent=2))

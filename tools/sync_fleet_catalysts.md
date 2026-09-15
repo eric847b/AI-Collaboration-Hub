@@ -32,10 +32,25 @@ Package subtree `singularity_operator/` may still lag standalone package interna
 3. Nested tree under `AI-Collaboration-Hub/` is a **catalyst / bootstrap mirror** — not a second runtime.
 4. When standalone advances a catalyst module, re-copy into nested path and update this table.
 
+## Parity status (SHA256 hash-verified 2026-09-14)
+
+- ✅ **11/11 critical catalyst modules byte-for-byte**: `agent.py`, `security.py`, `stale_branches.py`,
+  `roi_catalyst.py`, `failure_solver.py`, `failure_solver_draft_ext.py`, `profile_io.py`,
+  `cross_repo_coordinator.py`, `fleet_maintenance.py`, `workflows/fleet-maintenance.yml`,
+  `docs/completed_catalyst_dataset.md` — copied standalone → nested. NOTE: several files had drifted
+  despite earlier ✅ claims in this table; the table below is now hash-backed.
+- ✅ **`singularity_operator/` package subtree deep parity**: 13/13 files, zero SHA256 diffs (12 re-synced).
+- ✅ **modular-hub-modernization mirror**: 9 standalone-only files copied in (incl. FailureSolver trio +
+  workflows); nested `README.md` diverged → kept nested for manual review. NOTE: the parent-repo entry for
+  this path was an **orphaned gitlink** (mode 160000 with NO `.gitmodules` mapping — unusable by fresh
+  clones); gitlink removed 2026-09-14 and the dir is now a gitignored local working mirror of the standalone repo.
+- ◑ **collabhub-modules mirror**: `VERSION` + `.github/workflows/release.yml` copied; `package.json` and
+  `README.md` diverged in both directions → kept nested (actively developed in the monorepo) for manual review.
+- ⏸ **zero-cost-wealth-playbook-tool**: reference-only row; no nested path; no local clone.
+
 ## Remaining (lower priority)
-- Full `agent.py` / security.py / stale_branches.py byte-for-byte parity.
-- Full `singularity_operator/` package subtree deep parity.
-- collabhub-modules / modular-hub-modernization / zero-cost-wealth-playbook-tool mirrors.
+- Manual review of the 3 documented divergences (collabhub `package.json`/`README.md`, modular `README.md`).
+- Re-run the parity sweep whenever the standalone repos advance.
 
 ## Verification
 ```bash

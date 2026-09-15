@@ -15,8 +15,8 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 ### Projects
 | Project | Type | Notes |
 |---------|------|-------|
-| nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc |
-| self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts |
+| nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc, Playwright E2E (3 tests) |
+| self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts, Playwright E2E (3 tests) |
 | collabhub-modules | Node | userscript modules; hosts free-AI CLI (`npm run ai`) |
 | third-door-blink-controller | Node (Expo RN) | lockfile present |
 | ai-chat-websites | Node (Jest+ESLint) | own roadmap: `next_year_roadmap.md` (99% complete) |
@@ -27,13 +27,14 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll any root folder with
 `package.json` (Node) or `requirements.txt` (Python) — no hardcoded lists.
 
-### CI — 23 root workflows in `.github/workflows/`
+### CI — 24 root workflows in `.github/workflows/`
 `ai-guardian-suite-ci` · `all-projects-sanity` · `autonomous-agent` · `branch-cleanup` ·
 `ci-self-heal` · `collabhub-modules-test` · `dependency-review` · `generate-docs` ·
 `lint-autofix` · `lockfile-validation` · `nexus-agent-cron` · `nexus-enforce` · `python-checks` ·
 `regression` · `secret-scan` · `security-scanning` · `solutions-dynamics` · `vulnerability-gate` ·
 `workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (+ load-test step),
-`multi-os-gate` (Windows hard gate / Linux informational; added 2026-09-14).
+`multi-os-gate` (Windows hard gate / Linux informational), `playwright-e2e` (full-browser E2E;
+all added 2026-09-14).
 
 ### Local tooling
 | Tool | Purpose |

@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag (e.g. v1.0.0)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack
+        run: |
+          TAG=${{ github.event.inputs.tag || github.ref_name }}
+          NAME="collabhub-modules-${TAG}"
+          mkdir -p dist/"$NAME" release-assets
+          rsync -a --exclude='.git' --exclude='dist' ./ dist/"$NAME"/
+          (cd dist && zip -r "../release-assets/${NAME}.zip" "$NAME")
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: CollabHub Modules ${{ github.event.inputs.tag || github.ref_name }}
+          body: "Release — CollabHub userscript modules pack."
+          files: release-assets/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

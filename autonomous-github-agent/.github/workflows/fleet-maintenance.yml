@@ -1,16 +1,7 @@
 name: Fleet Maintenance
 
-# Nested-mirror note (autonomous-github-agent v6.0 catalyst sync, per
-# tools/sync_fleet_catalysts.md rule #4): the standalone
-# `.github/fleet_maintenance.py` + workflow are mirrored under
-# `autonomous-github-agent/.github/`. The `working-directory` on the job
-# below keeps the verbatim `python .github/fleet_maintenance.py` invocations
-# resolving to the nested module when this workflow runs from the
-# AI-Collaboration-Hub repository root.
-
 on:
   schedule:
-    # Weekly Sunday 04:00 UTC — low-noise hygiene scan
     - cron: "0 4 * * 0"
   workflow_dispatch:
     inputs:
@@ -22,8 +13,16 @@ on:
         options:
           - plan
           - apply_safe
+      scope:
+        description: "fleet (Sigma 5) or all owned repos"
+        required: false
+        default: "fleet"
+        type: choice
+        options:
+          - fleet
+          - all
       dry_run:
-        description: "Keep dry-run true for apply_safe"
+        description: "Keep dry-run for apply_safe"
         required: false
         default: true
         type: boolean
@@ -31,48 +30,98 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: read
 
 concurrency:
-  group: fleet-maintenance-${{ github.ref }}
-  cancel-in-progress: false
+  group: fleet-maintenance
+  cancel-in-progress: true
 
 jobs:
   maintenance:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: autonomous-github-agent
+    timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
 
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install requests pyyaml
+          pip install requests
 
       - name: Run fleet maintenance (plan)
         if: ${{ github.event_name == 'schedule' || inputs.mode == 'plan' || inputs.mode == '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_FULL_PAT: ${{ secrets.GH_FULL_PAT }}
+          GITHUB_OWNER: eric847b
         run: |
-          python .github/fleet_maintenance.py --mode plan
+          SCOPE="${{ inputs.scope || 'fleet' }}"
+          python .github/fleet_maintenance.py --mode plan --scope "$SCOPE" | tee fleet-maintenance.log
 
       - name: Run fleet maintenance (apply_safe)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'apply_safe' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_FULL_PAT: ${{ secrets.GH_FULL_PAT }}
+          GITHUB_OWNER: eric847b
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             python .github/fleet_maintenance.py --mode apply_safe --dry-run
           else
             python .github/fleet_maintenance.py --mode apply_safe --no-dry-run
           fi
+
+      - name: Redact potential secrets from artifacts
+        if: always()
+        shell: bash
+        run: |
+          set +x
+          for f in fleet-maintenance-report.json fleet-maintenance.log; do
+            if [ -f "$f" ]; then
+              sed -E -i \
+                -e 's/(AIza[0-9A-Za-z_-]{20,})/REDACTED/g' \
+                -e 's/(sk-[0-9A-Za-z_-]{16,})/REDACTED/g' \
+                -e 's/(xai-[0-9A-Za-z]{20,})/REDACTED/g' \
+                -e 's/(hf_[A-Za-z0-9]{16,})/REDACTED/g' \
+                -e 's/(gh[pousr]_[0-9A-Za-z]{20,})/REDACTED/g' \
+                "$f" || true
+            fi
+          done
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fleet-maintenance-${{ github.run_id }}
+          path: |
+            fleet-maintenance-report.json
+            fleet-maintenance.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          p = Path("fleet-maintenance-report.json")
+          if not p.exists():
+              print("## Fleet maintenance\nNo report produced.")
+              raise SystemExit(0)
+          r = json.loads(p.read_text())
+          s = r.get("summary") or {}
+          print("## Fleet maintenance")
+          print(f"- Mode: **{r.get('mode')}** · Scope: **{r.get('scope', 'n/a')}**")
+          print(f"- Repos scanned: **{s.get('repos_scanned')}**")
+          print(f"- Findings: **{s.get('total_findings')}** (high={s.get('high')}, medium={s.get('medium')}, low={s.get('low')})")
+          for block in r.get("repos") or []:
+              n = len(block.get("findings") or [])
+              print(f"- `{block.get('repo')}`: {n} finding(s) ok={block.get('ok')}")
+          PY

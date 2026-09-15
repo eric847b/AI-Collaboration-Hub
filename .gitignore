@@ -75,3 +75,6 @@ Roaming/
 # tools/analyze-freedom.ps1) — never commit stale snapshots
 FreedomReport.txt
 LocalRepoReview.txt
+
+# orphaned gitlink removed 2026-09-14 (no .gitmodules mapping existed); dir lives as a local working mirror of eric847b/modular-hub-modernization
+modular-hub-modernization/

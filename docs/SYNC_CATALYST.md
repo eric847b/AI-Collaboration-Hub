@@ -19,8 +19,14 @@ Sync nested components inside `eric847b/AI-Collaboration-Hub` with external stan
 - Propagated `completed_catalyst_dataset.md` (abbreviated + sync contract)
 - Documented sync contract
 
-## Ongoing
-- Full agent.py / controller / executor / failure_solver propagation when size permits
+## Ongoing (updated 2026-09-14 — parity sweep executed)
+
+- ✅ DONE: full `agent.py` / `security.py` / `stale_branches.py` / `roi_catalyst.py` / `failure_solver*` /
+  `profile_io` / `cross_repo_coordinator` / `fleet_maintenance` propagation — 11/11 modules SHA256-verified
+  (several had drifted despite earlier ✅ claims — always re-hash, never trust the table)
+- ✅ DONE: `singularity_operator/` package subtree deep parity — 13/13 files, zero diffs
+- ✅ DONE: modular-hub-modernization mirror backfill (9 files); collabhub-modules partial (VERSION + release.yml)
+- ◑ 3 documented divergences need manual review (see `tools/sync_fleet_catalysts.md`)
 - Optional subtree or Actions-based bidirectional sync
 - Keep FLEET list consistent across all catalyst modules
 

@@ -1,11 +1,4 @@
-"""
-Shared profile load/save/merge helpers.
-Ensures fleet cooldown fields survive agent-side persists and vice versa.
-
-v4.2.1 — material-change persist gate: skip Contents API commits when only
-volatile counters/timestamps moved. Heartbeat every HEARTBEAT_RUNS runs.
-Reduces repo commit spam without force-push / history rewrite.
-"""
+"""Shared profile persistence with material-change and fleet-state gates."""
 from __future__ import annotations
 
 import base64
@@ -17,215 +10,85 @@ from typing import Any
 
 import requests
 
-PROFILE_PATH = Path(os.getenv("AGENT_PROFILE_PATH", ".agent_profile.json"))
-REPO_NAME = os.getenv("GITHUB_REPOSITORY", "eric847b/autonomous-github-agent")
+PROFILE_PATH=Path(os.getenv("AGENT_PROFILE_PATH",".agent_profile.json"))
+REPO_NAME=os.getenv("GITHUB_REPOSITORY","eric847b/autonomous-github-agent")
+FLEET_FIELDS=("last_fleet_run","fleet_issue_url","fleet_coordinator_runs","fleet_last_summary","fleet_last_health","fleet_pulse")
+COUNTER_FIELDS=("runs","failures_triaged","failure_solver_runs","profile_persists","notifications_handled","issues_created","stale_branches_deleted","gmail_triaged","gmail_marked_read","fleet_coordinator_runs")
+VOLATILE_FIELDS:set[str]={"runs","last_run","evolution_velocity","failure_solver_runs","roi_catalyst_runs","roi_last_run","notif_categories","notifications_handled","depth_history","llm_calls","total_tokens_used","inbox_cleared","gmail_triaged","gmail_marked_read","preflight_skips","errors","security_events","injections_blocked","high_risk_actions_blocked","fleet_pulse","last_fleet_run","fleet_issue_url",*COUNTER_FIELDS}
+HEARTBEAT_RUNS=int(os.getenv("PROFILE_PERSIST_HEARTBEAT_RUNS","0"))
+FLEET_HEARTBEAT_RUNS=int(os.getenv("FLEET_PROFILE_HEARTBEAT_RUNS","12"))
+PERSIST_MAX_ATTEMPTS=5;PERSIST_BASE_DELAY_S=.6
 
-FLEET_FIELDS = (
-    "last_fleet_run",
-    "fleet_issue_url",
-    "fleet_coordinator_runs",
-    "fleet_last_summary",
-)
-
-COUNTER_FIELDS = (
-    "runs",
-    "failures_triaged",
-    "failure_solver_runs",
-    "profile_persists",
-    "notifications_handled",
-    "issues_created",
-    "stale_branches_deleted",
-    "gmail_triaged",
-    "gmail_marked_read",
-    "fleet_coordinator_runs",
-)
-
-VOLATILE_FIELDS: set[str] = {
-    "runs",
-    "last_run",
-    "evolution_velocity",
-    "failure_solver_runs",
-    "roi_catalyst_runs",
-    "roi_last_run",
-    "notif_categories",
-    "depth_history",
-    "llm_calls",
-    "total_tokens_used",
-    "inbox_cleared",
-}
-
-HEARTBEAT_RUNS = int(os.getenv("PROFILE_PERSIST_HEARTBEAT_RUNS", "50"))
-PERSIST_MAX_ATTEMPTS = 5
-PERSIST_BASE_DELAY_S = 0.6
-
-
-def gh_headers() -> dict:
-    token = os.getenv("GH_FULL_PAT") or os.getenv("GITHUB_TOKEN")
-    if not token:
-        return {}
-    return {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
-
-
-def load_local_profile() -> dict[str, Any]:
-    try:
-        if PROFILE_PATH.exists():
-            return json.loads(PROFILE_PATH.read_text())
-    except Exception:
-        pass
-    return {}
-
-
-def save_local_profile(profile: dict[str, Any]) -> None:
-    PROFILE_PATH.write_text(json.dumps(profile, indent=2) + "\n")
-
-
-def merge_profiles(
-    base: dict[str, Any],
-    overlay: dict[str, Any],
-    preserve_fleet_from: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    out = dict(base)
-    out.update(overlay)
-    src = preserve_fleet_from if preserve_fleet_from is not None else base
-    for k in FLEET_FIELDS:
-        if k not in overlay or overlay.get(k) in (None, "", 0):
-            if src.get(k) not in (None, "", 0):
-                out[k] = src[k]
-        else:
-            out[k] = overlay[k]
-    for k in COUNTER_FIELDS:
-        out[k] = max(
-            int(base.get(k) or 0),
-            int(overlay.get(k) or 0),
-            int(src.get(k) or 0),
-        )
-    return out
-
-
-def _prefer_newer_fleet(merged: dict[str, Any], local: dict[str, Any], remote: dict[str, Any]) -> None:
-    try:
-        lr = local.get("last_fleet_run")
-        rr = remote.get("last_fleet_run")
-        if lr and rr and str(lr) < str(rr):
-            merged["last_fleet_run"] = rr
-            if remote.get("fleet_issue_url"):
-                merged["fleet_issue_url"] = remote["fleet_issue_url"]
-        elif lr:
-            merged["last_fleet_run"] = lr
-            if local.get("fleet_issue_url"):
-                merged["fleet_issue_url"] = local["fleet_issue_url"]
-    except Exception:
-        pass
-
-
-def _normalize_for_compare(value: Any) -> str:
-    try:
-        return json.dumps(value, sort_keys=True, default=str)
-    except Exception:
-        return str(value)
-
-
-def material_delta(local: dict[str, Any], remote: dict[str, Any]) -> bool:
-    keys = set(local.keys()) | set(remote.keys())
-    for k in keys:
-        if k in VOLATILE_FIELDS:
-            continue
-        if _normalize_for_compare(local.get(k)) != _normalize_for_compare(remote.get(k)):
-            return True
-    return False
-
-
-def should_persist(local: dict[str, Any], remote: dict[str, Any]) -> tuple:
-    if not remote:
-        return True, "no_remote_profile"
-    if material_delta(local, remote):
-        return True, "material_change"
-    runs = int(local.get("runs") or 0)
-    if HEARTBEAT_RUNS > 0 and runs > 0 and runs % HEARTBEAT_RUNS == 0:
-        return True, f"heartbeat_every_{HEARTBEAT_RUNS}_runs"
-    return False, "volatile_only_skip"
-
-
-def fetch_remote_profile(repo_name: str | None = None) -> tuple:
-    headers = gh_headers()
-    if not headers:
-        return None, {}
-    repo = repo_name or REPO_NAME
-    url = f"https://api.github.com/repos/{repo}/contents/.agent_profile.json"
-    try:
-        resp = requests.get(url, headers=headers, params={"ref": "main"}, timeout=20)
-        if resp.status_code == 404:
-            return None, {}
-        if resp.status_code != 200:
-            return None, {}
-        data = resp.json() or {}
-        sha = data.get("sha")
-        raw = base64.b64decode((data.get("content") or "").replace("\n", "")).decode("utf-8")
-        return sha, json.loads(raw)
-    except Exception:
-        return None, {}
-
-
-def persist_merged_profile(
-    local: dict[str, Any],
-    repo_name: str | None = None,
-    message: str | None = None,
-    force: bool = False,
-) -> str:
-    headers = gh_headers()
-    if not headers:
-        return "NO_TOKEN"
-    repo = repo_name or REPO_NAME
-    url = f"https://api.github.com/repos/{repo}/contents/.agent_profile.json"
-
-    sha, remote = fetch_remote_profile(repo)
-    if not force:
-        ok, reason = should_persist(local, remote or {})
-        if not ok:
-            merged = merge_profiles(remote or {}, local, preserve_fleet_from=remote or local)
-            _prefer_newer_fleet(merged, local, remote or {})
-            save_local_profile(merged)
-            return f"SKIP_PERSIST:{reason}"
-
-    last_err = "PUT_FAIL:unknown"
-    for attempt in range(PERSIST_MAX_ATTEMPTS):
-        sha, remote = fetch_remote_profile(repo)
-        merged = merge_profiles(remote or {}, local, preserve_fleet_from=remote or local)
-        _prefer_newer_fleet(merged, local, remote or {})
-
-        content = json.dumps(merged, indent=2) + "\n"
-        save_local_profile(merged)
-
-        payload = {
-            "message": message
-            or (
-                f"chore(agent): persist profile (fleet-safe merge) "
-                f"[run {merged.get('runs', 0)}] [skip ci]"
-            ),
-            "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
-            "branch": "main",
-        }
-        if sha:
-            payload["sha"] = sha
-
-        try:
-            put = requests.put(url, headers=headers, json=payload, timeout=30)
-            if put.status_code in (200, 201):
-                merged["profile_persists"] = int(merged.get("profile_persists") or 0) + 1
-                save_local_profile(merged)
-                return f"PERSISTED:{put.status_code}"
-            if put.status_code == 409 and attempt < PERSIST_MAX_ATTEMPTS - 1:
-                time.sleep(PERSIST_BASE_DELAY_S * (2 ** attempt))
-                last_err = "PUT_FAIL:409:retrying"
-                continue
-            last_err = f"PUT_FAIL:{put.status_code}:{put.text[:120]}"
-            if put.status_code != 409:
-                return last_err
-        except Exception as e:
-            last_err = f"PERSIST_FAIL:{str(e)[:120]}"
-            if attempt < PERSIST_MAX_ATTEMPTS - 1:
-                time.sleep(PERSIST_BASE_DELAY_S * (2 ** attempt))
-                continue
-            return last_err
-
-    return last_err
+def gh_headers():
+ t=os.getenv("GH_FULL_PAT") or os.getenv("GITHUB_TOKEN");return {"Authorization":f"token {t}","Accept":"application/vnd.github+json"} if t else {}
+def load_local_profile()->dict[str,Any]:
+ try:return json.loads(PROFILE_PATH.read_text()) if PROFILE_PATH.exists() else {}
+ except Exception:return {}
+def save_local_profile(p:dict[str,Any])->None:PROFILE_PATH.write_text(json.dumps(p,indent=2)+"\n")
+def merge_profiles(base:dict[str,Any],overlay:dict[str,Any],preserve_fleet_from:dict[str, Any] | None=None)->dict[str,Any]:
+ o=dict(base);o.update(overlay);src=preserve_fleet_from if preserve_fleet_from is not None else base
+ for k in FLEET_FIELDS:
+  if k not in overlay or overlay.get(k) in (None,"",0):
+   if src.get(k) not in (None,"",0):o[k]=src[k]
+  else:o[k]=overlay[k]
+ for k in COUNTER_FIELDS:o[k]=max(int(base.get(k) or 0),int(overlay.get(k) or 0),int(src.get(k) or 0))
+ return o
+def _prefer_newer_fleet(m:dict[str,Any],local:dict[str,Any],remote:dict[str,Any])->None:
+ try:
+  lr,rr=local.get("last_fleet_run"),remote.get("last_fleet_run")
+  src=remote if lr and rr and str(lr)<str(rr) else local if lr else remote
+  if src:
+   for k in ("last_fleet_run","fleet_issue_url","fleet_pulse","fleet_last_health","fleet_last_summary"):
+    if src.get(k):m[k]=src[k]
+ except Exception:pass
+def _norm(v:Any)->str:
+ try:return json.dumps(v,sort_keys=True,default=str)
+ except Exception:return str(v)
+def material_delta(local:dict[str,Any],remote:dict[str,Any])->bool:
+ return any(k not in VOLATILE_FIELDS and k not in {"fleet_last_summary","fleet_last_health"} and _norm(local.get(k))!=_norm(remote.get(k)) for k in set(local)|set(remote))
+def fleet_state_delta(local:dict[str,Any],remote:dict[str,Any])->bool:
+ return _norm(local.get("fleet_last_health"))!=_norm(remote.get("fleet_last_health"))
+def should_persist(local:dict[str,Any],remote:dict[str,Any])->tuple:
+ if not remote:return True,"no_remote_profile"
+ if material_delta(local,remote):return True,"material_change"
+ if fleet_state_delta(local,remote):return True,"fleet_health_change"
+ runs=int(local.get("runs") or 0)
+ if HEARTBEAT_RUNS>0 and runs and runs%HEARTBEAT_RUNS==0:return True,f"heartbeat_every_{HEARTBEAT_RUNS}_runs"
+ fr=int(local.get("fleet_coordinator_runs") or 0)
+ if FLEET_HEARTBEAT_RUNS>0 and fr and fr%FLEET_HEARTBEAT_RUNS==0:return True,f"fleet_heartbeat_every_{FLEET_HEARTBEAT_RUNS}_runs"
+ return False,"volatile_only_skip"
+def fetch_remote_profile(repo_name:str | None=None)->tuple:
+ h=gh_headers()
+ if not h:return None,{}
+ try:
+  r=requests.get(f"https://api.github.com/repos/{repo_name or REPO_NAME}/contents/.agent_profile.json",headers=h,params={"ref":"main"},timeout=20)
+  if r.status_code==404:return None,{}
+  if r.status_code!=200:return None,{}
+  d=r.json() or {};raw=base64.b64decode((d.get("content") or "").replace("\n","")).decode()
+  return d.get("sha"),json.loads(raw)
+ except Exception:return None,{}
+def persist_merged_profile(local:dict[str,Any],repo_name:str | None=None,message:str | None=None,force:bool=False)->str:
+ h=gh_headers()
+ if not h:return "NO_TOKEN"
+ repo=repo_name or REPO_NAME;url=f"https://api.github.com/repos/{repo}/contents/.agent_profile.json"
+ sha,remote=fetch_remote_profile(repo)
+ if not force:
+  ok,reason=should_persist(local,remote or {})
+  if not ok:
+   m=merge_profiles(remote or {},local,preserve_fleet_from=remote or local);_prefer_newer_fleet(m,local,remote or {});save_local_profile(m);return f"SKIP_PERSIST:{reason}"
+ last_err="PUT_FAIL:unknown"
+ for attempt in range(PERSIST_MAX_ATTEMPTS):
+  sha,remote=fetch_remote_profile(repo);m=merge_profiles(remote or {},local,preserve_fleet_from=remote or local);_prefer_newer_fleet(m,local,remote or {});content=json.dumps(m,indent=2)+"\n";save_local_profile(m)
+  payload={"message":message or "chore(agent): persist material profile state [skip ci]","content":base64.b64encode(content.encode()).decode(),"branch":"main"}
+  if sha:payload["sha"]=sha
+  try:
+   r=requests.put(url,headers=h,json=payload,timeout=30)
+   if r.status_code in (200,201):m["profile_persists"]=int(m.get("profile_persists") or 0)+1;save_local_profile(m);return f"PERSISTED:{r.status_code}"
+   if r.status_code==409 and attempt<PERSIST_MAX_ATTEMPTS-1:time.sleep(PERSIST_BASE_DELAY_S*(2**attempt));last_err="PUT_FAIL:409:retrying";continue
+   last_err=f"PUT_FAIL:{r.status_code}:{r.text[:120]}"
+   if r.status_code!=409:return last_err
+  except Exception as e:
+   last_err=f"PERSIST_FAIL:{str(e)[:120]}"
+   if attempt<PERSIST_MAX_ATTEMPTS-1:time.sleep(PERSIST_BASE_DELAY_S*(2**attempt));continue
+   return last_err
+ return last_err
