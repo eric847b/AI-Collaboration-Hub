@@ -21,10 +21,16 @@ jobs:
   gate:
     name: Suite CI — install → build:bundle → check:suite → validate
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite"
+    env:
+      # Reduce npm registry 429 / transient failures
+      NPM_CONFIG_FETCH_RETRIES: "5"
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "20000"
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "120000"
+      NPM_CONFIG_FETCH_TIMEOUT: "300000"
     steps:
       - uses: actions/checkout@v7
 
@@ -38,15 +44,15 @@ jobs:
       - name: npm ci (retry on rate_limit / network)
         run: |
           set -e
-          for i in 1 2 3 4 5; do
-            if npm ci; then
+          for i in 1 2 3 4 5 6; do
+            if npm ci --prefer-offline; then
               exit 0
             fi
-            echo "npm ci failed (attempt $i); backoff $((i * 15))s"
-            sleep $((i * 15))
+            echo "npm ci failed (attempt $i); backoff $((i * 20))s"
+            sleep $((i * 20))
           done
           echo "npm ci failed after retries; trying npm install"
-          npm install --no-audit --no-fund
+          npm install --no-audit --no-fund --prefer-offline
 
       - name: build:bundle (dense bundle contracts)
         run: npm run build:bundle
