@@ -40,8 +40,8 @@
 ### A. Quality & CI
 
 - [ ] Full E2E suite: Playwright/Cypress + visual regression for `nexus-infinity-hub` & `self-evolve-dash` (smoke baseline shipped 2026-09-14: `tools/e2e-smoke.mjs` + `e2e-smoke.yml`)
-- [ ] Load-testing framework (k6/autocannon) against preview builds
-- [ ] Multi-OS spot-check (ubuntu/windows matrix) for the gate-critical workflows
+- [x] Load-testing framework — dependency-free `tools/load-test.mjs` (RPS + p50/p95/p99 latency, error-rate & p95 gates), wired into `e2e-smoke.yml` (2026-09-14)
+- [x] Multi-OS spot-check — `.github/workflows/multi-os-gate.yml`: Windows hard gate + Linux informational pwsh gate + cross-platform `node --check` (2026-09-14)
 
 ### B. Observability
 
@@ -65,7 +65,7 @@
 
 - [x] Consolidate 7 stale planning docs → this file + `STATUS.md` + `ARCHIVE-improvement-rounds-2026-08.md` (2026-09-14)
 - [x] Fix corrupted `.vscode/tasks.json` (broken JSON line); add real tasks + `.vscode/launch.json` (2026-09-14)
-- [ ] Root junk review: `tmp-alerts.json`, `tmp-reg-meta.json`, `_sg.py`, `fix-security-alerts.cjs`, `FreedomReport.txt`, `LocalRepoReview.txt` — other sessions' generated artifacts; delete when confirmed orphaned ⏸
+- [x] Root junk review (2026-09-14): deleted `_sg.py` (tracked scratch debug script), `tmp-alerts.json` + `tmp-reg-meta.json` (pipeline outputs), stale `FreedomReport.txt` / `LocalRepoReview.txt` (regenerable via `tools/review-repos.ps1` / `analyze-freedom.ps1`); moved the one-off `fix-security-alerts.cjs` pipeline into `tools/`; KEPT machine-state `agent-report.json`, `auto-fix-ledger.json`, `auto-ops-report.json` (actively written by `autonomous-agent.yml` / `ci-self-heal.yml`)
 
 ---
 

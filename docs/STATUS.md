@@ -27,12 +27,13 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll any root folder with
 `package.json` (Node) or `requirements.txt` (Python) — no hardcoded lists.
 
-### CI — 19 root workflows in `.github/workflows/`
+### CI — 23 root workflows in `.github/workflows/`
 `ai-guardian-suite-ci` · `all-projects-sanity` · `autonomous-agent` · `branch-cleanup` ·
 `ci-self-heal` · `collabhub-modules-test` · `dependency-review` · `generate-docs` ·
 `lint-autofix` · `lockfile-validation` · `nexus-agent-cron` · `nexus-enforce` · `python-checks` ·
 `regression` · `secret-scan` · `security-scanning` · `solutions-dynamics` · `vulnerability-gate` ·
-`workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (added 2026-09-14).
+`workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (+ load-test step),
+`multi-os-gate` (Windows hard gate / Linux informational; added 2026-09-14).
 
 ### Local tooling
 | Tool | Purpose |
@@ -42,6 +43,8 @@ Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll 
 | `tools/bootstrap.ps1` | install all Node + Python deps |
 | `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`) — 2026-09-14 |
 | `tools/e2e-smoke.mjs` | serve a built Vite app and assert HTTP 200 + marker — 2026-09-14 |
+| `tools/load-test.mjs` | dependency-free load test: RPS + p50/p95/p99, error-rate & p95 gates — wired into e2e-smoke.yml (2026-09-14) |
+| `tools/fix-security-alerts.cjs` | Dependabot-alert lockfile patching pipeline (moved from root 2026-09-14) |
 | `tools/review-repos.ps1`, `tools/analyze-freedom.ps1` | inventory + freedom-goal reports |
 | `.husky/pre-commit` | direct `prettier`/`eslint` on staged js/ts/json/md/css; empty-set guard (no npx) |
 | `.vscode/tasks.json` | gate / quality / bootstrap / bundle-trend tasks (rebuilt 2026-09-14) |

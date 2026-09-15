@@ -46,3 +46,5 @@ jobs:
         run: npm run build --prefix ${{ matrix.project }}
       - name: Smoke test served build
         run: node tools/e2e-smoke.mjs --project ${{ matrix.project }}
+      - name: Load test served build (gates - error rate and p95)
+        run: node tools/load-test.mjs --project ${{ matrix.project }} --requests 300 --concurrency 15 --max-error-rate 1 --max-p95-ms 3000
