@@ -42,6 +42,15 @@ jobs:
       - name: Fleet parity (skipped automatically when standalone clones are absent)
         if: runner.os == 'Windows'
         run: node tools/sync-parity.mjs check --strict
+      - name: OPS dashboard smoke (both OS)
+        run: node tools/ops-dashboard.mjs --out docs/metrics/OPS-DASHBOARD.md
+      - name: Upload OPS dashboard
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ops-dashboard
+          path: docs/metrics/OPS-DASHBOARD.md
+          if-no-files-found: ignore
       - name: Workspace gate (Windows - hard gate)
         if: runner.os == 'Windows'
         shell: pwsh
