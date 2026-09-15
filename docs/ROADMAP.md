@@ -84,6 +84,13 @@
 
 ---
 
+### G. Round 7 — new items (added AND completed 2026-09-15)
+
+- [x] `tools/extension-check.mjs` — read-only health check for the ai-chat-websites Unified AI Assistant Suite extension (34 checks, all green): manifest.json MV3 shape (service worker, options page, permissions, provider host_permissions), `background.js` routing-ladder plumbing (`MODEL_LADDER`, user-ladder `validateLadder`/`getRoutingLadder`, ladder-aware `routedTier`/`runLadder`, Gemini + Ollama response parsing), `options.html` ladder UI (enable checkbox, JSON textarea, status feedback, storage keys), client↔background `LADDER_PROVIDERS` parity (the two duplicated validators cannot drift), no hardcoded secrets. Wired into `verify-tools.mjs` smoke matrix (now 9 tools, 9 green) + `multi-os-gate.yml` (syntax + `--quiet` step on both OS)
+- [x] `multi-os-gate.yml` — extension health gate: `node --check tools/extension-check.mjs` in the both-OS syntax block + `extension-check.mjs --quiet` step; sibling browser-extension work (routing-ladder UI in `options.html` + ladder plumbing in `background.js`, another session's unstaged changes — never staged or reverted) is now covered by CI instead of ad-hoc review
+
+---
+
 ## 3. Continuous Improvement Loop (updated 2026-09-14)
 
 Replaces `CLINE_CONTINUOUS_IMPROVEMENT.md` (deleted; its stale `npm run health/verify` commands pointed at scripts that no longer exist):

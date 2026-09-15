@@ -12,6 +12,7 @@
  *   1. `node --check` syntax validation (fast, no side effects)
  *   2. tool-specific smoke invocation with read-only/report flags:
  *      - check-doc-links.mjs  -> --quiet (exit 1 on broken links)
+ *      - extension-check.mjs    -> --quiet (exit 1 on extension drift)
  *      - sync-parity.mjs      -> check [--strict] (report-only; never syncs)
  *      - bundle-trend.cjs     -> report --limit 1 (read-only ledger read)
  *      - ops-dashboard.mjs    -> --help-free dry run is NOT supported, so it is
@@ -33,6 +34,7 @@ const strict = process.argv.includes('--strict');
 /** Read-only smoke commands per tool basename; null = syntax-check only. */
 const SMOKE = {
   'check-doc-links.mjs': ['--quiet'],
+  'extension-check.mjs': ['--quiet'],
   'sync-parity.mjs': strict ? ['check', '--strict'] : ['check'],
   'bundle-trend.cjs': ['report', '--limit', '1'],
 };

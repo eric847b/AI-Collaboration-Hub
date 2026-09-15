@@ -47,6 +47,7 @@ all added 2026-09-14).
 | `tools/check-doc-links.mjs` | relative-link health for all Markdown — 152 files / 0 broken (2026-09-14) |
 | `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard` (2026-09-14) |
 | `tools/verify-tools.mjs` | one-command health check for all `tools/*.mjs\|*.cjs`: `node --check` + read-only smoke runs (`npm run tools:verify`, `--strict` also fails on parity DIFFs) — 2026-09-15 |
+| `tools/extension-check.mjs` | read-only health check for the ai-chat-websites Unified AI Assistant Suite extension: manifest MV3 shape, background.js routing-ladder plumbing, options.html ladder UI, LADDER_PROVIDERS parity, no hardcoded secrets (34 checks; wired into `multi-os-gate.yml`) — 2026-09-15 |
 | `tools/e2e-smoke.mjs` | serve a built Vite app and assert HTTP 200 + marker — 2026-09-14 |
 | `tools/load-test.mjs` | dependency-free load test: RPS + p50/p95/p99, error-rate & p95 gates — wired into e2e-smoke.yml (2026-09-14) |
 | `tools/fix-security-alerts.cjs` | Dependabot-alert lockfile patching pipeline (moved from root 2026-09-14) |
