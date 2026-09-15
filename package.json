@@ -18,6 +18,7 @@
     "parity": "node tools/sync-parity.mjs check",
     "metrics:report": "node tools/bundle-trend.cjs markdown",
     "dashboard": "node tools/ops-dashboard.mjs",
+    "tools:verify": "node tools/verify-tools.mjs",
     "prepare": "husky"
   },
   "version": "1.0.0",

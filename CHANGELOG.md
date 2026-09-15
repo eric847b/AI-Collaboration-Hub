@@ -2,6 +2,11 @@
 
 All notable workspace-level changes are documented here.
 
+## [Unreleased] — 2026-09-15
+
+### Added
+- `tools/verify-tools.mjs` — one-command health check for all `tools/*.mjs|*.cjs` (`node --check` syntax + read-only smoke runs; `--strict` also fails on parity DIFFs; `npm run tools:verify`; VS Code task `tools: verify all workspace tools`); 8 tools, all green
+
 ## [Unreleased] — 2026-09-14
 
 ### Added
