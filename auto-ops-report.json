@@ -1,14 +1,16 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-14T00:36:18Z",
+  "scanned_at": "2026-09-15T04:13:33Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
     "closed": [],
-    "kept": [],
+    "kept": [
+      575
+    ],
     "errors": []
   },
   "policy_lockfile_spam": {
@@ -24,23 +26,15 @@
     "recreate_requests": [],
     "skipped": [
       {
-        "number": 544,
+        "number": 578,
         "reason": "not-patch-conflict-policy"
       },
       {
-        "number": 500,
+        "number": 577,
         "reason": "not-patch-conflict-policy"
       },
       {
-        "number": 498,
-        "reason": "not-patch-conflict-policy"
-      },
-      {
-        "number": 497,
-        "reason": "not-patch-conflict-policy"
-      },
-      {
-        "number": 496,
+        "number": 576,
         "reason": "not-patch-conflict-policy"
       }
     ],
@@ -50,29 +44,19 @@
     "merged": [],
     "skipped": [
       {
-        "number": 496,
+        "number": 576,
         "reason": "not-patch",
-        "title": "chore(deps): bump zod from 4.4.3 to 4.5.4 in /self-evolve-dash"
+        "title": "ci(deps): bump actions/upload-artifact from 4 to 7"
       },
       {
-        "number": 497,
+        "number": 577,
         "reason": "not-patch",
-        "title": "chore(deps): bump @hookform/resolvers from 5.7.1 to 5.9.1 in /self-evolve-dash"
+        "title": "ci(deps): bump actions/setup-node from 4 to 7"
       },
       {
-        "number": 498,
+        "number": 578,
         "reason": "not-patch",
-        "title": "chore(deps-dev): bump typescript-eslint from 8.66.0 to 8.70.0 in /self-evolve-dash"
-      },
-      {
-        "number": 500,
-        "reason": "not-patch",
-        "title": "chore(deps): bump lucide-react from 1.24.0 to 1.43.0 in /self-evolve-dash"
-      },
-      {
-        "number": 544,
-        "reason": "not-patch",
-        "title": "ci(deps-dev): bump baseline-browser-mapping from 2.10.43 to 2.11.23 in /self-evolve-dash"
+        "title": "ci(deps): bump actions/checkout from 4 to 7"
       }
     ],
     "errors": []
