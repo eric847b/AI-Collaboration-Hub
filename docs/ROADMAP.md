@@ -70,6 +70,19 @@
 
 ---
 
+### F. Round 6 — new items (added AND completed 2026-09-14, session 2)
+
+- [x] `tools/sync-parity.mjs` + `tools/parity-map.json` — the manual fleet sweep turned into a reusable, mapping-driven tool (`check`/`sync`, overwrite vs missing-only modes, standalone-clone-missing → auto-skip). Live-verified: **41 files / 4 pairs, all at parity, `--strict` exit 0**. Wired into `multi-os-gate.yml` (Windows, strict)
+- [x] `tools/check-doc-links.mjs` — relative-link health checker for all Markdown; found and **fixed 6 real broken links** (incl. one introduced by this session's consolidation + pre-existing stale paths). Now **152 files / 38 links / 0 broken**. Wired into `multi-os-gate.yml` (both OS) + `npm run docs:check`
+- [x] `AGENTS.md` at repo root — durable agent-onboarding rules (workspace map, commands, 12 durable rules incl. the PS 5.1 traps hit this session); closes the "no AGENTS.md" gap flagged by renitor
+- [x] `docs/README.md` — documentation index (canonical entry points + machine-generated list)
+- [x] `.github/PULL_REQUEST_TEMPLATE.md` — PR checklist wired to the gate, actionlint, parity check and repo rules (none existed at root)
+- [x] `CHANGELOG.md` — full 2026-09-14 [Unreleased] section (Added/Fixed/Removed) covering all three commit batches
+- [x] `.renitor/project-memory.md` — durable decisions file (was referenced by handoff §13 but never existed)
+- [x] `bundle-trend.cjs markdown` — emits `docs/metrics/bundle-report.md` (latest + trend table) from the ledger; `npm run metrics:report`. New npm scripts: `docs:check`, `parity`, `metrics:report`
+
+---
+
 ## 3. Continuous Improvement Loop (updated 2026-09-14)
 
 Replaces `CLINE_CONTINUOUS_IMPROVEMENT.md` (deleted; its stale `npm run health/verify` commands pointed at scripts that no longer exist):

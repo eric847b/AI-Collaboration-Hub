@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "comment": "Fleet mirror mapping for tools/sync-parity.mjs. standaloneRoot may be absolute or repo-relative. mode 'overwrite' = byte parity, standalone is source of truth; 'missing-only' = never overwrite existing nested files (nested tree is actively developed). Contract: docs/SYNC_CATALYST.md + tools/sync_fleet_catalysts.md.",
+  "pairs": [
+    {
+      "name": "autonomous-github-agent catalysts",
+      "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/autonomous-github-agent",
+      "nestedRoot": "autonomous-github-agent",
+      "mode": "overwrite",
+      "include": [
+        ".github/agent.py",
+        ".github/security.py",
+        ".github/stale_branches.py",
+        ".github/roi_catalyst.py",
+        ".github/failure_solver.py",
+        ".github/failure_solver_draft_ext.py",
+        ".github/profile_io.py",
+        ".github/cross_repo_coordinator.py",
+        ".github/fleet_maintenance.py",
+        ".github/workflows/fleet-maintenance.yml",
+        "docs/completed_catalyst_dataset.md"
+      ]
+    },
+    {
+      "name": "singularity_operator subtree",
+      "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/singularity-operator",
+      "nestedRoot": "singularity-operator",
+      "mode": "overwrite",
+      "includeDirs": ["singularity_operator"]
+    },
+    {
+      "name": "collabhub-modules mirror",
+      "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/collabhub-modules",
+      "nestedRoot": "collabhub-modules",
+      "mode": "missing-only",
+      "exclude": ["package.json", "README.md"]
+    },
+    {
+      "name": "modular-hub-modernization mirror",
+      "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/modular-hub-modernization",
+      "nestedRoot": "modular-hub-modernization",
+      "mode": "missing-only",
+      "exclude": ["README.md"]
+    }
+  ]
+}

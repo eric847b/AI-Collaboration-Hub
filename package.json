@@ -14,6 +14,9 @@
     "ai": "node collabhub-modules/run-ai.js",
     "lint": "echo 'Use: npm run lint:fix to auto-fix all projects (requires PowerShell)'",
     "ci": "npm run gate",
+    "docs:check": "node tools/check-doc-links.mjs",
+    "parity": "node tools/sync-parity.mjs check",
+    "metrics:report": "node tools/bundle-trend.cjs markdown",
     "prepare": "husky"
   },
   "version": "1.0.0",

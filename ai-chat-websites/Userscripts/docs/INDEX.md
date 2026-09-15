@@ -167,7 +167,7 @@ node scripts/build-userscript.js && node scripts/validate-modules.js
 
 ## Roadmap
 
-See [next_year_roadmap.md](../next_year_roadmap.md) for the complete development roadmap through July 2027.
+See [next_year_roadmap.md](../../next_year_roadmap.md) for the complete development roadmap through July 2027.
 
 ## Contributing
 

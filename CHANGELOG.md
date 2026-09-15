@@ -2,6 +2,28 @@
 
 All notable workspace-level changes are documented here.
 
+## [Unreleased] — 2026-09-14
+
+### Added
+- `docs/ROADMAP.md` + `docs/STATUS.md` + `docs/ARCHIVE-improvement-rounds-2026-08.md` — consolidated planning canon (7 stale root docs removed); `AGENTS.md` agent onboarding; `docs/README.md` index; `.github/PULL_REQUEST_TEMPLATE.md`
+- `tools/bundle-trend.cjs` — bundle-size ledger + 10% regression gate (`performance-monitoring.yml`: Saturdays 03:00 + PRs; ledger auto-committed on main)
+- `tools/load-test.mjs` — dependency-free load tester (RPS + latency percentiles, error-rate/p95 gates; wired into `e2e-smoke.yml`)
+- `tools/sync-parity.mjs` + `tools/parity-map.json` — mapping-driven fleet mirror parity tool (41 files / 4 pairs, all at parity)
+- `tools/check-doc-links.mjs` — relative-link health checker for all Markdown (149 files, 0 broken)
+- Playwright E2E for `nexus-infinity-hub` + `self-evolve-dash` (3 tests each; `playwright-e2e.yml` with chromium + report artifact)
+- Workflows: `multi-os-gate.yml` (Windows hard gate / Linux informational), `playwright-e2e.yml`
+- `.vscode/tasks.json` rebuilt + `launch.json` added (machine-local)
+
+### Fixed
+- Fleet sync parity restored (SHA256-verified): nested `autonomous-github-agent` was missing `agent.py`/`security.py`/`stale_branches.py`; 11/11 catalyst modules + 13/13 `singularity_operator` subtree byte-for-byte
+- Orphaned gitlink removed: `modular-hub-modernization` (mode 160000 without `.gitmodules`); dir now a gitignored local working mirror
+- 6 broken Markdown links fixed (ai-chat-websites Docs/ depth + pre-existing stale paths)
+- Corrupted `.vscode/tasks.json` rebuilt; stale `QUALITY_STATUS` references updated in `DEVELOPER_GUIDE.md`, `ai-chat-websites/CONTRIBUTING.md`, `ai-chat-websites/Docs/API.md`; stale `npm run health/verify` docs updated to `npm run gate`
+
+### Removed
+- `_sg.py` (tracked scratch script), `tmp-alerts.json`, `tmp-reg-meta.json`, stale `FreedomReport.txt` / `LocalRepoReview.txt` (regenerable)
+- `fix-security-alerts.cjs` moved from root into `tools/`
+
 ## [Unreleased] — 2026-08-25
 
 ### Security

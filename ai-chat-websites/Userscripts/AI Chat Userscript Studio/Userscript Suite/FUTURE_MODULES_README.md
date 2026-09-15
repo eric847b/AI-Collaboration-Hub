@@ -314,8 +314,8 @@ async doSomething(param1) { }
 
 - [Userscript Documentation](https://www.tampermonkey.net/documentation.php)
 - [Module Development Guide](./docs/MODULE_DEVELOPMENT.md)
-- [API Reference](./docs/API.md)
-- [Example Modules](./examples/)
+- [API Reference](../../Docs/API.md)
+- Example Modules — directory planned, not yet created
 
 ## Support
 

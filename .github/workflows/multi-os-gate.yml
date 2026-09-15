@@ -35,6 +35,13 @@ jobs:
           node --check tools/bundle-trend.cjs
           node --check tools/e2e-smoke.mjs
           node --check tools/load-test.mjs
+          node --check tools/check-doc-links.mjs
+          node --check tools/sync-parity.mjs
+      - name: Doc-link health (all Markdown)
+        run: node tools/check-doc-links.mjs
+      - name: Fleet parity (skipped automatically when standalone clones are absent)
+        if: runner.os == 'Windows'
+        run: node tools/sync-parity.mjs check --strict
       - name: Workspace gate (Windows - hard gate)
         if: runner.os == 'Windows'
         shell: pwsh
