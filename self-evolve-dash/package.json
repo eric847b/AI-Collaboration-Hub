@@ -18,7 +18,8 @@
     "prepare": "husky",
     "check": "npm run lint && npm run typecheck",
     "ci": "npm run check && npm run build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test e2e/visual.spec.js"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",

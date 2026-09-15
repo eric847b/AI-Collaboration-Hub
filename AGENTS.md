@@ -22,6 +22,7 @@ Multi-project monorepo (`github.com/eric847b/AI-Collaboration-Hub`). Projects **
 | `node tools/bundle-trend.cjs collect\|check\|report` | Bundle-size ledger + regression gate (`docs/metrics/bundle-history.json`) |
 | `node tools/sync-parity.mjs check\|sync` | Fleet mirror parity (map: `tools/parity-map.json`) |
 | `node tools/check-doc-links.mjs` | Markdown relative-link health (all `*.md`) |
+| `node tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, link health, machine telemetry) |
 | `node tools/e2e-smoke.mjs --project <app>` | Serve a built Vite app and assert HTTP 200 |
 | `node tools/load-test.mjs --project <app>` | Load test with error-rate + p95 gates |
 

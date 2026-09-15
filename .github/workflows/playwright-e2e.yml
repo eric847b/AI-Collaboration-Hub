@@ -9,6 +9,14 @@ on:
   schedule:
     - cron: '0 5 * * 6' # Saturdays 05:00 UTC
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'seed = regenerate visual baselines and commit them; check = run visual checks'
+        default: check
+        type: choice
+        options:
+          - check
+          - seed
 
 permissions:
   contents: read
@@ -50,3 +58,57 @@ jobs:
           name: playwright-report-${{ matrix.project }}
           path: ${{ matrix.project }}/playwright-report/
           retention-days: 14
+
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # seed mode commits baselines
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [nexus-infinity-hub, self-evolve-dash]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - name: Install and build (${{ matrix.project }})
+        run: |
+          cd ${{ matrix.project }}
+          for i in 1 2 3; do
+            if npm ci || npm install --legacy-peer-deps; then break; fi
+            if [ "$i" = "3" ]; then exit 1; fi
+            sleep $((i * 10))
+          done
+          npm run build
+      - name: Install Playwright chromium
+        run: |
+          cd ${{ matrix.project }}
+          npx playwright install --with-deps chromium
+      - name: Seed visual baselines (dispatch mode=seed only)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'seed'
+        run: npm run test:visual --prefix ${{ matrix.project }} -- --update-snapshots
+      - name: Commit seeded baselines (dispatch mode=seed only)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'seed'
+        run: |
+          git config user.name "workspace-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ matrix.project }}/e2e/visual.spec.js-snapshots"
+          if git diff --cached --quiet; then
+            echo "baselines unchanged"
+          else
+            git commit -m "chore(visual): seed baselines for ${{ matrix.project }} [skip ci]"
+            git push
+          fi
+      - name: Visual check (skips gracefully until baselines exist)
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'check'
+        run: |
+          if [ ! -d "${{ matrix.project }}/e2e/visual.spec.js-snapshots" ]; then
+            echo "No visual baselines yet - run this workflow once with mode=seed to create them."
+            exit 0
+          fi
+          npm run test:visual --prefix ${{ matrix.project }}
+

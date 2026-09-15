@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+/**
+ * ops-dashboard.mjs — repo-level observability dashboard.
+ * Aggregates the telemetry that already exists in this workspace into one Markdown view:
+ *   - CI workflow inventory (from disk — the source of truth)
+ *   - workspace Node tooling inventory
+ *   - bundle-size ledger (latest snapshot + trend deltas)
+ *   - fleet mirror parity (delegates to tools/sync-parity.mjs; auto-skips without clones)
+ *   - Markdown link health (delegates to tools/check-doc-links.mjs)
+ *   - machine-written reports (agent-report.json, auto-ops-report.json, auto-fix-ledger.json)
+ *
+ *   node tools/ops-dashboard.mjs [--out docs/metrics/OPS-DASHBOARD.md]
+ *
+ * Report-only by design: exits 0 even when individual sections are degraded.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const opt = (name, def) => {
+  const i = argv.indexOf(name);
+  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
+};
+const outArg = opt('--out', '');
+const OUT = path.isAbsolute(outArg) ? outArg : path.join(ROOT, outArg || path.join('docs', 'metrics', 'OPS-DASHBOARD.md'));
+
+const readJsonSafe = (rel) => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  } catch {
+    return null;
+  }
+};
+
+const human = (n) => {
+  if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(2) + ' MB';
+  if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+  return n + ' B';
+};
+
+function summarizeJson(obj) {
+  if (Array.isArray(obj)) return `array with ${obj.length} entries`;
+  if (obj && typeof obj === 'object') {
+    const keys = Object.keys(obj);
+    const scalars = keys.filter((k) => typeof obj[k] !== 'object' || obj[k] === null).slice(0, 6);
+    const detail = scalars.map((k) => `${k}=${JSON.stringify(obj[k])}`).join(', ');
+    return `object with ${keys.length} keys${detail ? ` (${detail}${keys.length > scalars.length ? ', …' : ''})` : ''}`;
+  }
+  return JSON.stringify(obj);
+}
+
+function runTool(cmd) {
+  try {
+    return execSync(cmd, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  } catch (e) {
+    const out = (e.stdout || '').trim();
+    return out || `(tool exited ${e.status || '?'})`;
+  }
+}
+
+// ---- section collectors -------------------------------------------------
+
+function workflowsSection(lines) {
+  const dir = path.join(ROOT, '.github', 'workflows');
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => /\.(yml|yaml)$/.test(f))
+    .sort();
+  lines.push(`## CI Workflows (${files.length})`, '');
+  for (const f of files) lines.push(`- \`${f}\``);
+  lines.push('');
+}
+
+function toolingSection(lines) {
+  const dir = path.join(ROOT, 'tools');
+  const files = fs.readdirSync(dir).filter((f) => /\.(mjs|cjs|ps1|json)$/.test(f)).sort();
+  lines.push(`## Workspace Tooling (${files.length} files in tools/)`, '');
+  for (const f of files) lines.push(`- \`${f}\``);
+  lines.push('');
+}
+
+function bundleSection(lines) {
+  const ledger = readJsonSafe(path.join('docs', 'metrics', 'bundle-history.json'));
+  const entries = ledger && Array.isArray(ledger.entries) ? ledger.entries : [];
+  if (entries.length === 0) {
+    lines.push('## Bundle Ledger', '', '_Empty — run `node tools/bundle-trend.cjs collect` after building projects._', '');
+    return;
+  }
+  const latest = entries[entries.length - 1];
+  const prev = entries.length > 1 ? entries[entries.length - 2] : null;
+  const names = Object.keys(latest.projects || {}).sort();
+  lines.push(`## Bundle Ledger (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
+  lines.push('| Project | Size | Files | vs prev |');
+  lines.push('|---------|-----:|------:|---------|');
+  for (const n of names) {
+    let delta = '—';
+    if (prev && prev.projects && prev.projects[n] && prev.projects[n].bytes > 0) {
+      const growth = ((latest.projects[n].bytes - prev.projects[n].bytes) / prev.projects[n].bytes) * 100;
+      delta = `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
+    }
+    lines.push(`| ${n} | ${human(latest.projects[n].bytes)} | ${latest.projects[n].files} | ${delta} |`);
+  }
+  lines.push('');
+}
+
+function toolOutputSection(lines, title, cmd) {
+  lines.push(`## ${title}`, '', '```text', runTool(cmd), '```', '');
+}
+
+function machineReportsSection(lines) {
+  const reports = ['agent-report.json', 'auto-ops-report.json', 'auto-fix-ledger.json'];
+  lines.push('## Machine-Generated Reports', '');
+  for (const r of reports) {
+    const data = readJsonSafe(r);
+    lines.push(`- \`${r}\`: ${data ? summarizeJson(data) : '_not readable / absent_'}`);
+  }
+  lines.push('');
+}
+
+// ---- main ----------------------------------------------------------------
+
+const lines = [];
+lines.push('# OPS Dashboard');
+lines.push('');
+lines.push(`> Auto-generated by \`node tools/ops-dashboard.mjs\` — do not hand-edit. Generated: ${new Date().toISOString()}`);
+lines.push('');
+workflowsSection(lines);
+toolingSection(lines);
+bundleSection(lines);
+toolOutputSection(lines, 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check');
+toolOutputSection(lines, 'Markdown Link Health', 'node tools/check-doc-links.mjs');
+machineReportsSection(lines);
+fs.mkdirSync(path.dirname(OUT), { recursive: true });
+fs.writeFileSync(OUT, lines.join('\n') + '\n', 'utf8');
+console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${lines.length} lines)`);
+
+

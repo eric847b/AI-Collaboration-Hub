@@ -15,8 +15,8 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 ### Projects
 | Project | Type | Notes |
 |---------|------|-------|
-| nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc, Playwright E2E (3 tests) |
-| self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts, Playwright E2E (3 tests) |
+| nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc, Playwright E2E (4 tests incl. visual) |
+| self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts, Playwright E2E (4 tests incl. visual) |
 | collabhub-modules | Node | userscript modules; hosts free-AI CLI (`npm run ai`) |
 | third-door-blink-controller | Node (Expo RN) | lockfile present |
 | ai-chat-websites | Node (Jest+ESLint) | own roadmap: `next_year_roadmap.md` (99% complete) |
@@ -45,6 +45,7 @@ all added 2026-09-14).
 | `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`) — 2026-09-14 |
 | `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode) — 41 files / 4 pairs at parity (2026-09-14) |
 | `tools/check-doc-links.mjs` | relative-link health for all Markdown — 152 files / 0 broken (2026-09-14) |
+| `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard` (2026-09-14) |
 | `tools/e2e-smoke.mjs` | serve a built Vite app and assert HTTP 200 + marker — 2026-09-14 |
 | `tools/load-test.mjs` | dependency-free load test: RPS + p50/p95/p99, error-rate & p95 gates — wired into e2e-smoke.yml (2026-09-14) |
 | `tools/fix-security-alerts.cjs` | Dependabot-alert lockfile patching pipeline (moved from root 2026-09-14) |

@@ -13,6 +13,8 @@ All notable workspace-level changes are documented here.
 - Playwright E2E for `nexus-infinity-hub` + `self-evolve-dash` (3 tests each; `playwright-e2e.yml` with chromium + report artifact)
 - Workflows: `multi-os-gate.yml` (Windows hard gate / Linux informational), `playwright-e2e.yml`
 - `.vscode/tasks.json` rebuilt + `launch.json` added (machine-local)
+- Visual regression for both Vite apps (`e2e/visual.spec.js`; CI `mode=seed` dispatch commits Linux baselines, checks skip gracefully until seeded; `npm run test:visual`)
+- `tools/ops-dashboard.mjs` — OPS Dashboard aggregating workflows/tooling/bundle ledger/fleet parity/link health/machine telemetry into `docs/metrics/OPS-DASHBOARD.md` (`npm run dashboard`; smoke + artifact in `multi-os-gate.yml`)
 
 ### Fixed
 - Fleet sync parity restored (SHA256-verified): nested `autonomous-github-agent` was missing `agent.py`/`security.py`/`stale_branches.py`; 11/11 catalyst modules + 13/13 `singularity_operator` subtree byte-for-byte

@@ -40,14 +40,15 @@
 ### A. Quality & CI
 
 - [x] Full E2E suite: Playwright for `nexus-infinity-hub` & `self-evolve-dash` — `@playwright/test` ^1.63 devDependency (lockfiles updated), `playwright.config.js` (serves the production build via `vite preview`), `e2e/app.spec.js` (3 tests: title, `#root` renders, zero console/page errors), `.github/workflows/playwright-e2e.yml` (chromium + HTML report artifact; validated via `test --list`) (2026-09-14)
-- [ ] Visual regression: Playwright screenshot diffing on top of the E2E baseline
+- [x] Visual regression: Playwright screenshot diffing shipped — `e2e/visual.spec.js` (full-page `toHaveScreenshot`, animations disabled, 2% diff tolerance) in both apps; **baselines are seeded on Linux CI** via `playwright-e2e.yml` dispatch `mode=seed` (auto-commits `*-snapshots/`), checks skip gracefully until seeded; `npm run test:visual` (2026-09-14)
 - [x] Load-testing framework — dependency-free `tools/load-test.mjs` (RPS + p50/p95/p99 latency, error-rate & p95 gates), wired into `e2e-smoke.yml` (2026-09-14)
 - [x] Multi-OS spot-check — `.github/workflows/multi-os-gate.yml`: Windows hard gate + Linux informational pwsh gate + cross-platform `node --check` (2026-09-14)
 
 ### B. Observability
 
 - [x] Bundle/perf trend ledger + CI regression gate → `tools/bundle-trend.cjs` + `performance-monitoring.yml` (2026-09-14)
-- [ ] Error-tracking dashboard (product feature; needs runtime telemetry hook)
+- [x] Repo-level observability dashboard — `tools/ops-dashboard.mjs` → `docs/metrics/OPS-DASHBOARD.md`: aggregates CI workflow inventory (from disk), tooling inventory, bundle ledger + deltas, fleet mirror parity (live), Markdown link health (live), machine telemetry (`agent-report.json`, `auto-ops-report.json`, `auto-fix-ledger.json`). `npm run dashboard`; CI smoke + artifact in `multi-os-gate.yml` (2026-09-14)
+- [ ] Runtime error-telemetry hook (product decision needed — which errors, where to report; the repo-level view is done via OPS-DASHBOARD)
 - [ ] Synthetic/uptime monitoring 🌐 (external service)
 
 ### C. Fleet sync (from `docs/SYNC_CATALYST.md` + `tools/sync_fleet_catalysts.md`)
