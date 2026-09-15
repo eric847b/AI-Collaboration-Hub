@@ -57,12 +57,12 @@ const MultiModelOrchestrationModule = {
             lower.includes('review') || lower.includes('assess') || lower.includes('performance')) return 'analysis';
         if (lower.includes('why') || lower.includes('explain') || lower.includes('reason') ||
             lower.includes('logic') || lower.includes('hypothesis') || lower.includes('diagnose')) return 'reasoning';
+        if (lower.includes('summarize') || lower.includes('summary') || lower.includes('shorten') ||
+            lower.includes('condense') || lower.includes('brief') || lower.includes('overview')) return 'summarization';
         if (lower.includes('write') || lower.includes('story') || lower.includes('creative') ||
             lower.includes('content') || lower.includes('blog') || lower.includes('article') ||
             lower.includes('design')) return 'creative';
-        if (lower.includes('summarize') || lower.includes('summary') || lower.includes('shorten') ||
-            lower.includes('condense') || lower.includes('brief') || lower.includes('overview')) return 'summarization';
-                return 'code';
+        return 'code';
     },
 
     getBestProvider(prompt, taskType) {
@@ -184,7 +184,9 @@ const MultiModelOrchestrationModule = {
     },
 
     getRoutingTable() {
-        return { ...this.routingTable };
+        const copy = {};
+        for (const [k, v] of Object.entries(this.routingTable)) copy[k] = [...v];
+        return copy;
     },
 
     resetUsageHistory() {
