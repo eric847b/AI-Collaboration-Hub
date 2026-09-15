@@ -1,0 +1,48 @@
+name: Node Multi-Version Matrix
+
+on:
+  pull_request:
+    paths:
+      - 'nexus-infinity-hub/**'
+      - 'self-evolve-dash/**'
+      - 'collabhub-modules/**'
+      - 'third-door-blink-controller/**'
+      - '.github/workflows/node-matrix.yml'
+  schedule:
+    - cron: '30 3 * * 6' # Saturdays 03:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [24, 26]
+        project: [nexus-infinity-hub, self-evolve-dash, collabhub-modules, third-door-blink-controller]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - name: Install (${{ matrix.project }} on Node ${{ matrix.node-version }})
+        run: |
+          cd ${{ matrix.project }}
+          for i in 1 2 3; do
+            if npm ci || npm install --legacy-peer-deps; then break; fi
+            if [ "$i" = "3" ]; then exit 1; fi
+            sleep $((i * 10))
+          done
+      - name: Lint / typecheck / test / build (if present)
+        run: |
+          cd ${{ matrix.project }}
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm run test --if-present
+          npm run build --if-present

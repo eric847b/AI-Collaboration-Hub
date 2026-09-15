@@ -298,7 +298,7 @@ Every `.module.user.js` must include:
 
 - **API Reference**: `docs/API.md` — complete exports for all 36 core modules
 - **Developer Guide**: `DEVELOPER_GUIDE.md` — in-depth architecture documentation
-- **Quality Dashboard**: `QUALITY_STATUS.md` — current test/coverage metrics
+- **Quality Dashboard**: `../docs/STATUS.md` — current test/coverage metrics
 - **Strategic Roadmap**: `next_year_roadmap.md` — v2.2.0+ milestones
 - **Master Index**: `PLAN_MAP.md` — every plan file in the repo
 - **Changelog**: `CHANGELOG.md` — version history and release notes

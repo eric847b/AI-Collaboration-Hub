@@ -15,11 +15,11 @@ cd c:\Users\Eric\OneDrive\Documents\GitHub
 # Install all dependencies (Node + Python)
 npm run bootstrap
 
-# Verify everything is healthy
-npm run health
+# Run the workspace quality gate (configs, workflows+actionlint, lockfiles, engines, hooks)
+npm run gate
 ```
 
-Expected output: `Status: HEALTHY` with 0 warnings.
+Expected output: `Status: PASS` (workspace-gate v3, ~21 checks).
 
 ---
 
@@ -129,14 +129,11 @@ black .
 ## 5. Workspace Health & Verification
 
 ```powershell
-# Check dependency health (lockfiles, Python requirements, CI)
-npm run health
+# The ONE quality entrypoint (verify / health / ci all alias it)
+npm run gate
 
-# Verify all workspace configs are in place
-npm run verify
-
-# Full CI suite locally
-npm run ci
+# Full catalyst series: bootstrap → checks → audit → coverage → build → fleet audit
+npm run quality
 ```
 
 ---
@@ -277,7 +274,7 @@ npm run check  # See which files have errors
 **Solution:**
 
 ```powershell
-npm run health  # See what's warning
+npm run gate  # See what's warning
 npm run bootstrap  # Regenerate lockfiles
 git add package-lock.json requirements.txt
 git commit -m "deps: fix lockfiles"
@@ -303,8 +300,8 @@ Settings auto-apply from `.editorconfig` and `.eslintrc.json`.
 
 1. **Check CONTRIBUTING.md** — Guidelines for the workspace
 2. **Read README.md** — Architecture and setup
-3. **Review QUALITY_STATUS.md** — Current state and metrics
-4. **Run health check** — `npm run health` catches most issues
+3. **Review `docs/STATUS.md`** — Current state and metrics
+4. **Run the gate** — `npm run gate` catches most issues
 5. **Check CI logs** — GitHub Actions shows exact errors
 
 ---

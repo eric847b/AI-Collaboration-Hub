@@ -1,0 +1,86 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nexus-infinity-hub/src/**'
+      - 'nexus-infinity-hub/public/**'
+      - 'nexus-infinity-hub/package.json'
+      - 'self-evolve-dash/src/**'
+      - 'self-evolve-dash/public/**'
+      - 'self-evolve-dash/package.json'
+      - 'tools/bundle-trend.cjs'
+      - 'docs/metrics/bundle-history.json'
+      - '.github/workflows/performance-monitoring.yml'
+  pull_request:
+    paths:
+      - 'nexus-infinity-hub/src/**'
+      - 'nexus-infinity-hub/package.json'
+      - 'self-evolve-dash/src/**'
+      - 'self-evolve-dash/package.json'
+      - 'tools/bundle-trend.cjs'
+      - '.github/workflows/performance-monitoring.yml'
+  schedule:
+    - cron: '0 3 * * 6' # Saturdays 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-trend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write # ledger auto-commit on main
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: |
+            nexus-infinity-hub/package-lock.json
+            self-evolve-dash/package-lock.json
+      - name: Install and build nexus-infinity-hub
+        run: |
+          cd nexus-infinity-hub
+          for i in 1 2 3; do
+            if npm ci || npm install --legacy-peer-deps; then break; fi
+            if [ "$i" = "3" ]; then exit 1; fi
+            sleep $((i * 10))
+          done
+          npm run build
+      - name: Install and build self-evolve-dash
+        run: |
+          cd self-evolve-dash
+          for i in 1 2 3; do
+            if npm ci || npm install --legacy-peer-deps; then break; fi
+            if [ "$i" = "3" ]; then exit 1; fi
+            sleep $((i * 10))
+          done
+          npm run build
+      - name: Regression gate vs committed baseline
+        run: node tools/bundle-trend.cjs check --threshold 10
+      - name: Record snapshot
+        run: node tools/bundle-trend.cjs collect --note "ci:${{ github.event_name }}"
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bundle-history
+          path: docs/metrics/bundle-history.json
+          if-no-files-found: ignore
+      - name: Commit ledger (main pushes only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "workspace-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/metrics/bundle-history.json
+          if git diff --cached --quiet; then
+            echo "ledger unchanged"
+          else
+            git commit -m "chore(perf): record bundle snapshot [skip ci]"
+            git push
+          fi

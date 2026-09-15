@@ -2,6 +2,12 @@
 
 Multi-project workspace containing AI agents, dashboards, userscript modules, and infrastructure tools.
 
+## Planning & Status
+
+- **`docs/ROADMAP.md`** — single source of truth for all plans, to-dos, and improvement rounds
+- **`docs/STATUS.md`** — verified live state (workflows, tooling, caveats)
+- **`docs/ARCHIVE-improvement-rounds-2026-08.md`** — condensed history of improvement rounds 1–3 (the superseded root docs were removed 2026-09-14; see git history)
+
 ## Projects
 
 ### Node/React Projects
@@ -154,12 +160,13 @@ This validates:
 
 ### Verification
 
-To run all verification scripts:
+To run the workspace quality gate:
 
 ```powershell
-npm run verify    # Checks shared configs, projects, workflows
-npm run health    # Checks lockfiles and dependencies
-npm run ci        # Runs both verify and health
+npm run gate      # workspace-gate v3: configs, workflows (+ live actionlint), lockfiles, engines, hook integrity
+npm run verify    # alias of gate
+npm run health    # alias of gate
+npm run ci        # alias of gate
 ```
 
 ## Tooling & Automation
@@ -170,7 +177,9 @@ The workspace ships with PowerShell tooling under `tools/`:
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run-quality.ps1`     | **Catalyst series**: bootstrap → npm check/lint → Python install → health → verify → npm audit → eslint fix → vitest coverage → build → lockfile commit → fleet audit (Step 11), then a colour‑coded summary + exit code. |
 | `review-repos.ps1`    | Inventories the monorepo + project subfolders (git info, key files, file counts) and writes `LocalRepoReview.txt`.                                                                                                        |
-| `analyze-freedom.ps1` | Scores each project against freedom goals (Financial / Biological / Chores) and writes `FreedomReport.txt`.                                                                                                               |
+| `analyze-freedom.ps1` | Scores each project against freedom goals (Financial / Biological / Chores) and writes `FreedomReport.txt`.                                                                                                                       |
+| `bundle-trend.cjs`    | **Node tool** — bundle-size ledger: `collect` snapshots every project's build output into `docs/metrics/bundle-history.json`; `check` fails on >10% growth; `report` prints history.                                             |
+| `e2e-smoke.mjs`       | **Node tool** — serves a built Vite app with `vite preview` and asserts HTTP 200 (E2E smoke slice; wired into `e2e-smoke.yml`).                                                                                                  |
 
 Run the full catalyst series in one command via `npm run quality`, or launch scripts individually from the root:
 

@@ -490,7 +490,7 @@ Coverage thresholds: **80%** branches, functions, lines, statements.
 
 - [ROADMAP.md](../Userscripts/AI%20Chat%20Userscript%20Studio/Userscript%20Suite/ROADMAP.md) — Feature roadmap (386/386 complete)
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — Contributor guide
-- [QUALITY_STATUS.md](../QUALITY_STATUS.md) — Quality metrics
+- [STATUS.md](../docs/STATUS.md) — Quality metrics
 - [DEVELOPER_GUIDE.md](../DEVELOPER_GUIDE.md) — Developer onboarding
 - [next_year_roadmap.md](../next_year_roadmap.md) — Future trajectory
 | Function | Signature | Description |

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "description": "Bundle-size ledger maintained by tools/bundle-trend.cjs (collect/check/report). Append-only; latest entry is the newest snapshot.",
+  "entries": [
+    {
+      "timestamp": "2026-09-15T01:45:30.602Z",
+      "gitSha": "ba4ca32",
+      "note": "initial baseline (existing local builds)",
+      "projects": {
+        "nexus-infinity-hub": {
+          "bytes": 825140,
+          "files": 25,
+          "dirs": {
+            "dist": 825140
+          }
+        }
+      }
+    }
+  ]
+}
