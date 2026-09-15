@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+web-build/
+dist/
+coverage/
+.metro/
+.haste-cache/
+*.log
+package-lock.json
+yarn.lock
+*.egg-info/

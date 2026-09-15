@@ -15,12 +15,17 @@ All notable workspace-level changes are documented here.
 - `.vscode/tasks.json` rebuilt + `launch.json` added (machine-local)
 - Visual regression for both Vite apps (`e2e/visual.spec.js`; CI `mode=seed` dispatch commits Linux baselines, checks skip gracefully until seeded; `npm run test:visual`)
 - `tools/ops-dashboard.mjs` — OPS Dashboard aggregating workflows/tooling/bundle ledger/fleet parity/link health/machine telemetry into `docs/metrics/OPS-DASHBOARD.md` (`npm run dashboard`; smoke + artifact in `multi-os-gate.yml`)
+- `third-door-blink-controller`: `.prettierignore`, `.env.example`, `typecheck` script (`tsc --noEmit`); enables `--if-present` type-checking in `node-matrix.yml`
 
 ### Fixed
 - Fleet sync parity restored (SHA256-verified): nested `autonomous-github-agent` was missing `agent.py`/`security.py`/`stale_branches.py`; 11/11 catalyst modules + 13/13 `singularity_operator` subtree byte-for-byte
 - Orphaned gitlink removed: `modular-hub-modernization` (mode 160000 without `.gitmodules`); dir now a gitignored local working mirror
 - 6 broken Markdown links fixed (ai-chat-websites Docs/ depth + pre-existing stale paths)
 - Corrupted `.vscode/tasks.json` rebuilt; stale `QUALITY_STATUS` references updated in `DEVELOPER_GUIDE.md`, `ai-chat-websites/CONTRIBUTING.md`, `ai-chat-websites/Docs/API.md`; stale `npm run health/verify` docs updated to `npm run gate`
+- `third-door-blink-controller`: `.gitignore` expanded with security-critical patterns (`.env*`, `.expo/`, `web-build/`, native build outputs, logs); previously only `node_modules` + `expo-env.d.ts` were ignored, risking accidental `.env.local` commits
+- `third-door-blink-controller`: removed unused imports (`Text`, `Platform`, `Layout`) and dead `lastBlinkTime` state from `app/index.tsx`
+- `third-door-blink-controller`: status indicator dot now shows amber (`#ffaa00`) for `mutating` state (was identical to `active`/green)
+- `third-door-blink-controller`: `app.json` EAS `projectId` placeholder made self-documenting (`REPLACE_WITH_YOUR_EAS_PROJECT_ID`)
 
 ### Removed
 - `_sg.py` (tracked scratch script), `tmp-alerts.json`, `tmp-reg-meta.json`, stale `FreedomReport.txt` / `LocalRepoReview.txt` (regenerable)

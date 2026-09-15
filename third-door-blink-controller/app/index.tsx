@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Generator, SystemState, EvolutionLevel } from '@/components/Generator';
 import { Container, Button, SizableText, H1, XStack, YStack, Theme } from '@blinkdotnew/mobile-ui';
@@ -22,7 +22,6 @@ export default function App() {
   const [level, setLevel] = useState<EvolutionLevel>(0);
   const [mutationFactor, setMutationFactor] = useState(0);
   const [seed, setSeed] = useState(0);
-  const [lastBlinkTime, setLastBlinkTime] = useState(0);
   const [blinkCount, setBlinkCount] = useState(0);
   const [isLongBlinking, setIsLongBlinking] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -156,7 +155,7 @@ function SafeAreaContent({
           <YStack padding="$4" gap="$2">
             <XStack justifyContent="space-between" alignItems="center">
               <SizableText color="$color9">System Status</SizableText>
-              <View style={[styles.statusDot, { backgroundColor: systemState === 'dormant' ? '#ff4444' : '#00ff00' }]} />
+              <View style={[styles.statusDot, { backgroundColor: systemState === 'dormant' ? '#ff4444' : systemState === 'mutating' ? '#ffaa00' : '#00ff00' }]} />
             </XStack>
             <SizableText color="white" size="$5" fontWeight="700">
               {systemState.toUpperCase()}

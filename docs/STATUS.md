@@ -18,7 +18,7 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 | nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc, Playwright E2E (4 tests incl. visual) |
 | self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts, Playwright E2E (4 tests incl. visual) |
 | collabhub-modules | Node | userscript modules; hosts free-AI CLI (`npm run ai`) |
-| third-door-blink-controller | Node (Expo RN) | lockfile present |
+| third-door-blink-controller | Node (Expo RN) | lockfile present, typecheck script, strict TS, ESLint + Prettier configs |
 | ai-chat-websites | Node (Jest+ESLint) | own roadmap: `next_year_roadmap.md` (99% complete) |
 | singularity-operator | Python 3.12 | multi-version CI (3.10–3.12), pytest+coverage |
 | autonomous-github-agent | Python | standalone repo is source of truth (see SYNC_CATALYST) |

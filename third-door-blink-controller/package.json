@@ -23,6 +23,7 @@
     "doctor": "EXPO_NO_TELEMETRY=1 npx expo doctor",
     "upgrade": "EXPO_NO_TELEMETRY=1 npx expo upgrade",
     "lint": "EXPO_NO_TELEMETRY=1 npx expo lint",
+    "typecheck": "tsc --noEmit",
     "prebuild": "EXPO_NO_TELEMETRY=1 npx expo prebuild",
     "prebuild:clean": "EXPO_NO_TELEMETRY=1 npx expo prebuild --clean"
   },
