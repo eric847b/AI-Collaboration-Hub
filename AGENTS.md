@@ -24,6 +24,7 @@ Multi-project monorepo (`github.com/eric847b/AI-Collaboration-Hub`). Projects **
 | `node tools/check-doc-links.mjs` | Markdown relative-link health (all `*.md`) |
 | `node tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, link health, machine telemetry) |
 | `node tools/verify-tools.mjs [--strict]` | One-command health check for all `tools/*.mjs\|*.cjs` — syntax + read-only smoke runs (`npm run tools:verify`) |
+| `node tools/extension-check.mjs [--quiet]` | Read-only health check for the ai-chat-websites Unified AI Assistant Suite extension (manifest MV3, ladder plumbing + UI, provider parity, no secrets) — also in `multi-os-gate.yml` |
 | `node tools/e2e-smoke.mjs --project <app>` | Serve a built Vite app and assert HTTP 200 |
 | `node tools/load-test.mjs --project <app>` | Load test with error-rate + p95 gates |
 

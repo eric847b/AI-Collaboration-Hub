@@ -110,6 +110,12 @@ function toolOutputSection(lines, title, cmd) {
   lines.push(`## ${title}`, '', '```text', runTool(cmd), '```', '');
 }
 
+function extensionSection(lines) {
+  // Extension health is part of CI (multi-os-gate) via --quiet; inline the full
+  // report here so the dashboard shows per-check findings, not just pass/fail.
+  lines.push('## Browser Extension (Unified AI Assistant Suite)', '', '```text', runTool('node tools/extension-check.mjs'), '```', '');
+}
+
 function machineReportsSection(lines) {
   const reports = ['agent-report.json', 'auto-ops-report.json', 'auto-fix-ledger.json'];
   lines.push('## Machine-Generated Reports', '');
@@ -132,6 +138,7 @@ toolingSection(lines);
 bundleSection(lines);
 toolOutputSection(lines, 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check');
 toolOutputSection(lines, 'Markdown Link Health', 'node tools/check-doc-links.mjs');
+extensionSection(lines);
 machineReportsSection(lines);
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, lines.join('\n') + '\n', 'utf8');
