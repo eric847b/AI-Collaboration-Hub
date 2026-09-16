@@ -1,12 +1,14 @@
 name: Lockfile Validation
 
+# npm-canonical policy: package-lock.json required when deps exist.
+# yarn/pnpm/bun locks alone do not satisfy the gate.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 9 * * 0' # Weekly on Sunday
+    - cron: '0 9 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -21,10 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Discover and validate Node lockfiles
+      - name: Discover and validate Node lockfiles (npm-canonical)
         run: |
           set -e
-          echo "Scanning monorepo for package.json projects..."
+          echo "Scanning monorepo for package.json projects (npm-canonical)..."
           FAIL=0
           WARN=0
           while IFS= read -r -d '' pkg; do
@@ -33,24 +35,34 @@ jobs:
               *node_modules*|*Archive*|*.git*|*dist*|*build*|*/archive/*|*Userscripts*) continue ;;
             esac
 
-            # has_deps=1 only when package.json lists real dependencies
             has_deps=0
             if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if (d.get('dependencies') or d.get('devDependencies') or d.get('optionalDependencies')) else 1)" "$pkg" 2>/dev/null; then
               has_deps=1
             fi
 
-            has_lock=0
-            for lf in package-lock.json pnpm-lock.yaml yarn.lock bun.lockb bun.lock; do
+            has_npm_lock=0
+            if [ -f "$dir/package-lock.json" ]; then
+              has_npm_lock=1
+            fi
+
+            alt=""
+            for lf in pnpm-lock.yaml yarn.lock bun.lockb bun.lock; do
               if [ -f "$dir/$lf" ]; then
-                has_lock=1
-                break
+                alt="$alt $lf"
               fi
             done
 
-            if [ "$has_lock" -eq 1 ]; then
-              echo "✓ $dir: lockfile present"
+            if [ "$has_npm_lock" -eq 1 ]; then
+              echo "✓ $dir: package-lock.json present"
+              if [ -n "$alt" ]; then
+                echo "  ⚠ also has non-npm locks:$alt (prefer remove; npm is canonical)"
+                WARN=1
+              fi
             elif [ "$has_deps" -eq 1 ]; then
-              echo "❌ Missing lockfile under: $dir (has dependencies)"
+              echo "❌ Missing package-lock.json under: $dir (has dependencies; npm-canonical)"
+              if [ -n "$alt" ]; then
+                echo "  found non-npm locks:$alt — run npm install and commit package-lock.json"
+              fi
               FAIL=1
             else
               echo "⚠ $dir: no lockfile (no deps — advisory only)"
@@ -59,10 +71,10 @@ jobs:
           done < <(find . -name package.json -print0 2>/dev/null)
 
           if [ "$FAIL" -ne 0 ]; then
-            echo "::error::One or more Node projects with dependencies lack a lockfile. Run npm/pnpm/yarn install and commit the lockfile."
+            echo "::error::One or more Node projects with dependencies lack package-lock.json (npm-canonical)."
             exit 1
           fi
-          echo "All dependency-bearing Node projects have lockfiles. (warnings=$WARN)"
+          echo "All dependency-bearing Node projects have package-lock.json. (warnings=$WARN)"
 
       - name: Check Python requirements (advisory)
         run: |
@@ -81,4 +93,4 @@ jobs:
         run: |
           echo "Workflow YAML files:"
           find .github/workflows -maxdepth 1 -name '*.yml' -printf '%f\n' 2>/dev/null | wc -l
-          echo "Lockfile validation complete."
+          echo "Lockfile validation complete (npm-canonical)."
