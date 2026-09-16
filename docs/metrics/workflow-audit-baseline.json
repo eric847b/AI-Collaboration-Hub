@@ -26,130 +26,102 @@
   ],
   "totals": {
     "workflows": 24,
-    "findings": 119,
+    "findings": 51,
     "bySeverity": {
       "high": 0,
-      "medium": 78,
+      "medium": 10,
       "low": 41
     }
   },
   "accepted": {
-    ".github/workflows/ai-guardian-suite-ci.yml": {
-      "WF005": 2
-    },
     ".github/workflows/all-projects-sanity.yml": {
-      "WF005": 4,
       "WF008": 2,
       "WF009": 1
     },
     ".github/workflows/autonomous-agent.yml": {
-      "WF005": 2,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/branch-cleanup.yml": {
-      "WF005": 2,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/ci-self-heal.yml": {
       "WF004": 1,
-      "WF005": 3,
       "WF008": 1
     },
     ".github/workflows/collabhub-modules-test.yml": {
-      "WF005": 2,
       "WF006": 1,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/dependency-review.yml": {
-      "WF005": 2,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/e2e-smoke.yml": {
-      "WF005": 2,
       "WF009": 1
     },
     ".github/workflows/generate-docs.yml": {
-      "WF005": 6,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/lint-autofix.yml": {
-      "WF005": 2,
       "WF006": 1,
       "WF009": 1
     },
     ".github/workflows/lockfile-validation.yml": {
-      "WF005": 1,
       "WF006": 1,
       "WF009": 1
     },
     ".github/workflows/multi-os-gate.yml": {
-      "WF005": 3,
       "WF009": 1
     },
     ".github/workflows/nexus-agent-cron.yml": {
-      "WF005": 2,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/nexus-enforce.yml": {
-      "WF005": 1,
       "WF006": 1,
       "WF009": 1
     },
     ".github/workflows/node-matrix.yml": {
-      "WF005": 2,
       "WF009": 1
     },
     ".github/workflows/performance-monitoring.yml": {
-      "WF005": 3,
       "WF009": 1
     },
     ".github/workflows/playwright-e2e.yml": {
-      "WF005": 5,
       "WF009": 1
     },
     ".github/workflows/python-checks.yml": {
-      "WF005": 2,
       "WF006": 1,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/regression.yml": {
-      "WF005": 4,
       "WF008": 2,
       "WF009": 1
     },
     ".github/workflows/secret-scan.yml": {
-      "WF005": 1,
       "WF006": 1,
       "WF008": 1,
       "WF009": 1
     },
     ".github/workflows/security-scanning.yml": {
-      "WF005": 8,
       "WF006": 1,
       "WF008": 3,
       "WF009": 1
     },
     ".github/workflows/solutions-dynamics.yml": {
-      "WF005": 4,
       "WF006": 1,
       "WF008": 2,
       "WF009": 1
     },
     ".github/workflows/vulnerability-gate.yml": {
-      "WF005": 4,
       "WF006": 1,
       "WF008": 2,
       "WF009": 1
-    },
-    ".github/workflows/workflow-lint.yml": {
-      "WF005": 1
     }
   }
 }

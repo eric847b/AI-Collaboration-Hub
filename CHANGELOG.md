@@ -9,6 +9,7 @@ All notable workspace-level changes are documented here.
 
 ### Fixed
 - `.github/workflows/workflow-lint.yml` installed actionlint via `curl … | bash` (WF003 — remote script piped into a shell, the canonical CI RCE); replaced with a SHA256-verified release asset and added `permissions: contents: read`, `concurrency:`, `timeout-minutes` — found by the new audit on its first run
+- **Supply-chain hardening:** all 68 tag-pinned `uses:` across the 24 root workflows rewritten to full commit-SHA pins (`owner/repo@<40-hex> # <ref>`); two of the eight unique refs proved to be mutable branches (`actions/dependency-review-action@v5`, `dependency-check/Dependency-Check_Action@main`) — exactly the risk WF005 flags. WF005 accepted debt 68 → 0, ratchet ledger trimmed 119 → 51 findings in the same change; nested standalone-repo workflows stay mirror-owned (durable rule 12)
 
 
 ### Added

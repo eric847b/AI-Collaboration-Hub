@@ -1,6 +1,6 @@
 # Workspace Status — AI Collaboration Hub
 
-> Verified live state. Regenerated 2026-09-14 (replaces `QUALITY_STATUS.md`, `DELIVERY_SUMMARY.md`,
+> Verified live state. Regenerated 2026-09-15 (replaces `QUALITY_STATUS.md`, `DELIVERY_SUMMARY.md`,
 > `IMPROVEMENTS_SUMMARY*.md`, `ROUND_3_*.md`). Plan/open items live in `docs/ROADMAP.md`.
 
 ## How to check health right now
@@ -35,6 +35,10 @@ Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll 
 `workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (+ load-test step),
 `multi-os-gate` (Windows hard gate / Linux informational), `playwright-e2e` (full-browser E2E;
 all added 2026-09-14).
+
+All 68 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
+(`owner/repo@<sha> # <ref>`) — WF005 supply-chain debt zeroed 2026-09-15 by the `workflow-audit`
+ratchet (ledger 119 → 51 accepted findings; nested standalone-repo workflows remain mirror-owned).
 
 ### Local tooling
 | Tool | Purpose |
