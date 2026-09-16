@@ -15,8 +15,8 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 ### Projects
 | Project | Type | Notes |
 |---------|------|-------|
-| nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc, Playwright E2E (4 tests incl. visual) |
-| self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts, Playwright E2E (4 tests incl. visual) |
+| nexus-infinity-hub | Node/React (Vite) | engines ≥26, coverage ≥70% CI gate, typedoc, Playwright E2E (4 tests incl. visual), runtime error-telemetry hook (13 vitest tests) |
+| self-evolve-dash | Node/React (Vite) | strict TS, lint/typecheck/check/ci scripts, Playwright E2E (4 tests incl. visual), runtime error-telemetry hook (ErrorBoundary wired) |
 | collabhub-modules | Node | userscript modules; hosts free-AI CLI (`npm run ai`) |
 | third-door-blink-controller | Node (Expo RN) | lockfile present, typecheck script, strict TS, ESLint + Prettier configs |
 | ai-chat-websites | Node (Jest+ESLint) | own roadmap: `next_year_roadmap.md` (99% complete) |
@@ -61,7 +61,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/secret-scan.mjs` | offline read-only twin of `.github/workflows/secret-scan.yml`: 20 detectors, redacted evidence, `--staged`/`--all`/`--strict`/`--self-test`/`--check-ci`/`--list-rules`; wired into `.husky/pre-commit` (staged) + `multi-os-gate.yml` (`--quiet` + CI-parity) — 2026-09-15 |
 | `tools/handoff-check.mjs` | validates `.renitor/handoff-result.json` schema + freshness (durable rule 10); strips the PS 5.1 UTF-8 BOM trap before parsing; `skipped (machine-local)` when `.renitor/` is absent (gitignored) — 2026-09-15 |
 | `tools/workflow-audit.mjs` | offline GitHub Actions security/hygiene audit — 12 rules (WF001–WF012), ratchet ledger `docs/metrics/workflow-audit-baseline.json` (`workflow-audit-baseline/v1`, deterministic, growth-only failures); flags `--strict`/`--check-baseline`/`--update-baseline`/`--baseline`/`--json`/`--quiet`/`--verbose`/`--self-test`/`--list-rules`; live tree 24 workflows / 119 findings (high 0 after the WF003 `curl\|bash` fix in `workflow-lint.yml`); wired into `workspace-gate` + `verify-tools` (12 tools green) — 2026-09-15 |
-| `tools/e2e-smoke.mjs` | serve a built Vite app and assert HTTP 200 + marker — 2026-09-14 |
+| `tools/e2e-smoke.mjs` | serve a built Vite app and assert HTTP 200 + marker on every `--route` (repeatable; multi-route synthetic probing) — 2026-09-14, routes added 2026-09-16 |
 | `tools/load-test.mjs` | dependency-free load test: RPS + p50/p95/p99, error-rate & p95 gates — wired into e2e-smoke.yml (2026-09-14) |
 | `tools/fix-security-alerts.cjs` | Dependabot-alert lockfile patching pipeline (moved from root 2026-09-14) |
 | `tools/review-repos.ps1`, `tools/analyze-freedom.ps1` | inventory + freedom-goal reports |

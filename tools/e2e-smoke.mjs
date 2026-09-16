@@ -2,13 +2,15 @@
 /**
  * e2e-smoke.mjs — serve a built Vite app with `vite preview` and smoke-test it.
  *
- *   node tools/e2e-smoke.mjs --project nexus-infinity-hub [--port 4173] [--timeout 60] [--marker '<div id="root"']
+ *   node tools/e2e-smoke.mjs --project nexus-infinity-hub [--port 4173] [--timeout 60] [--marker '<div id="root"'] [--route / --route /dashboard ...]
  *
- * Passes when the served root answers HTTP 200. Marker presence is reported but only
- * warns (layout shells differ). Exit codes: 0 pass · 1 smoke failure · 2 setup error.
+ * Passes when every probed route answers HTTP 200 (default route: "/"; repeat
+ * --route to probe more paths — a dependency-free synthetic multi-route check).
+ * Marker presence is reported but only warns (layout shells differ). Exit codes:
+ * 0 pass · 1 smoke failure · 2 setup error.
  * Cross-platform: spawns npm via shell, kills the whole process tree (taskkill /T on Windows).
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,10 +38,20 @@ const port = Number(opt('--port', '4173'));
 const timeoutMs = Number(opt('--timeout', '60')) * 1000;
 const marker = opt('--marker', '<div id="root"');
 
+// Repeatable --route <path> probes (synthetic multi-route checks). Default: "/".
+const routes = [];
+for (let i = 0; i < args.length - 1; i++) {
+  if (args[i] === '--route') routes.push(args[i + 1]);
+}
+if (!routes.length) routes.push('/');
+
 function killTree(child) {
   try {
     if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', shell: true });
+      // Synchronous: process.exit() runs right after, which would otherwise
+      // kill an in-flight async taskkill and orphan the preview tree (whose
+      // inherited stdio pipes then wedge the calling console).
+      spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
     } else {
       try {
         process.kill(-child.pid, 'SIGTERM');
@@ -113,16 +125,27 @@ child.stderr.on('data', (d) => {
 const deadline = Date.now() + timeoutMs;
 let exitCode = 1;
 try {
-  const res = await waitForServer(deadline);
-  const hasMarker = res.body.includes(marker);
-  console.log(`e2e-smoke: ${project} GET / -> HTTP ${res.status} (${res.body.length}B, marker=${hasMarker ? 'found' : 'missing'})`);
-  if (res.status === 200) {
+  await waitForServer(deadline);
+  let failures = 0;
+  for (const route of routes) {
+    try {
+      const res = await fetchOnce(`http://127.0.0.1:${port}${route}`);
+      const hasMarker = res.body.includes(marker);
+      const ok = res.status === 200;
+      console.log(`e2e-smoke: ${project} GET ${route} -> HTTP ${res.status} (${res.body.length}B, marker=${hasMarker ? 'found' : 'missing'})${ok ? '' : ' FAIL'}`);
+      if (!ok) failures++;
+      if (!hasMarker && route === routes[0]) {
+        console.warn(`e2e-smoke: warning — marker "${marker}" not present in response (informational)`);
+      }
+    } catch (err) {
+      console.error(`e2e-smoke: ${project} GET ${route} -> FAIL ${err.message}`);
+      failures++;
+    }
+  }
+  if (failures === 0) {
     exitCode = 0;
   } else {
-    console.error(`e2e-smoke: FAIL — expected HTTP 200, got ${res.status}`);
-  }
-  if (!hasMarker) {
-    console.warn(`e2e-smoke: warning — marker "${marker}" not present in response (informational)`);
+    console.error(`e2e-smoke: FAIL — ${failures} of ${routes.length} routes answered non-200`);
   }
 } catch (err) {
   console.error(`e2e-smoke: FAIL — ${err.message}`);

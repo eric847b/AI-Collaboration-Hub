@@ -48,8 +48,8 @@
 
 - [x] Bundle/perf trend ledger + CI regression gate → `tools/bundle-trend.cjs` + `performance-monitoring.yml` (2026-09-14)
 - [x] Repo-level observability dashboard — `tools/ops-dashboard.mjs` → `docs/metrics/OPS-DASHBOARD.md`: aggregates CI workflow inventory (from disk), tooling inventory, bundle ledger + deltas, fleet mirror parity (live), Markdown link health (live), machine telemetry (`agent-report.json`, `auto-ops-report.json`, `auto-fix-ledger.json`). `npm run dashboard`; CI smoke + artifact in `multi-os-gate.yml` (2026-09-14)
-- [ ] Runtime error-telemetry hook (product decision needed — which errors, where to report; the repo-level view is done via OPS-DASHBOARD)
-- [ ] Synthetic/uptime monitoring 🌐 (external service)
+- [x] Runtime error-telemetry hook — `src/lib/telemetry.ts` (dependency-free, identical module in both Vite apps): captures window `error` events, unhandled promise rejections and `console.error` (React render errors surface via the dash `ErrorBoundary`, which now calls `reportError(..., 'react', ...)`); bounded 50-entry ring buffer + localStorage persistence (`telemetry:errors`); batch-flushes as JSON via sendBeacon/fetch-keepalive ONLY when an endpoint is configured (`window.TELEMETRY_ENDPOINT` or `installTelemetry({ endpoint })`) — fully local/inert without one; 13 vitest unit tests in nexus (`telemetry.test.ts`); `window.__telemetry` debug snapshot (2026-09-16)
+- [x] Synthetic/uptime monitoring — self-hosted piece DONE: `tools/e2e-smoke.mjs` gained repeatable `--route <path>` probes (default `/`; per-route HTTP-200 pass/fail — dependency-free multi-route synthetic check). The external-service part (real uptime dashboards) stays 🌐 (2026-09-16)
 
 ### C. Fleet sync (from `docs/SYNC_CATALYST.md` + `tools/sync_fleet_catalysts.md`)
 
