@@ -1,103 +1,150 @@
 version: 2
-# Expanded monorepo coverage — maximize free Dependabot (GitHub-native)
-# Patches are grouped so auto_ops can merge one green PR instead of many.
+# Fleet-aligned Dependabot — labels feed AGA dependabot_coordinator.
+# Patch-first groups; majors still open as separate PRs for human review.
 updates:
-  # --- GitHub Actions (keep workflows current) ---
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "tuesday"
-      time: "04:00"
+      day: "monday"
+      time: "06:00"
     open-pull-requests-limit: 5
-    reviewers: ["eric847b"]
+    rebase-strategy: "auto"
+    labels: ["dependencies", "github-actions", "dependabot-coord"]
     commit-message:
-      prefix: "ci"
+      prefix: "chore(actions)"
       include: "scope"
     groups:
       actions-patches:
-        update-types: ["patch"]
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
 
-  # --- npm workspaces ---
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-    groups:
-      npm-root-patches:
-        update-types: ["patch"]
   - package-ecosystem: "npm"
     directory: "/self-evolve-dash"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
     groups:
-      npm-dash-patches:
+      npm-dash:
+        patterns: ["*"]
         update-types: ["patch"]
+
   - package-ecosystem: "npm"
     directory: "/nexus-infinity-hub"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
     groups:
-      npm-nexus-patches:
+      npm-nexus:
+        patterns: ["*"]
         update-types: ["patch"]
+
   - package-ecosystem: "npm"
     directory: "/third-door-blink-controller"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 3
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      npm-third-door-patches:
+      npm-third-door:
+        patterns: ["*"]
         update-types: ["patch"]
+
   - package-ecosystem: "npm"
     directory: "/ai-chat-websites"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 3
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      npm-chat-patches:
+      npm-chat:
+        patterns: ["*"]
         update-types: ["patch"]
+
   - package-ecosystem: "npm"
     directory: "/collabhub-modules"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 2
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      npm-modules-patches:
+      npm-modules:
+        patterns: ["*"]
         update-types: ["patch"]
 
-  # --- Python ---
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    labels: ["dependencies", "python", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      pip-root-patches:
-        update-types: ["patch"]
+      pip-root:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+
   - package-ecosystem: "pip"
     directory: "/autonomous-github-agent"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    labels: ["dependencies", "python", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      pip-agent-patches:
-        update-types: ["patch"]
+      pip-agent:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+
   - package-ecosystem: "pip"
     directory: "/singularity-operator"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    labels: ["dependencies", "python", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      pip-singularity-patches:
-        update-types: ["patch"]
+      pip-singularity:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+
   - package-ecosystem: "pip"
     directory: "/solutions-dynamics"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 3
+    labels: ["dependencies", "python", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
     groups:
-      pip-solutions-patches:
-        update-types: ["patch"]
+      pip-solutions:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
