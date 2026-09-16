@@ -22,7 +22,7 @@ on:
       - 'tools/bundle-trend.cjs'
       - '.github/workflows/performance-monitoring.yml'
   schedule:
-    - cron: '0 3 * * 6' # Saturdays 03:00 UTC
+    - cron: '0 3 * * 6'
   workflow_dispatch:
 
 permissions:
@@ -36,16 +36,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      CI: "true"
+      HUSKY: "0"
       NPM_CONFIG_FETCH_RETRIES: "5"
       NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "20000"
       NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "120000"
     permissions:
-      contents: write # ledger auto-commit on main
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: '26'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: |
             nexus-infinity-hub/package-lock.json
@@ -54,11 +56,10 @@ jobs:
         run: |
           cd nexus-infinity-hub
           for i in 1 2 3 4 5; do
-            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline; then
+            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline --no-audit --no-fund; then
               npm run build
               exit 0
             fi
-            echo "nexus install failed $i; backoff $((i * 20))s"
             sleep $((i * 20))
           done
           exit 1
@@ -66,11 +67,10 @@ jobs:
         run: |
           cd self-evolve-dash
           for i in 1 2 3 4 5; do
-            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline; then
+            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline --no-audit --no-fund; then
               npm run build
               exit 0
             fi
-            echo "dash install failed $i; backoff $((i * 20))s"
             sleep $((i * 20))
           done
           exit 1

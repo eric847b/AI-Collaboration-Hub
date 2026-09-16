@@ -1,36 +1,40 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const isDev = mode === "development";
+  const plugins: PluginOption[] = [react()];
+
+  if (isDev) {
+    try {
+      const mod = await import("lovable-tagger");
+      if (typeof mod.componentTagger === "function") {
+        plugins.push(mod.componentTagger() as PluginOption);
+      }
+    } catch {
+      // optional — must never block production builds
+    }
+  }
 
   return {
     server: {
-      host: true, // resolves IPv6 "::" issues on some networks
+      host: true,
       port: 8080,
-      strictPort: true // prevents silent port switching
+      strictPort: true,
     },
-
-    plugins: [
-      react(),
-      isDev && componentTagger()
-    ].filter(Boolean),
-
+    plugins,
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "src")
-      }
+        "@": path.resolve(__dirname, "src"),
+      },
     },
-
     build: {
       sourcemap: isDev ? "inline" : false,
-      target: "esnext"
+      target: "esnext",
     },
-
     optimizeDeps: {
-      include: ["react", "react-dom"]
-    }
+      include: ["react", "react-dom"],
+    },
   };
 });
