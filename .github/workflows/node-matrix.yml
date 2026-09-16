@@ -1,5 +1,6 @@
 name: Node Multi-Version Matrix
 
+# Aligned with engines >=20 and primary CI Node 22 (LTS track).
 on:
   pull_request:
     paths:
@@ -9,7 +10,7 @@ on:
       - 'third-door-blink-controller/**'
       - '.github/workflows/node-matrix.yml'
   schedule:
-    - cron: '30 3 * * 6' # Saturdays 03:30 UTC
+    - cron: '30 3 * * 6'
   workflow_dispatch:
 
 permissions:
@@ -22,10 +23,15 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      HUSKY: "0"
+      NPM_CONFIG_FETCH_RETRIES: "5"
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "20000"
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "120000"
     strategy:
       fail-fast: false
       matrix:
-        node-version: [24, 26]
+        node-version: [20, 22]
         project: [nexus-infinity-hub, self-evolve-dash, collabhub-modules, third-door-blink-controller]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -38,7 +44,7 @@ jobs:
         run: |
           cd ${{ matrix.project }}
           for i in 1 2 3; do
-            if npm ci || npm install --legacy-peer-deps; then break; fi
+            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline --no-audit --no-fund; then break; fi
             if [ "$i" = "3" ]; then exit 1; fi
             sleep $((i * 10))
           done
