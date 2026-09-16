@@ -19,6 +19,10 @@
     "metrics:report": "node tools/bundle-trend.cjs markdown",
     "dashboard": "node tools/ops-dashboard.mjs",
     "tools:verify": "node tools/verify-tools.mjs",
+    "scan:secrets": "node tools/secret-scan.mjs",
+    "scan:staged": "node tools/secret-scan.mjs --staged",
+    "check:handoff": "node tools/handoff-check.mjs",
+    "tools:selftest": "node tools/secret-scan.mjs --self-test && node tools/handoff-check.mjs --self-test",
     "prepare": "husky"
   },
   "version": "1.0.0",

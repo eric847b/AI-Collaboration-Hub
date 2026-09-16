@@ -1,6 +1,15 @@
 #!/bin/sh
 # Fast path: skip entirely when nothing lintable is staged.
 # (Invoking lint-staged with an empty staged set stalls >30s in this env.)
+# Secret scan FIRST and unconditionally: it reads only the git index, so it is
+# instant even with an empty staged set, and it must NOT be skipped by the
+# lintable-file fast path below (a secret can hide in a .txt/.py/.env that the
+# js/md fast path ignores). Dependency-free; exits 0 on a clean index.
+node tools/secret-scan.mjs --staged || {
+  echo "pre-commit: staged secret scan failed — unstage the secret, move it to ignored storage, then retry." >&2
+  exit 1
+}
+
 FILES=$(git diff --cached --name-only --diff-filter=ACMR || true)
 # Lockfiles are machine-generated; prettier on multi-MB package-lock.json
 # files stalls commits >30s. Exclude them unconditionally.

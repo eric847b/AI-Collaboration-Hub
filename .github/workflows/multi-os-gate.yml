@@ -35,13 +35,21 @@ jobs:
           node --check tools/bundle-trend.cjs
           node --check tools/e2e-smoke.mjs
           node --check tools/extension-check.mjs
+          node --check tools/handoff-check.mjs
           node --check tools/load-test.mjs
           node --check tools/check-doc-links.mjs
+          node --check tools/secret-scan.mjs
           node --check tools/sync-parity.mjs
       - name: Doc-link health (all Markdown)
         run: node tools/check-doc-links.mjs
       - name: Extension health (Unified AI Assistant Suite)
         run: node tools/extension-check.mjs --quiet
+      - name: Secret scan (offline twin of secret-scan.yml)
+        run: |
+          node tools/secret-scan.mjs --quiet
+          node tools/secret-scan.mjs --check-ci
+      - name: Handoff schema check (skips when machine-local state is absent)
+        run: node tools/handoff-check.mjs --quiet
       - name: Fleet parity (skipped automatically when standalone clones are absent)
         if: runner.os == 'Windows'
         run: node tools/sync-parity.mjs check --strict

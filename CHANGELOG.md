@@ -2,6 +2,16 @@
 
 All notable workspace-level changes are documented here.
 
+### Added
+- `tools/secret-scan.mjs` — offline, read-only twin of `.github/workflows/secret-scan.yml`: 20 detectors (OpenAI legacy/project, Anthropic, OpenRouter, Groq, GitHub PAT classic/fine-grained/OAuth/App/refresh, Google API key, AWS access key id, Slack, Stripe live, HuggingFace, npm, PEM private-key block, JWT, generic high-entropy/long-hex), redacted evidence, placeholder/env suppression. Flags `--staged` (git index), `--all`, `--strict`, `--json`, `--quiet`, `--verbose`, `--list-rules`, `--self-test`, `--check-ci`. Self-test asserts every detector fires, clean lines stay clean, all 12 CI alternations are exercised locally, and the scanner's own source cannot trip the CI grep. Live tree: 1551 files / 0 findings
+- `tools/handoff-check.mjs` — validates `.renitor/handoff-result.json` against the schema in `.renitor/current-handoff.md` §14 (required keys, schema version, status vocabulary, summary length, `changedPaths`, proof + lifecycle coherence, unknown keys) plus handoff freshness (durable rule 10); `--file`, `--strict`, `--json`, `--quiet`, `--verbose`, `--self-test`; degrades to `skipped (machine-local)` when `.renitor/` is absent
+- CI/local wiring: `multi-os-gate.yml` gains both `node --check` lines, a **Secret scan** step (`--quiet` + `--check-ci` on both OS) and a **Handoff schema check** step; `.husky/pre-commit` runs `secret-scan.mjs --staged` **before** the lintable-file fast path; `verify-tools.mjs` smoke matrix now 11 tools; new npm scripts `scan:secrets`, `scan:staged`, `check:handoff`, `tools:selftest`
+
+### Fixed
+- `.husky/pre-commit` fast path skipped non-lintable staged files, so a secret staged in a `.txt`/`.py`/`.env`/`.ps1` would have been committed unscanned — the staged secret scan now runs unconditionally first (index-only, instant on an empty staged set)
+- `handoff-check.mjs` strips the PowerShell 5.1 `Set-Content -Encoding utf8` **BOM** before `JSON.parse` — without this, every PowerShell-written `.renitor/handoff-result.json` failed validation permanently (durable rule 11 trap, now executable rather than advisory)
+- `tools/secret-scan.mjs --help`/`-h` previously ran a full repository scan instead of printing usage; both tools now have real `--help`
+
 ## [Unreleased] — 2026-09-15
 
 ### Added

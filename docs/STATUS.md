@@ -48,11 +48,13 @@ all added 2026-09-14).
 | `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard` (2026-09-14) |
 | `tools/verify-tools.mjs` | one-command health check for all `tools/*.mjs\|*.cjs`: `node --check` + read-only smoke runs (`npm run tools:verify`, `--strict` also fails on parity DIFFs) — 2026-09-15 |
 | `tools/extension-check.mjs` | read-only health check for the ai-chat-websites Unified AI Assistant Suite extension: manifest MV3 shape, background.js routing-ladder plumbing, options.html ladder UI, LADDER_PROVIDERS parity, no hardcoded secrets (34 checks; wired into `multi-os-gate.yml`) — 2026-09-15 |
+| `tools/secret-scan.mjs` | offline read-only twin of `.github/workflows/secret-scan.yml`: 20 detectors, redacted evidence, `--staged`/`--all`/`--strict`/`--self-test`/`--check-ci`/`--list-rules`; wired into `.husky/pre-commit` (staged) + `multi-os-gate.yml` (`--quiet` + CI-parity) — 2026-09-15 |
+| `tools/handoff-check.mjs` | validates `.renitor/handoff-result.json` schema + freshness (durable rule 10); strips the PS 5.1 UTF-8 BOM trap before parsing; `skipped (machine-local)` when `.renitor/` is absent (gitignored) — 2026-09-15 |
 | `tools/e2e-smoke.mjs` | serve a built Vite app and assert HTTP 200 + marker — 2026-09-14 |
 | `tools/load-test.mjs` | dependency-free load test: RPS + p50/p95/p99, error-rate & p95 gates — wired into e2e-smoke.yml (2026-09-14) |
 | `tools/fix-security-alerts.cjs` | Dependabot-alert lockfile patching pipeline (moved from root 2026-09-14) |
 | `tools/review-repos.ps1`, `tools/analyze-freedom.ps1` | inventory + freedom-goal reports |
-| `.husky/pre-commit` | direct `prettier`/`eslint` on staged js/ts/json/md/css; empty-set guard (no npx) |
+| `.husky/pre-commit` | `secret-scan.mjs --staged` unconditionally FIRST (index-only, instant on empty staged set), then dependency-free `.husky/js-gate.mjs` on staged js/mjs/cjs; lintable-file fast path + empty-set guard (no npx) — 2026-09-15 |
 | `.vscode/tasks.json` | gate / quality / bootstrap / bundle-trend / tools:verify tasks (rebuilt 2026-09-14) |
 | `.vscode/launch.json` | Node + Vite debug configs (added 2026-09-14) |
 | `.devcontainer/` | Node 26 + Python 3.12 universal image, `setup.sh` post-create |

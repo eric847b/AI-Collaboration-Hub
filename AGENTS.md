@@ -25,6 +25,8 @@ Multi-project monorepo (`github.com/eric847b/AI-Collaboration-Hub`). Projects **
 | `node tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, link health, machine telemetry) |
 | `node tools/verify-tools.mjs [--strict]` | One-command health check for all `tools/*.mjs\|*.cjs` — syntax + read-only smoke runs (`npm run tools:verify`) |
 | `node tools/extension-check.mjs [--quiet]` | Read-only health check for the ai-chat-websites Unified AI Assistant Suite extension (manifest MV3, ladder plumbing + UI, provider parity, no secrets) — also in `multi-os-gate.yml` |
+| `node tools/secret-scan.mjs [--staged\|--self-test\|--check-ci\|--list-rules]` | Offline, read-only twin of `.github/workflows/secret-scan.yml` — 20 detectors with redacted evidence, plus `--check-ci` proving every CI pattern is exercised locally and that the scanner's own source cannot trip the CI grep. `--staged` scans the git index (wired into `.husky/pre-commit`); `npm run scan:secrets` |
+| `node tools/handoff-check.mjs [--file <path>\|--strict]` | Validates `.renitor/handoff-result.json` against the documented schema + freshness (durable rule 10); tolerates UTF-8 BOMs from PowerShell writers and degrades to `skipped (machine-local)` when the file is absent; `npm run check:handoff` |
 | `node tools/e2e-smoke.mjs --project <app>` | Serve a built Vite app and assert HTTP 200 |
 | `node tools/load-test.mjs --project <app>` | Load test with error-rate + p95 gates |
 

@@ -13,6 +13,8 @@
  *   2. tool-specific smoke invocation with read-only/report flags:
  *      - check-doc-links.mjs  -> --quiet (exit 1 on broken links)
  *      - extension-check.mjs    -> --quiet (exit 1 on extension drift)
+ *      - secret-scan.mjs      -> --quiet (exit 1 on a hardcoded secret)
+ *      - handoff-check.mjs    -> --quiet (exit 1 on a malformed .renitor handoff)
  *      - sync-parity.mjs      -> check [--strict] (report-only; never syncs)
  *      - bundle-trend.cjs     -> report --limit 1 (read-only ledger read)
  *      - ops-dashboard.mjs    -> --help-free dry run is NOT supported, so it is
@@ -35,6 +37,8 @@ const strict = process.argv.includes('--strict');
 const SMOKE = {
   'check-doc-links.mjs': ['--quiet'],
   'extension-check.mjs': ['--quiet'],
+  'secret-scan.mjs': ['--quiet'],
+  'handoff-check.mjs': ['--quiet'],
   'sync-parity.mjs': strict ? ['check', '--strict'] : ['check'],
   'bundle-trend.cjs': ['report', '--limit', '1'],
 };
