@@ -1,21 +1,19 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const isDev = mode === "development";
+  const plugins: PluginOption[] = [react()];
 
-  // Optional dev-only tagger — never block production builds if missing/broken.
-  const plugins: ReturnType<typeof react>[] = [react()];
   if (isDev) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { componentTagger } = require("lovable-tagger") as {
-        componentTagger: () => unknown;
-      };
-      plugins.push(componentTagger() as ReturnType<typeof react>);
+      const mod = await import("lovable-tagger");
+      if (typeof mod.componentTagger === "function") {
+        plugins.push(mod.componentTagger() as PluginOption);
+      }
     } catch {
-      // ignore
+      // optional — must never block production builds
     }
   }
 
