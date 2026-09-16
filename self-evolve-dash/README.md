@@ -1,14 +1,25 @@
-# Self-Evolve-Dash-MM-LAN
+# self-evolve-dash
 
-Autonomous self-evolving system for GitHub. Detects wrongs, scopes fixes, compresses on-the-fly, upgrades, releases.
+Vite + React dashboard (Tampermonkey / automation UI).
 
-Deployed via Grok connector.
+## Package manager (CI)
 
-Run manually: `python .grok/skills/self-evolve-dash/scripts/self_evolve.py`
+**npm is canonical.** CI uses `package-lock.json` only.
 
-Quality checks:
-- `npm install`
-- `npm run check`
-- `npm run build`
+```bash
+cd self-evolve-dash
+npm ci          # preferred
+npm run build
+```
 
-MM LAN Party hooks ready for extension.
+Do not commit `bun.lock` / `bun.lockb` / `yarn.lock` — they are gitignored to avoid dual-lock drift that broke builds.
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | local Vite |
+| `npm run build` | production build |
+| `npm run ci` | lint + typecheck + build |
+
+Husky is skipped when `CI=true` or `HUSKY=0`.
