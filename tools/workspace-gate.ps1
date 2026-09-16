@@ -45,6 +45,18 @@ if ($actionlint -and (Test-Path $actionlint)) {
     else { Fail "actionlint findings:`n$out" }
 } else { Warn 'actionlint unavailable - workflow lint skipped' }
 
+# ---- Workflow security audit (ratchet ledger) ------------------------
+# tools/workflow-audit.mjs fails only on GROWTH: findings beyond what
+# docs/metrics/workflow-audit-baseline.json accepts. Existing debt never
+# blocks a commit; paying debt down makes a ledger entry stale, which
+# --check-baseline (part of workflow:audit:strict) asks to be trimmed.
+Log "`nWorkflow Audit:" Yellow
+if (Test-Path 'tools/workflow-audit.mjs') {
+    $waOut = & node 'tools/workflow-audit.mjs' --quiet 2>&1 | Out-String
+    if ($LASTEXITCODE -eq 0) { Ok 'workflow audit within accepted debt (ratchet)' }
+    else { Fail "workflow audit growth or stale ledger:`n$waOut" }
+} else { Warn 'tools/workflow-audit.mjs absent - workflow audit skipped' }
+
 # ---- Node projects (auto-discovered) --------------------------------
 Log "`nNode Projects:" Yellow
 $nodeProjects = @(Get-ChildItem -Directory |

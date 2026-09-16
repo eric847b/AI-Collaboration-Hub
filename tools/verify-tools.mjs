@@ -38,6 +38,7 @@ const SMOKE = {
   'check-doc-links.mjs': ['--quiet'],
   'extension-check.mjs': ['--quiet'],
   'secret-scan.mjs': ['--quiet'],
+  'workflow-audit.mjs': ['--quiet'],
   'handoff-check.mjs': ['--quiet'],
   'sync-parity.mjs': strict ? ['check', '--strict'] : ['check'],
   'bundle-trend.cjs': ['report', '--limit', '1'],

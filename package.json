@@ -21,8 +21,10 @@
     "tools:verify": "node tools/verify-tools.mjs",
     "scan:secrets": "node tools/secret-scan.mjs",
     "scan:staged": "node tools/secret-scan.mjs --staged",
+    "workflow:audit": "node tools/workflow-audit.mjs",
+    "workflow:audit:strict": "node tools/workflow-audit.mjs --strict --check-baseline",
     "check:handoff": "node tools/handoff-check.mjs",
-    "tools:selftest": "node tools/secret-scan.mjs --self-test && node tools/handoff-check.mjs --self-test",
+    "tools:selftest": "node tools/secret-scan.mjs --self-test && node tools/handoff-check.mjs --self-test && node tools/workflow-audit.mjs --self-test",
     "prepare": "husky"
   },
   "version": "1.0.0",

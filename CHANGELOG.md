@@ -2,6 +2,15 @@
 
 All notable workspace-level changes are documented here.
 
+## [Unreleased] — 2026-09-15 (workflow audit)
+
+### Added
+- `tools/workflow-audit.mjs` — offline, read-only GitHub Actions security/hygiene audit: 12 rules (WF001–WF012), ratchet ledger `docs/metrics/workflow-audit-baseline.json` (growth-only failures; accepted debt still exits 0), flags `--strict`/`--check-baseline`/`--update-baseline`/`--baseline`/`--json`/`--quiet`/`--verbose`/`--self-test`/`--list-rules`; self-test fires 12/12 fixtures plus the ledger-read boundary and the exit-code contract. `npm run workflow:audit`, chained into `tools:selftest`, `verify-tools` (12 tools) and `workspace-gate` (22 checks)
+
+### Fixed
+- `.github/workflows/workflow-lint.yml` installed actionlint via `curl … | bash` (WF003 — remote script piped into a shell, the canonical CI RCE); replaced with a SHA256-verified release asset and added `permissions: contents: read`, `concurrency:`, `timeout-minutes` — found by the new audit on its first run
+
+
 ### Added
 - `tools/secret-scan.mjs` — offline, read-only twin of `.github/workflows/secret-scan.yml`: 20 detectors (OpenAI legacy/project, Anthropic, OpenRouter, Groq, GitHub PAT classic/fine-grained/OAuth/App/refresh, Google API key, AWS access key id, Slack, Stripe live, HuggingFace, npm, PEM private-key block, JWT, generic high-entropy/long-hex), redacted evidence, placeholder/env suppression. Flags `--staged` (git index), `--all`, `--strict`, `--json`, `--quiet`, `--verbose`, `--list-rules`, `--self-test`, `--check-ci`. Self-test asserts every detector fires, clean lines stay clean, all 12 CI alternations are exercised locally, and the scanner's own source cannot trip the CI grep. Live tree: 1551 files / 0 findings
 - `tools/handoff-check.mjs` — validates `.renitor/handoff-result.json` against the schema in `.renitor/current-handoff.md` §14 (required keys, schema version, status vocabulary, summary length, `changedPaths`, proof + lifecycle coherence, unknown keys) plus handoff freshness (durable rule 10); `--file`, `--strict`, `--json`, `--quiet`, `--verbose`, `--self-test`; degrades to `skipped (machine-local)` when `.renitor/` is absent
