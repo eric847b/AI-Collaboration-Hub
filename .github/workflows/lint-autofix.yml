@@ -5,6 +5,11 @@ on:
     - cron: '0 2 * * 0'  # Weekly on Sunday at 2 AM UTC
   workflow_dispatch:
 
+permissions:
+  contents: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   lint-fix:
     runs-on: ubuntu-latest

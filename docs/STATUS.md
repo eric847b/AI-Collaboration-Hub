@@ -39,6 +39,12 @@ all added 2026-09-14).
 All 68 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
 (`owner/repo@<sha> # <ref>`) — WF005 supply-chain debt zeroed 2026-09-15 by the `workflow-audit`
 ratchet (ledger 119 → 51 accepted findings; nested standalone-repo workflows remain mirror-owned).
+All 24 root workflows also carry least-privilege top-level `permissions:`, job `timeout-minutes`
+(30) and top-level `concurrency:` groups — WF008/WF009/WF006 debt zeroed 2026-09-15, ratchet
+ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legitimate privileged
+`ci-self-heal` trigger; `cancel-in-progress: true` only on the 6 PR-only flows, `false` on the
+15 scheduled/agent crons so mid-run work is never killed).
+
 
 ### Local tooling
 | Tool | Purpose |

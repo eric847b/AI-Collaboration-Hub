@@ -9,6 +9,11 @@ on:
     - cron: '0 9 * * 0' # Weekly on Sunday
   workflow_dispatch:
 
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   validate-lockfiles:
     runs-on: ubuntu-latest

@@ -10,6 +10,9 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   generate-docs:
     runs-on: ubuntu-latest
@@ -95,6 +98,7 @@ jobs:
   deploy-pages:
     needs: generate-docs
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Soft-fail: Pages env/auth often unset on private or unconfigured repos.
     # Docs still ship as workflow artifacts.
     continue-on-error: true

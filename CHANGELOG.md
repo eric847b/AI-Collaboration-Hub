@@ -10,6 +10,8 @@ All notable workspace-level changes are documented here.
 ### Fixed
 - `.github/workflows/workflow-lint.yml` installed actionlint via `curl … | bash` (WF003 — remote script piped into a shell, the canonical CI RCE); replaced with a SHA256-verified release asset and added `permissions: contents: read`, `concurrency:`, `timeout-minutes` — found by the new audit on its first run
 - **Supply-chain hardening:** all 68 tag-pinned `uses:` across the 24 root workflows rewritten to full commit-SHA pins (`owner/repo@<40-hex> # <ref>`); two of the eight unique refs proved to be mutable branches (`actions/dependency-review-action@v5`, `dependency-check/Dependency-Check_Action@main`) — exactly the risk WF005 flags. WF005 accepted debt 68 → 0, ratchet ledger trimmed 119 → 51 findings in the same change; nested standalone-repo workflows stay mirror-owned (durable rule 12)
+- **Hygiene hardening:** the 22 root workflows lacking them gained job `timeout-minutes: 30` (20 jobs), top-level `concurrency:` groups (21 — `cancel-in-progress: true` on the 6 PR-only flows, deliberately `false` on the 15 scheduled/agent crons so mid-run work is never killed) and least-privilege top-level `permissions:` (10 files: 9 × `contents: read`, `lint-autofix` × `contents: write` because it commits fixes; `nexus-agent-cron` gained a read-only top-level guard as defense-in-depth atop its existing job-level scopes). Ratchet ledger 51 → 1 accepted finding — the documented WF004 review-flag on the legitimate privileged `ci-self-heal` trigger stays as justified debt
+
 
 
 ### Added
