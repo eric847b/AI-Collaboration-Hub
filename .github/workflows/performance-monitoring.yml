@@ -34,7 +34,11 @@ concurrency:
 jobs:
   bundle-trend:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
+    env:
+      NPM_CONFIG_FETCH_RETRIES: "5"
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "20000"
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "120000"
     permissions:
       contents: write # ledger auto-commit on main
     steps:
@@ -49,21 +53,27 @@ jobs:
       - name: Install and build nexus-infinity-hub
         run: |
           cd nexus-infinity-hub
-          for i in 1 2 3; do
-            if npm ci || npm install --legacy-peer-deps; then break; fi
-            if [ "$i" = "3" ]; then exit 1; fi
-            sleep $((i * 10))
+          for i in 1 2 3 4 5; do
+            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline; then
+              npm run build
+              exit 0
+            fi
+            echo "nexus install failed $i; backoff $((i * 20))s"
+            sleep $((i * 20))
           done
-          npm run build
+          exit 1
       - name: Install and build self-evolve-dash
         run: |
           cd self-evolve-dash
-          for i in 1 2 3; do
-            if npm ci || npm install --legacy-peer-deps; then break; fi
-            if [ "$i" = "3" ]; then exit 1; fi
-            sleep $((i * 10))
+          for i in 1 2 3 4 5; do
+            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline; then
+              npm run build
+              exit 0
+            fi
+            echo "dash install failed $i; backoff $((i * 20))s"
+            sleep $((i * 20))
           done
-          npm run build
+          exit 1
       - name: Regression gate vs committed baseline
         run: node tools/bundle-trend.cjs check --threshold 10
       - name: Record snapshot
