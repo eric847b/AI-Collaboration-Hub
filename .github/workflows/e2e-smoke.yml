@@ -25,7 +25,11 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
+    env:
+      NPM_CONFIG_FETCH_RETRIES: "5"
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "20000"
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "120000"
     strategy:
       fail-fast: false
       matrix:
@@ -40,11 +44,14 @@ jobs:
       - name: Install (${{ matrix.project }}, retry on rate_limit)
         run: |
           cd ${{ matrix.project }}
-          for i in 1 2 3; do
-            if npm ci || npm install --legacy-peer-deps; then break; fi
-            if [ "$i" = "3" ]; then exit 1; fi
-            sleep $((i * 10))
+          for i in 1 2 3 4 5; do
+            if npm ci --prefer-offline || npm install --legacy-peer-deps --prefer-offline; then
+              exit 0
+            fi
+            echo "install failed attempt $i; backoff $((i * 20))s"
+            sleep $((i * 20))
           done
+          exit 1
       - name: Build
         run: npm run build --prefix ${{ matrix.project }}
       - name: Smoke test served build
