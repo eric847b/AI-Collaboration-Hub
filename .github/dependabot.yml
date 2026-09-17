@@ -1,6 +1,6 @@
 version: 2
 # Fleet-aligned Dependabot — labels feed AGA dependabot_coordinator.
-# Patch-first groups; majors still open as separate PRs for human review.
+# Patch+minor groups; majors still open as separate PRs for human review.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -33,7 +33,7 @@ updates:
     groups:
       npm-dash:
         patterns: ["*"]
-        update-types: ["patch"]
+        update-types: ["patch", "minor"]
 
   - package-ecosystem: "npm"
     directory: "/nexus-infinity-hub"
@@ -49,7 +49,7 @@ updates:
     groups:
       npm-nexus:
         patterns: ["*"]
-        update-types: ["patch"]
+        update-types: ["patch", "minor"]
 
   - package-ecosystem: "npm"
     directory: "/third-door-blink-controller"
@@ -57,13 +57,14 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    rebase-strategy: "auto"
     labels: ["dependencies", "npm", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
     groups:
       npm-third-door:
         patterns: ["*"]
-        update-types: ["patch"]
+        update-types: ["patch", "minor"]
 
   - package-ecosystem: "npm"
     directory: "/ai-chat-websites"
@@ -71,13 +72,14 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    rebase-strategy: "auto"
     labels: ["dependencies", "npm", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
     groups:
       npm-chat:
         patterns: ["*"]
-        update-types: ["patch"]
+        update-types: ["patch", "minor"]
 
   - package-ecosystem: "npm"
     directory: "/collabhub-modules"
@@ -85,13 +87,14 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 2
+    rebase-strategy: "auto"
     labels: ["dependencies", "npm", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
     groups:
       npm-modules:
         patterns: ["*"]
-        update-types: ["patch"]
+        update-types: ["patch", "minor"]
 
   - package-ecosystem: "pip"
     directory: "/"
@@ -99,6 +102,7 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     labels: ["dependencies", "python", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
@@ -113,6 +117,7 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     labels: ["dependencies", "python", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
@@ -127,6 +132,7 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     labels: ["dependencies", "python", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
@@ -141,6 +147,7 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    rebase-strategy: "auto"
     labels: ["dependencies", "python", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
