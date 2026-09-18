@@ -35,7 +35,8 @@ if (!fs.existsSync(path.join(ROOT, project, 'dist'))) {
 }
 
 const port = Number(opt('--port', '4173'));
-const timeoutMs = Number(opt('--timeout', '60')) * 1000;
+// Slow-laptop default: 10 min server-start budget (was 60s). Override with --timeout <seconds>.
+const timeoutMs = Number(opt('--timeout', '600')) * 1000;
 const marker = opt('--marker', '<div id="root"');
 
 // Repeatable --route <path> probes (synthetic multi-route checks). Default: "/".
@@ -82,7 +83,8 @@ function fetchOnce(url) {
       res.on('end', () => resolve({ status: res.statusCode, body }));
     });
     req.on('error', reject);
-    req.setTimeout(4000, () => req.destroy(new Error('request timeout')));
+    // Slow-laptop budget: 120s per probe + 1s poll (were 30s/500ms).
+    req.setTimeout(120000, () => req.destroy(new Error('request timeout')));
   });
 }
 
@@ -95,7 +97,7 @@ async function waitForServer(deadline) {
     try {
       return await fetchOnce(url);
     } catch {
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
 }

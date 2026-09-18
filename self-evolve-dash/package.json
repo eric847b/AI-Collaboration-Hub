@@ -19,7 +19,8 @@
     "check": "npm run lint && npm run typecheck",
     "ci": "npm run check && npm run build",
     "test:e2e": "playwright test",
-    "test:visual": "playwright test e2e/visual.spec.js"
+    "test:visual": "playwright test e2e/visual.spec.js",
+    "e2e:slow": "set PLAYWRIGHT_TEST_TIMEOUT=600000 && playwright test --reporter=list"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",

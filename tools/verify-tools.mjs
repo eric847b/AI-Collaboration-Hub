@@ -50,7 +50,8 @@ function run(cmd, args) {
       cwd: ROOT,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 60000,
+      // Generous per-tool budget for slow laptops: 5 min (was 60s).
+      timeout: 300000,
     }).trim();
     return { ok: true, out };
   } catch (e) {

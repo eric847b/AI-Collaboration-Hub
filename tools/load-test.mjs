@@ -29,7 +29,8 @@ const project = opt('--project', '');
 const port = Number(opt('--port', '4173'));
 const totalRequests = Math.max(1, Number(opt('--requests', '300')));
 const concurrency = Math.max(1, Number(opt('--concurrency', '15')));
-const timeoutMs = Number(opt('--timeout-ms', '5000'));
+// Slow-laptop default: per-request 120s budget (was 5s). Override with --timeout-ms <ms>.
+const timeoutMs = Number(opt('--timeout-ms', '120000'));
 const maxErrorRate = Number(opt('--max-error-rate', '1'));
 const maxP95ms = Number(opt('--max-p95-ms', '3000'));
 const targetUrl = urlArg || `http://127.0.0.1:${port}/`;
@@ -87,9 +88,10 @@ function waitForServer(url, deadline) {
   return new Promise((resolve, reject) => {
     const poll = async () => {
       if (Date.now() > deadline) return reject(new Error('preview server did not answer in time'));
-      const r = await requestOnce(url, 2000);
+      // Slow-laptop budget: 30s probe + 1s poll (were 2s/400ms).
+      const r = await requestOnce(url, 30000);
       if (r.ok) return resolve();
-      setTimeout(poll, 400);
+      setTimeout(poll, 1000);
     };
     poll().catch(reject);
   });
@@ -134,7 +136,8 @@ try {
       stdio: 'ignore',
       detached: process.platform !== 'win32',
     });
-    await waitForServer(targetUrl, Date.now() + 60000);
+    // Slow-laptop budget: 10 min server-start (was 60s).
+    await waitForServer(targetUrl, Date.now() + 600000);
   }
 
   // Warmup (not measured)

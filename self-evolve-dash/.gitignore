@@ -33,3 +33,6 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+# E2E/Playwright artifacts (local-only; CI regenerates)
+test-results/
+e2e/visual.spec.js-snapshots/

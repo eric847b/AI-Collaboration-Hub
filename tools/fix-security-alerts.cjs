@@ -246,7 +246,7 @@ function httpsGetJson(url, redirects) {
   return new Promise((resolve, reject) => {
     const hop = redirects || 0;
     if (hop > 5) return reject(new Error('too many redirects: ' + url));
-    const req = https.get(url, { headers: { accept: 'application/json', 'user-agent': 'fix-security-alerts/5' }, timeout: 30000 }, res => {
+    const req = https.get(url, { headers: { accept: 'application/json', 'user-agent': 'fix-security-alerts/5' }, timeout: 120000 }, res => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();
         return resolve(httpsGetJson(new URL(res.headers.location, url).toString(), hop + 1));

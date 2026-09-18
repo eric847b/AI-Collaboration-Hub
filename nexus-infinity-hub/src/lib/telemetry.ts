@@ -49,6 +49,16 @@ export interface TelemetrySnapshot {
 
 export type TelemetryDisposer = () => void;
 
+/**
+ * When `reportOnly` is true the entry is recorded in the local ring buffer and
+ * persisted to localStorage, but it is never flushed to the network (neither
+ * via sendBeacon/fetch nor the injectable transport). Useful for UI-only status
+ * panels / local-only diagnostics.
+ */
+export interface TelemetryReportOnlyOptions {
+  reportOnly?: boolean;
+}
+
 /** Structural event shapes — unit tests drive handlers without DOM event constructors. */
 export interface ErrorEventLike {
   message?: string;

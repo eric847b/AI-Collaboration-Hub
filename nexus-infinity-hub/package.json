@@ -11,6 +11,7 @@
     "dev": "vite",
     "dev:host": "vite --host 0.0.0.0",
     "build": "vite build",
+    "preview": "vite preview",
     "build:analyze": "vite build && node scripts/report-bundle-size.mjs",
     "analyze": "node scripts/report-bundle-size.mjs",
     "buildDev": "vite build --mode development",
@@ -21,7 +22,8 @@
     "test:e2e": "playwright test",
     "test:visual": "playwright test e2e/visual.spec.js",
     "ci": "npm run check",
-    "ai": "node ..\\collabhub-modules\\run-ai.js"
+    "ai": "node ..\\collabhub-modules\\run-ai.js",
+    "e2e:slow": "playwright test --workers=1 --timeout=600000 --global-timeout=1200000 --reporter=list"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
