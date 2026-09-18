@@ -6,6 +6,14 @@
  *   node tools/bundle-trend.cjs collect  [--ledger docs/metrics/bundle-history.json] [--note "..."]
  *   node tools/bundle-trend.cjs check    [--ledger ...] [--threshold 10]
  *   node tools/bundle-trend.cjs report   [--ledger ...] [--limit 5]
+ *   node tools/bundle-trend.cjs checksum [--project nexus-infinity-hub]  (pre-build integrity manifest)
+ *   node tools/bundle-trend.cjs verify   [--project nexus-infinity-hub]  (fail on drift vs manifest)
+ *
+ * The checksum/verify pair is the pre-build bundle-integrity gate: `checksum`
+ * writes a SHA-256 manifest of every file in the app's build output dir(s)
+ * (`dist/.checksum-manifest.json`); `verify` re-hashes and exits 1 on any
+ * added/removed/changed file. On a slow laptop this is instant (plain Node
+ * crypto, no browser, no server) and catches stale or half-written builds.
  *
  * Auto-discovers root-level Node projects (folder containing package.json) and measures their
  * build output dirs (dist / build / out / .output / release). `collect` appends a snapshot to the
@@ -16,11 +24,13 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { createHash } = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_LEDGER = path.join('docs', 'metrics', 'bundle-history.json');
 const OUT_DIRS = ['dist', 'build', 'out', '.output', 'release'];
 const MAX_ENTRIES = 200;
+const CHECKSUM_MANIFEST = '.checksum-manifest.json';
 
 const argv = process.argv.slice(2);
 const cmd = argv.find((a) => !a.startsWith('--')) || 'report';
@@ -246,10 +256,155 @@ function markdown() {
   console.log(`bundle-trend: markdown report -> ${path.relative(ROOT, outPath)}`);
   return 0;
 }
+// ── Pre-build integrity gate (checksum / verify) ─────────────────────────────
 
-const handlers = { collect, check, report, markdown };
+function sha256File(p) {
+  return createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+}
+
+function outDirsFor(projectRoot) {
+  return OUT_DIRS.map((d) => path.join(projectRoot, d)).filter((p) => fs.existsSync(p));
+}
+
+function checksumTargets() {
+  const wanted = opt('--project', '');
+  const names = wanted
+    ? [wanted]
+    : listProjects().filter((n) => outDirsFor(path.join(ROOT, n)).length > 0);
+  return names
+    .map((name) => {
+      const root = path.join(ROOT, name);
+      const dirs = outDirsFor(root);
+      return { name, root, dirs };
+    })
+    .filter((t) => t.dirs.length > 0);
+}
+
+function hashTree(projectRoot, dirs, skipRel) {
+  const files = {};
+  let bytes = 0;
+  for (const dir of dirs) {
+    const stack = [dir];
+    while (stack.length) {
+      const cur = stack.pop();
+      for (const e of fs.readdirSync(cur, { withFileTypes: true })) {
+        const p = path.join(cur, e.name);
+        if (e.isDirectory()) {
+          stack.push(p);
+        } else if (e.isFile()) {
+          const rel = path.relative(projectRoot, p).split(path.sep).join('/');
+          if (rel === skipRel) continue;
+          const size = fs.statSync(p).size;
+          files[rel] = { sha256: sha256File(p), size };
+          bytes += size;
+        }
+      }
+    }
+  }
+  return { files, bytes };
+}
+
+function loadManifest(file) {
+  try {
+    const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (m && m.version === 1 && m.project && m.files && typeof m.files === 'object') return m;
+  } catch {
+    /* caller reports the setup error */
+  }
+  return null;
+}
+
+function checksum() {
+  const targets = checksumTargets();
+  if (targets.length === 0) {
+    console.error('bundle-trend: no build outputs found — build first, then checksum writes <out>/.checksum-manifest.json.');
+    return 2;
+  }
+  for (const t of targets) {
+    const mpath = path.join(t.dirs[0], CHECKSUM_MANIFEST);
+    const relManifest = path.relative(t.root, mpath).split(path.sep).join('/');
+    const dirsKey = JSON.stringify(t.dirs.map((d) => path.relative(t.root, d).split(path.sep).join('/')));
+    const { files, bytes } = hashTree(t.root, t.dirs, relManifest);
+    const prev = loadManifest(mpath);
+    if (
+      prev &&
+      prev.primaryDir === path.basename(t.dirs[0]) &&
+      JSON.stringify(prev.dirs) === dirsKey &&
+      JSON.stringify(prev.files) === JSON.stringify(files)
+    ) {
+      console.log(`  ${t.name.padEnd(34)} unchanged since ${prev.timestamp} (${Object.keys(files).length} files, ${human(bytes)}) — manifest left as-is`);
+      continue;
+    }
+    const manifest = {
+      version: 1,
+      project: t.name,
+      timestamp: new Date().toISOString(),
+      gitSha: gitSha(),
+      primaryDir: path.basename(t.dirs[0]),
+      dirs: t.dirs.map((d) => path.relative(t.root, d).split(path.sep).join('/')),
+      totals: { files: Object.keys(files).length, bytes },
+      files,
+    };
+    fs.writeFileSync(mpath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    const drifted = prev ? ` [drifted since ${prev.timestamp}: ${prev.totals ? prev.totals.files : '?'} -> ${manifest.totals.files} files]` : '';
+    console.log(`  ${t.name.padEnd(34)} manifest ${prev ? 'refreshed' : 'written'} (${manifest.totals.files} files, ${human(bytes)}) -> ${path.relative(ROOT, mpath)}${drifted}`);
+  }
+  return 0;
+}
+
+function verify() {
+  const targets = checksumTargets();
+  if (targets.length === 0) {
+    console.error('bundle-trend: no build outputs found — nothing to verify.');
+    return 2;
+  }
+  let failed = false;
+  for (const t of targets) {
+    const mpath = path.join(t.dirs[0], CHECKSUM_MANIFEST);
+    const manifest = loadManifest(mpath);
+    if (!manifest) {
+      console.error(`  ${t.name.padEnd(34)} FAIL — no valid manifest at ${path.relative(ROOT, mpath)} (run \`checksum\` first)`);
+      failed = true;
+      continue;
+    }
+    const relManifest = path.relative(t.root, mpath).split(path.sep).join('/');
+    const { files } = hashTree(t.root, t.dirs, relManifest);
+    const changed = [];
+    const removed = [];
+    const added = [];
+    for (const [rel, meta] of Object.entries(manifest.files)) {
+      const cur = files[rel];
+      if (!cur) removed.push(rel);
+      else if (cur.sha256 !== meta.sha256) changed.push(rel);
+    }
+    for (const rel of Object.keys(files)) {
+      if (!manifest.files[rel]) added.push(rel);
+    }
+    const drift = [
+      ...changed.map((rel) => ['changed', rel]),
+      ...removed.map((rel) => ['removed', rel]),
+      ...added.map((rel) => ['added', rel]),
+    ];
+    if (drift.length > 0) {
+      failed = true;
+      console.log(`  ${t.name.padEnd(34)} DRIFT — ${changed.length} changed, ${removed.length} removed, ${added.length} added`);
+      for (const [kind, rel] of drift.slice(0, 10)) console.log(`      ${kind.padEnd(7)} ${rel}`);
+      if (drift.length > 10) console.log(`      … and ${drift.length - 10} more`);
+    } else {
+      console.log(`  ${t.name.padEnd(34)} clean (${Object.keys(manifest.files).length} files match manifest)`);
+    }
+  }
+  if (failed) {
+    console.error('bundle-trend: VERIFY FAILED — build outputs drifted from the checksum manifest.');
+    return 1;
+  }
+  console.log('bundle-trend: all manifests verified.');
+  return 0;
+}
+
+const handlers = { collect, check, report, markdown, checksum, verify };
 if (!handlers[cmd]) {
-  console.error(`bundle-trend: unknown command "${cmd}" — use collect | check | report`);
+  console.error(`bundle-trend: unknown command "${cmd}" — use collect | check | report | markdown | checksum | verify`);
   process.exit(2);
 }
 process.exit(handlers[cmd]());
