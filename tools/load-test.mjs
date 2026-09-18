@@ -88,8 +88,8 @@ function waitForServer(url, deadline) {
   return new Promise((resolve, reject) => {
     const poll = async () => {
       if (Date.now() > deadline) return reject(new Error('preview server did not answer in time'));
-      // Slow-laptop budget: 30s probe + 1s poll (were 2s/400ms).
-      const r = await requestOnce(url, 30000);
+      // Slow-laptop budget: 120s probe + 1s poll (were 2s/400ms).
+      const r = await requestOnce(url, 120000);
       if (r.ok) return resolve();
       setTimeout(poll, 1000);
     };
