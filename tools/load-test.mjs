@@ -3,7 +3,7 @@
  * load-test.mjs — dependency-free load tester for preview builds (plain Node http).
  *
  *   node tools/load-test.mjs --project nexus-infinity-hub [--requests 300] [--concurrency 15]
- *                            [--port 4173] [--timeout-ms 5000] [--max-error-rate 1] [--max-p95-ms 3000]
+ *                            [--port 4173] [--timeout-ms 120000] [--max-error-rate 1] [--max-p95-ms 3000]
  *   node tools/load-test.mjs --url http://127.0.0.1:8080/ ...   (target an already-running server)
  *
  * With --project it starts `vite preview` for that project (dist/ must exist), waits for it,

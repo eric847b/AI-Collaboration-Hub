@@ -2,7 +2,7 @@
 /**
  * e2e-smoke.mjs — serve a built Vite app with `vite preview` and smoke-test it.
  *
- *   node tools/e2e-smoke.mjs --project nexus-infinity-hub [--port 4173] [--timeout 60] [--marker '<div id="root"'] [--route / --route /dashboard ...]
+ *   node tools/e2e-smoke.mjs --project nexus-infinity-hub [--port 4173] [--timeout 600] [--marker '<div id="root"'] [--route / --route /dashboard ...]
  *
  * Passes when every probed route answers HTTP 200 (default route: "/"; repeat
  * --route to probe more paths — a dependency-free synthetic multi-route check).
