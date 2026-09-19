@@ -26,8 +26,6 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Soft-fail until dash Tailwind pin is lockfile-synced fleet-wide
-    continue-on-error: true
     env:
       CI: "true"
       HUSKY: "0"
@@ -48,9 +46,9 @@ jobs:
       - name: Install (${{ matrix.project }})
         run: |
           cd ${{ matrix.project }}
-          # Prefer install over ci when package.json pin diverges from lock (Tailwind v3)
           for i in 1 2 3 4 5; do
             if [ "${{ matrix.project }}" = "self-evolve-dash" ]; then
+              # install respects package.json Tailwind 3.4.19 pin
               if npm install --legacy-peer-deps --prefer-offline --no-audit --no-fund; then exit 0; fi
             else
               if [ -f package-lock.json ] && npm ci --prefer-offline; then exit 0; fi
