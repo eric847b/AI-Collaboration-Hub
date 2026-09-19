@@ -314,7 +314,7 @@ async doSomething(param1) { }
 
 - [Userscript Documentation](https://www.tampermonkey.net/documentation.php)
 - [Module Development Guide](./docs/MODULE_DEVELOPMENT.md)
-- [API Reference](../../Docs/API.md)
+- [API Reference](../../../Docs/API.md)
 - Example Modules — directory planned, not yet created
 
 ## Support
@@ -325,6 +325,6 @@ async doSomething(param1) { }
 
  ---
  
- **Last Updated**: 2026-07-04
+ **Last Updated**: 2026-09-19
  **Maintainer**: AI Chat Userscript Studio Team
  **License**: MIT

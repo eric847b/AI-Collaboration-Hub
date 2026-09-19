@@ -6,7 +6,10 @@ type EventCallback = (event: EngineEvent) => void;
 
 export function useEngineEvents(callback: EventCallback) {
   const cbRef = useRef(callback);
-  cbRef.current = callback;
+
+  useEffect(() => {
+    cbRef.current = callback;
+  }, [callback]);
 
   useEffect(() => {
     const unsubscribe = autonomousEngine.subscribeEvent((event: EngineEvent) => {

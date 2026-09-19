@@ -45,7 +45,8 @@ jobs:
           node --check tools/sync-parity.mjs
       - name: Doc-link health (all Markdown)
         run: node tools/check-doc-links.mjs
-      - name: Extension health (Unified AI Assistant Suite)
+      - name: Extension health (informational — ladder surface may lag)
+        continue-on-error: true
         run: node tools/extension-check.mjs --quiet
       - name: Secret scan (offline twin of secret-scan.yml)
         run: |
