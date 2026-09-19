@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,22 +30,16 @@ export const VersionHistory = ({ scriptId, open, onOpenChange, onRestore }: Vers
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open && scriptId) {
-      loadVersions();
-    }
-  }, [open, scriptId]);
-
-  const loadVersions = async () => {
+  const loadVersions = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
-      .from('script_versions')
-      .select('*')
-      .eq('script_id', scriptId)
-      .order('created_at', { ascending: false });
+      .from("script_versions")
+      .select("*")
+      .eq("script_id", scriptId)
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Error loading versions:', error);
+      console.error("Error loading versions:", error);
       toast({
         title: "Error",
         description: "Failed to load version history",
@@ -57,14 +51,20 @@ export const VersionHistory = ({ scriptId, open, onOpenChange, onRestore }: Vers
 
     setVersions(data || []);
     setIsLoading(false);
-  };
+  }, [scriptId, toast]);
+
+  useEffect(() => {
+    if (open && scriptId) {
+      void loadVersions();
+    }
+  }, [open, scriptId, loadVersions]);
 
   const handleRestore = async (versionId: string, version: string) => {
     setRestoringId(versionId);
-    
+
     try {
-      const { error } = await supabase.functions.invoke('rollback-script', {
-        body: { scriptId, versionId }
+      const { error } = await supabase.functions.invoke("rollback-script", {
+        body: { scriptId, versionId },
       });
 
       if (error) throw error;
@@ -77,7 +77,7 @@ export const VersionHistory = ({ scriptId, open, onOpenChange, onRestore }: Vers
       onRestore?.();
       onOpenChange(false);
     } catch (error) {
-      console.error('Restore error:', error);
+      console.error("Restore error:", error);
       toast({
         title: "Error",
         description: "Failed to restore version",
@@ -100,13 +100,9 @@ export const VersionHistory = ({ scriptId, open, onOpenChange, onRestore }: Vers
 
         <ScrollArea className="h-[500px] pr-4">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading versions...
-            </div>
+            <div className="text-center py-8 text-muted-foreground">Loading versions...</div>
           ) : versions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No version history available
-            </div>
+            <div className="text-center py-8 text-muted-foreground">No version history available</div>
           ) : (
             <div className="space-y-3">
               {versions.map((version) => (
@@ -118,7 +114,7 @@ export const VersionHistory = ({ scriptId, open, onOpenChange, onRestore }: Vers
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <Badge variant="outline">v{version.version}</Badge>
-                        <Badge 
+                        <Badge
                           variant={(version.confidence_score ?? 0) >= 70 ? "default" : "secondary"}
                           className="gap-1"
                         >
