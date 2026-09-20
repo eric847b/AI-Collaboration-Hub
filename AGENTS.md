@@ -19,7 +19,7 @@ Multi-project monorepo (`github.com/eric847b/AI-Collaboration-Hub`). Projects **
 | `npm run gate` | THE quality gate (workspace-gate v3): configs, workflows + live actionlint, lockfiles, engines, Python reqs, hook integrity. `verify`/`health`/`ci` are aliases |
 | `npm run quality` | Full 11-step catalyst series (`tools/run-quality.ps1`) |
 | `npm run bootstrap` | Install all Node + Python deps |
-| `node tools/bundle-trend.cjs collect\|check\|report` | Bundle-size ledger + regression gate (`docs/metrics/bundle-history.json`) |
+| `node tools/bundle-trend.cjs collect\|check\|report` | Bundle-size ledger + regression gate (`docs/metrics/bundle-history.json`); `check` emits CI `::error::` annotations on regressions + optional webhook via `BUNDLE_ALERT_WEBHOOK` |
 | `node tools/sync-parity.mjs check\|sync` | Fleet mirror parity (map: `tools/parity-map.json`) |
 | `node tools/check-doc-links.mjs` | Markdown relative-link health (all `*.md`) |
 | `node tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, link health, machine telemetry) |

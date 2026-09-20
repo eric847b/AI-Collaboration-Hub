@@ -4,7 +4,11 @@
  * bundle-trend.cjs — workspace bundle-size ledger + regression gate.
  *
  *   node tools/bundle-trend.cjs collect  [--ledger docs/metrics/bundle-history.json] [--note "..."]
- *   node tools/bundle-trend.cjs check    [--ledger ...] [--threshold 10]
+ *   node tools/bundle-trend.cjs check    [--ledger ...] [--threshold 10] [--webhook-url URL]
+ *
+ * Alerting: on regression, `check` emits GitHub Actions ::error:: annotations
+ * when GITHUB_ACTIONS=true, and POSTs a best-effort webhook (never fails the
+ * gate) when --webhook-url or BUNDLE_ALERT_WEBHOOK is set.
  *   node tools/bundle-trend.cjs report   [--ledger ...] [--limit 5]
  *   node tools/bundle-trend.cjs checksum [--project nexus-infinity-hub]  (pre-build integrity manifest)
  *   node tools/bundle-trend.cjs verify   [--project nexus-infinity-hub]  (fail on drift vs manifest)
@@ -173,6 +177,7 @@ function check() {
   }
   const ledger = loadLedger(file);
   let failed = false;
+  const regressions = [];
   console.log(`bundle-trend: regression gate (fail when growth > +${threshold}%)`);
   for (const name of names) {
     const base = baselineFor(ledger, name);
@@ -182,7 +187,10 @@ function check() {
     }
     const growth = base.bytes > 0 ? ((measured[name].bytes - base.bytes) / base.bytes) * 100 : 0;
     const tag = growth > threshold ? 'FAIL' : 'ok  ';
-    if (growth > threshold) failed = true;
+    if (growth > threshold) {
+      failed = true;
+      regressions.push({ name, base: base.bytes, now: measured[name].bytes, growth });
+    }
     console.log(
       `  ${name.padEnd(34)} ${human(base.bytes).padStart(10)} -> ${human(measured[name].bytes).padStart(10)}` +
         `  (${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%)  ${tag}  [baseline ${base.at}]`
@@ -190,10 +198,56 @@ function check() {
   }
   if (failed) {
     console.error('bundle-trend: REGRESSION detected — see FAIL rows above.');
+    emitAlerts(regressions, threshold);
     return 1;
   }
   console.log('bundle-trend: no regressions.');
   return 0;
+}
+
+// ── Performance regression alerts (B1) ───────────────────────────────────────
+// CI: emits ::error:: annotations when running under GitHub Actions (exit code
+// unchanged). Webhook: best-effort JSON POST, never fails the gate.
+
+function emitAlerts(regressions, threshold) {
+  const isCI = process.env.GITHUB_ACTIONS === 'true';
+  if (isCI) {
+    for (const r of regressions) {
+      const pct = `${r.growth >= 0 ? '+' : ''}${r.growth.toFixed(1)}%`;
+      console.log(
+        `::error title=bundle regression: ${r.name}::bundle grew ${pct} ` +
+          `(${human(r.base)} -> ${human(r.now)}), over +${threshold}% threshold`
+      );
+    }
+  }
+  const url = opt('--webhook-url', '') || process.env.BUNDLE_ALERT_WEBHOOK || '';
+  if (!url) return;
+  const payload = JSON.stringify({
+    text:
+      `bundle-trend: ${regressions.length} bundle regression(s) over +${threshold}%\n` +
+      regressions
+        .map((r) => `• ${r.name}: ${human(r.base)} -> ${human(r.now)} (${r.growth >= 0 ? '+' : ''}${r.growth.toFixed(1)}%)`)
+        .join('\n'),
+  });
+  try {
+    const parsed = new URL(url);
+    const mod = parsed.protocol === 'https:' ? require('https') : require('http');
+    const req = mod.request(
+      { hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + parsed.search, method: 'POST' },
+      (res) => {
+        res.resume();
+        console.log(`bundle-trend: alert webhook -> HTTP ${res.statusCode}`);
+      }
+    );
+    req.on('error', (err) => console.error(`bundle-trend: alert webhook failed (non-fatal): ${err.message}`));
+    req.setTimeout(5000, () => {
+      req.destroy(new Error('timeout'));
+      console.error('bundle-trend: alert webhook timed out (non-fatal)');
+    });
+    req.end(payload);
+  } catch (err) {
+    console.error(`bundle-trend: alert webhook skipped (non-fatal): ${err.message}`);
+  }
 }
 
 function report() {

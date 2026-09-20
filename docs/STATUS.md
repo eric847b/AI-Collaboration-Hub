@@ -54,7 +54,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/workspace-gate.ps1` (v3) | THE quality gate — live actionlint, lockfiles, engines, hooks, Python reqs |
 | `tools/run-quality.ps1` | 11-step catalyst series |
 | `tools/bootstrap.ps1` | install all Node + Python deps |
-| `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`) — 2026-09-14 |
+| `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`); B1 alerting: `::error::` annotations on regression + optional webhook (`BUNDLE_ALERT_WEBHOOK`, step-scoped in `performance-monitoring.yml`) — 2026-09-14 |
 | `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode) — 41 files / 4 pairs at parity (2026-09-14) |
 | `tools/cross-repo-tests.mjs` | end-to-end fleet integration tests: SHA256 parity + hash verification of the standalone catalysts, module self-test entries, workflow validation (TC-001–TC-005) — 5/5 (2026-09-19) |
 | `tools/check-doc-links.mjs` | relative-link health for all Markdown — 152 files / 0 broken (2026-09-14) |

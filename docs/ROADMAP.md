@@ -60,7 +60,6 @@ These items require external services, accounts, or coordination with other repo
 
 Building on the now-complete CI foundation (Round 11 delivered cross-repo integration tests — see subsection K):
 
-- [ ] **Performance regression alerts** — extend `bundle-trend.cjs` with threshold alerting (CI annotations + optional webhook) instead of gate-only failures.
 - [ ] **Dependency update automation** — evaluate Dependabot or Renovate for automated lockfile-update PRs across all Node/Python projects; prefer one shared config over per-project sprawl.
 - [ ] **Coverage trend visualization** — turn the ledger data behind `docs/COVERAGE_PERFORMANCE_TRENDS.md` into per-project charts surfaced in the OPS Dashboard.
 - [ ] **Machine telemetry aggregation** — summarize `agent-report.json` / `auto-ops-report.json` / `auto-fix-ledger.json` trends (auto-fix success rate, agent run frequency) in the OPS Dashboard.
@@ -135,6 +134,14 @@ Building on the now-complete CI foundation (Round 11 delivered cross-repo integr
 - [x] **OPS Dashboard regenerated** — `node tools/ops-dashboard.mjs` → `docs/metrics/OPS-DASHBOARD.md` now reflects 25 workflows
 
 **Validation evidence:** gate PASS 22/22 (2026-09-19); `cross-repo-tests.mjs` 5/5; actionlint clean on the new workflow; `workflow-audit --check-baseline` green (exit 0, 1 accepted); `check-doc-links.mjs` 165 files / 47 links / 0 broken; `sync-parity.mjs check` green after reconcile.
+
+---
+
+### L. Round 12 — items (started 2026-09-19)
+
+- [x] **Performance regression alerts (B1)** — `bundle-trend.cjs` `check` now emits one GitHub `::error::` annotation per regressed bundle when running under Actions (`GITHUB_ACTIONS=true`; title = bundle name, body = base→now bytes, threshold) and posts an optional best-effort JSON webhook (`--webhook-url` flag or `BUNDLE_ALERT_WEBHOOK` env, https/http with 5 s timeout — **always non-fatal**: alert delivery never changes the gate outcome). Wired into `performance-monitoring.yml` via a **step-scoped** `BUNDLE_ALERT_WEBHOOK: ${{ secrets.BUNDLE_ALERT_WEBHOOK }}` on the gate step — unset/empty secret → annotations only; step scope is deliberate since workflow-level secret env trips WF012.
+
+**Validation evidence (2026-09-19):** temp-ledger regression run exits 1 with the `::error::` annotation emitted under `GITHUB_ACTIONS=true`; webhook-unreachable path stays exit 1 (non-fatal); clean path exits 0; `node --check` 0; actionlint 0 on `performance-monitoring.yml`; `workflow-audit --check-baseline` green (1 accepted finding unchanged); gate PASS 22/22.
 
 ---
 
