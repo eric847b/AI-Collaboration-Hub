@@ -1,14 +1,16 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T10:51:07Z",
+  "scanned_at": "2026-09-20T16:14:45Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
     "closed": [],
-    "kept": [],
+    "kept": [
+      652
+    ],
     "errors": []
   },
   "policy_lockfile_spam": {
