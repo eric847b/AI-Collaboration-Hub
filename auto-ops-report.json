@@ -1,7 +1,7 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T04:59:20Z",
+  "scanned_at": "2026-09-20T11:29:36Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
@@ -9,7 +9,7 @@
   "duplicate_drafts": {
     "closed": [],
     "kept": [
-      643
+      649
     ],
     "errors": []
   },
