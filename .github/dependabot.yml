@@ -67,20 +67,7 @@ updates:
         patterns: ["*"]
         update-types: ["patch", "minor"]
 
-  - package-ecosystem: "npm"
-    directory: "/third-door-blink-controller"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    rebase-strategy: "auto"
-    labels: ["dependencies", "npm", "dependabot-coord"]
-    commit-message:
-      prefix: "chore(deps)"
-    groups:
-      npm-third-door:
-        patterns: ["*"]
-        update-types: ["patch", "minor"]
+
 
   - package-ecosystem: "npm"
     directory: "/ai-chat-websites"
@@ -157,17 +144,37 @@ updates:
         patterns: ["*"]
         update-types: ["patch", "minor"]
 
+
+  - package-ecosystem: "npm"
+    directory: "/third-door-blink-controller"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      npm-blink-controller:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+
   - package-ecosystem: "pip"
     directory: "/solutions-dynamics"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     rebase-strategy: "auto"
-    labels: ["dependencies", "python", "dependabot-coord"]
+    labels: ["dependencies", "pip", "dependabot-coord"]
     commit-message:
       prefix: "chore(deps)"
+      include: "scope"
     groups:
-      pip-solutions:
+      pip-solutions-dynamics:
         patterns: ["*"]
         update-types: ["patch", "minor"]
+
+
