@@ -1,14 +1,16 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T10:51:07Z",
+  "scanned_at": "2026-09-20T16:16:01Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
     "closed": [],
-    "kept": [],
+    "kept": [
+      653
+    ],
     "errors": []
   },
   "policy_lockfile_spam": {
@@ -27,7 +29,13 @@
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 654,
+        "reason": "failing:python-check (3.11, singularity-operator),python-check (3.10, singularity-operator),Python project checks (singularity-operator)",
+        "title": "chore(deps): bump prettier from 3.9.6 to 3.9.7 in /ai-chat-websites in the npm-chat group"
+      }
+    ],
     "errors": []
   }
 }
