@@ -60,7 +60,7 @@ These items require external services, accounts, or coordination with other repo
 
 Building on the now-complete CI foundation (Round 11 delivered cross-repo integration tests — see subsection K):
 
-- [ ] **Dependency update automation** — evaluate Dependabot or Renovate for automated lockfile-update PRs across all Node/Python projects; prefer one shared config over per-project sprawl.
+- [x] **Dependency update automation** — delivered 2026-09-19: the shared config (`.github/dependabot.yml`) audited against the real tracked-manifest map; gap closed (root npm tooling entry added so eslint/husky/lint-staged/prettier get update PRs), AGA-generated placeholder pip manifests (`AI-Collaboration-Hub/`, `nexus-core/`) consciously excluded to avoid fighting the generator; coverage table documented in `docs/DEPENDENCY_WORKFLOWS.md`
 - [ ] **Coverage trend visualization** — turn the ledger data behind `docs/COVERAGE_PERFORMANCE_TRENDS.md` into per-project charts surfaced in the OPS Dashboard.
 - [ ] **Machine telemetry aggregation** — summarize `agent-report.json` / `auto-ops-report.json` / `auto-fix-ledger.json` trends (auto-fix success rate, agent run frequency) in the OPS Dashboard.
 

@@ -14,6 +14,7 @@
  *      - check-doc-links.mjs  -> --quiet (exit 1 on broken links)
  *      - extension-check.mjs    -> --quiet (exit 1 on extension drift)
  *      - secret-scan.mjs      -> --quiet (exit 1 on a hardcoded secret)
+ *      - dependabot-check.mjs -> (no args; exit 1 on an uncovered manifest)
  *      - handoff-check.mjs    -> --quiet (exit 1 on a malformed .renitor handoff)
  *      - sync-parity.mjs      -> check [--strict] (report-only; never syncs)
  *      - bundle-trend.cjs     -> report --limit 1 (read-only ledger read)
@@ -39,6 +40,7 @@ const SMOKE = {
   'extension-check.mjs': ['--quiet'],
   'secret-scan.mjs': ['--quiet'],
   'workflow-audit.mjs': ['--quiet'],
+  'dependabot-check.mjs': [],
   'handoff-check.mjs': ['--quiet'],
   'sync-parity.mjs': strict ? ['check', '--strict'] : ['check'],
   'bundle-trend.cjs': ['report', '--limit', '1'],

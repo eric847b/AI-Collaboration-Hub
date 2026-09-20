@@ -64,7 +64,7 @@ if (Test-Path 'tools/workflow-audit.mjs') {
 # the daily 04:00 UTC cron can legitimately see a ~24h-old dashboard.
 Log "`nDashboard Freshness:" Yellow
 if (Test-Path 'tools/ops-dashboard.mjs') {
-    $dashOut = & node 'tools/ops-dashboard.mjs' --check 2>&1 | Out-String
+    $dashOut = & node 'tools/ops-dashboard.mjs' --check | Out-String
     if ($LASTEXITCODE -eq 0) { Ok 'ops dashboard sections fresh (<= 24h)' }
     else { Warn "ops dashboard stale or missing timestamps:`n$dashOut" }
 } else { Warn 'tools/ops-dashboard.mjs absent - dashboard freshness skipped' }
@@ -85,6 +85,18 @@ $pyProjects = @(Get-ChildItem -Directory |
     Where-Object { $_.Name -notlike '.*' -and (Test-Path (Join-Path $_.FullName 'requirements.txt')) })
 if ($pyProjects.Count -eq 0) { Fail 'no Python projects discovered' }
 $pyProjects | ForEach-Object { Ok "$($_.Name) (requirements.txt present)" }
+
+# ---- Dependabot coverage ----------------------------------------------
+# tools/dependabot-check.mjs cross-checks every auto-enrolled package
+# manifest (package.json / requirements.txt) against .github/dependabot.yml
+# entries (recursive directory coverage honored; AGA-generated placeholder
+# manifests skipped). Exit 1 = a manifest no config entry covers.
+Log "`nDependabot Coverage:" Yellow
+if (Test-Path 'tools/dependabot-check.mjs') {
+    $dcOut = & node 'tools/dependabot-check.mjs' | Out-String
+    if ($LASTEXITCODE -eq 0) { Ok 'all package manifests covered by dependabot.yml' }
+    else { Fail "dependabot coverage gaps:`n$dcOut" }
+} else { Warn 'tools/dependabot-check.mjs absent - dependabot coverage skipped' }
 
 # ---- Node engines vs runtime ----------------------------------------
 Log "`nNode Engines Check:" Yellow

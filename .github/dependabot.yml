@@ -20,6 +20,22 @@ updates:
         update-types: ["patch", "minor"]
 
   - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    labels: ["dependencies", "npm", "dependabot-coord"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      npm-root:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+
+  - package-ecosystem: "npm"
     directory: "/self-evolve-dash"
     schedule:
       interval: "weekly"
