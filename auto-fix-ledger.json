@@ -54,7 +54,25 @@
       "recorded_at": "2026-09-20T16:19:49Z",
       "status": "pending_verify",
       "reappear_count": 0
+    },
+    {
+      "problem_type": "auto_pr",
+      "title": "\ud83e\udd16 Docs: Python syntax error in ./singularity-operator/singularity_operator/advanced_userscript.py",
+      "pr_number": 673,
+      "merge_sha": null,
+      "recorded_at": "2026-09-20T18:34:14Z",
+      "status": "pending_verify",
+      "reappear_count": 0
+    },
+    {
+      "problem_type": "python_syntax",
+      "title": "Fix Python SyntaxError in ./singularity-operator/singularity_operator/advanced_userscript.py",
+      "pr_number": null,
+      "merge_sha": null,
+      "recorded_at": "2026-09-20T18:34:14Z",
+      "status": "pending_verify",
+      "reappear_count": 0
     }
   ],
-  "updated_at": "2026-09-20T16:19:49Z"
+  "updated_at": "2026-09-20T18:34:14Z"
 }
