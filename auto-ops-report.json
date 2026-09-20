@@ -1,14 +1,21 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T10:51:07Z",
+  "scanned_at": "2026-09-20T16:18:04Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
-    "closed": [],
-    "kept": [],
+    "closed": [
+      {
+        "number": 664,
+        "key": "bot:\ud83e\udd16 docs: python syntax error in ./singularity-opera"
+      }
+    ],
+    "kept": [
+      665
+    ],
     "errors": []
   },
   "policy_lockfile_spam": {
@@ -22,12 +29,82 @@
   "dependabot_conflicts": {
     "rebase_requests": [],
     "recreate_requests": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 663,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 661,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 660,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 659,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 658,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 657,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 656,
+        "reason": "not-patch-conflict-policy"
+      }
+    ],
     "errors": []
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 654,
+        "reason": "failing:python-check (3.12, singularity-operator),python-check (3.11, singularity-operator),python-check (3.10, singularity-operator),Python project checks (singularity-operator)",
+        "title": "chore(deps): bump prettier from 3.9.6 to 3.9.7 in /ai-chat-websites in the npm-chat group"
+      },
+      {
+        "number": 656,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps): bump the npm-dash group in /self-evolve-dash with 5 updates"
+      },
+      {
+        "number": 657,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps-dev): bump tailwindcss from 3.4.19 to 4.3.3 in /self-evolve-dash"
+      },
+      {
+        "number": 658,
+        "reason": "not-patch",
+        "title": "chore(deps): bump the npm-third-door group in /third-door-blink-controller with 5 updates"
+      },
+      {
+        "number": 659,
+        "reason": "not-patch",
+        "title": "chore(deps): bump expo-constants from 57.0.18 to 58.0.3 in /third-door-blink-controller"
+      },
+      {
+        "number": 660,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps): bump the npm-nexus group in /nexus-infinity-hub with 8 updates"
+      },
+      {
+        "number": 661,
+        "reason": "not-patch",
+        "title": "chore(deps): bump expo-router from 57.0.21 to 58.0.4 in /third-door-blink-controller"
+      },
+      {
+        "number": 663,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps-dev): bump typescript from 5.9.3 to 7.0.2 in /nexus-infinity-hub"
+      }
+    ],
     "errors": []
   }
 }
