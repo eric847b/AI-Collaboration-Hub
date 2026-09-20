@@ -20,3 +20,11 @@
 
 - Do not treat `rate_limit` as high-severity notify.
 - Prefer fixing **build_error** over retrying installs when the Build step is the failing step.
+
+## Current Status (2026-09-19)
+
+**Gate status:** PASS (22/22)
+**Workflow audit:** 1 accepted finding (WF004 review-flag on `ci-self-heal.yml`)
+**All CI workflows:** 24 workflows, all actionlint-clean, least-privilege permissions, timeout-minutes: 30, concurrency groups configured.
+
+**No active runtime failures.** All projects building successfully.

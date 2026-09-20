@@ -44,6 +44,18 @@ Out of scope:
 | main (latest release) | ✅ |
 | < 26.0 | ❌ (upgrade; only the latest `main` is patched) |
 
+**Security tooling (2026-09-19):**
+- **Secret scanning:** `tools/secret-scan.mjs` (20 detectors) + `.github/workflows/secret-scan.yml` — pre-commit + CI
+- **Vulnerability scanning:** `security-scanning.yml` (OWASP + per-project audit) + `vulnerability-gate.yml` (npm audit high + pip-audit)
+- **Dependency review:** `dependency-review.yml` on all PRs (fail-on-severity: high)
+- **Workflow audit:** `tools/workflow-audit.mjs` (12 rules WF001–WF012) — actionlint + supply-chain + hygiene checks
+
+**Workflow security posture:**
+- All 68 action pins are full commit SHAs (WF005 debt: 68 → 0)
+- All 24 workflows have least-privilege permissions, timeout-minutes: 30, concurrency groups
+- Workflow audit: 1 accepted finding (WF004 review-flag on `ci-self-heal.yml`)
+- Gate status: PASS (22/22)
+
 ## Known Third‑Party Vulnerabilities
 
 GitHub reports dependency vulnerabilities on the default branch. These are

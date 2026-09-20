@@ -44,3 +44,18 @@ This monorepo mixes Node and Python projects. CI and the autonomous agent expect
 ## Agent behavior
 
 The autonomous agent (`agent.py` v4.3+) scans for missing Node lockfiles and missing Python `requirements.txt` / `pyproject.toml` under known project dirs and opens draft PRs to fill gaps.
+
+**Last agent run:** See `agent-report.json` and `.renitor/` continuity files.
+
+**Current state (2026-09-19):** All projects have required dependency manifests. Gate PASS 22/22.
+
+## CI Integration
+
+All dependency checks are wired into CI workflows:
+
+- **`lockfile-validation.yml`** — Validates npm lockfiles across all Node projects
+- **`python-checks.yml`** — Validates Python requirements across all Python projects  
+- **`all-projects-sanity.yml`** — Weekly validation of all projects
+- **`workspace-gate.ps1`** (v3) — Comprehensive gate including lockfile and requirements check
+
+**Gate status:** 2026-09-19 — PASS (22/22)

@@ -1,6 +1,6 @@
 # Workspace Status — AI Collaboration Hub
 
-> Verified live state. Regenerated 2026-09-15 (replaces `QUALITY_STATUS.md`, `DELIVERY_SUMMARY.md`,
+> Verified live state. Regenerated 2026-09-19 (replaces `QUALITY_STATUS.md`, `DELIVERY_SUMMARY.md`,
 > `IMPROVEMENTS_SUMMARY*.md`, `ROUND_3_*.md`). Plan/open items live in `docs/ROADMAP.md`.
 
 ## How to check health right now
@@ -27,19 +27,21 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll any root folder with
 `package.json` (Node) or `requirements.txt` (Python) — no hardcoded lists.
 
-### CI — 24 root workflows in `.github/workflows/`
+### CI — 25 root workflows in `.github/workflows/`
 `ai-guardian-suite-ci` · `all-projects-sanity` · `autonomous-agent` · `branch-cleanup` ·
 `ci-self-heal` · `collabhub-modules-test` · `dependency-review` · `generate-docs` ·
 `lint-autofix` · `lockfile-validation` · `nexus-agent-cron` · `nexus-enforce` · `python-checks` ·
 `regression` · `secret-scan` · `security-scanning` · `solutions-dynamics` · `vulnerability-gate` ·
 `workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (+ load-test step),
 `multi-os-gate` (Windows hard gate / Linux informational), `playwright-e2e` (full-browser E2E;
-all added 2026-09-14).
+all added 2026-09-14), `ops-dashboard-refresh` (daily dashboard cron + manual dispatch, gate +
+regen + change-only commit; added 2026-09-19).
 
-All 68 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
+All 70 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
 (`owner/repo@<sha> # <ref>`) — WF005 supply-chain debt zeroed 2026-09-15 by the `workflow-audit`
-ratchet (ledger 119 → 51 accepted findings; nested standalone-repo workflows remain mirror-owned).
-All 24 root workflows also carry least-privilege top-level `permissions:`, job `timeout-minutes`
+ratchet (ledger 119 → 51 accepted findings; nested standalone-repo workflows remain mirror-owned;
+`ops-dashboard-refresh` added 2026-09-19 SHA-pinned from day one).
+All 25 root workflows also carry least-privilege top-level `permissions:`, job `timeout-minutes`
 (30) and top-level `concurrency:` groups — WF008/WF009/WF006 debt zeroed 2026-09-15, ratchet
 ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legitimate privileged
 `ci-self-heal` trigger; `cancel-in-progress: true` only on the 6 PR-only flows, `false` on the
@@ -54,6 +56,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/bootstrap.ps1` | install all Node + Python deps |
 | `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`) — 2026-09-14 |
 | `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode) — 41 files / 4 pairs at parity (2026-09-14) |
+| `tools/cross-repo-tests.mjs` | end-to-end fleet integration tests: SHA256 parity + hash verification of the standalone catalysts, module self-test entries, workflow validation (TC-001–TC-005) — 5/5 (2026-09-19) |
 | `tools/check-doc-links.mjs` | relative-link health for all Markdown — 152 files / 0 broken (2026-09-14) |
 | `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard` (2026-09-14) |
 | `tools/verify-tools.mjs` | one-command health check for all `tools/*.mjs\|*.cjs`: `node --check` + read-only smoke runs (`npm run tools:verify`, `--strict` also fails on parity DIFFs) — 2026-09-15 |
@@ -79,9 +82,12 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 ## Last gate run
 
 ```
-2026-09-15 — tools/workspace-gate.ps1 v3 (now includes the Workflow Audit step)
+2026-09-19 — tools/workspace-gate.ps1 v3 (now includes the Workflow Audit step)
 Passed=22  Failed=0  Warnings=1
   warn: node v24.14.0 < engines requirement >= 26 (npm not engine-strict; informational)
 Status: PASS
 ```
+
+**Completed rounds:** 11 (Rounds 1-11 all ✅ as of 2026-09-19)
+**Current focus:** Round 12+ — see `docs/ROADMAP.md` section 2 for prioritized open work
 

@@ -4,6 +4,8 @@
 > `DELIVERY_SUMMARY.md`, `IMPROVEMENTS_SUMMARY.md`, `IMPROVEMENTS_SUMMARY_NEW.md`,
 > `QUALITY_STATUS.md`, `ROUND_3_COMPLETION.md`, `ROUND_3_STATUS.md`, `CLINE_CONTINUOUS_IMPROVEMENT.md`.
 > Their claims were re-verified against the live tree on 2026-09-14 (see `docs/ROADMAP.md` §1).
+>
+> **Current status (2026-09-19):** Rounds 1-10 all complete. See `docs/ROADMAP.md` for full history and Round 11+ open work.
 
 ## Round 1 — Foundations (2026-07-10, ~2.5 h)
 

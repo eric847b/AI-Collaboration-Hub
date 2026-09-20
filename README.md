@@ -4,9 +4,14 @@ Multi-project workspace containing AI agents, dashboards, userscript modules, an
 
 ## Planning & Status
 
-- **`docs/ROADMAP.md`** — single source of truth for all plans, to-dos, and improvement rounds
-- **`docs/STATUS.md`** — verified live state (workflows, tooling, caveats)
-- **`docs/ARCHIVE-improvement-rounds-2026-08.md`** — condensed history of improvement rounds 1–3 (the superseded root docs were removed 2026-09-14; see git history)
+- **`docs/ROADMAP.md`** — single source of truth for all plans, to-dos, and improvement rounds (10 rounds complete, Round 11+ open)
+- **`docs/STATUS.md`** — verified live state (workflows, tooling, caveats) — 2026-09-19: PASS 22/22
+- **`docs/ARCHIVE-improvement-rounds-2026-08.md`** — condensed history of improvement rounds 1–3
+- **`docs/TESTING_GUIDE.md`** — comprehensive testing reference (unit, E2E, visual, load, security tests)
+- **`docs/DEPENDENCY_WORKFLOWS.md`** — dependency workflow details + security features
+- **`docs/ROOT_CAUSE_RUNTIME_FAILURES.md`** — runtime failure classes, incidents, current status
+- **`COMMUNITY.md`** — community guide, contribution process, support channels
+- **`tools/TOOLING_GUIDE.md`** — complete reference for all 18 workspace tools
 
 ## Projects
 
@@ -92,10 +97,30 @@ fails over the whole pool and exits gracefully instead of hanging.
 
 ## CI/Automation
 
-GitHub Actions workflows automate quality checks:
+GitHub Actions workflows automate quality checks (24 workflows total, all actionlint-clean):
 
 - **`all-projects-sanity.yml`** — Weekly validation of all Node and Python projects
-- **`quality-checks.yml`** (per repo) — Lint, test, build on PR/push
+- **`quality-checks.yml`** — Per-project quality gates (coverage ≥70%, lint, typecheck)
+- **`security-scanning.yml`** — Dependency vulnerability scanning (Sun 02:00)
+- **`secret-scan.yml`** — Secret detection in commits/PRs
+- **`workflow-lint.yml`** — Actionlint + workflow hygiene checks
+- **`dependency-review.yml`** — Dependency review on PRs
+- **`playwright-e2e.yml`** — Full browser E2E tests (both Vite apps)
+- **`e2e-smoke.yml`** — HTTP smoke tests + load testing (PRs + main)
+- **`performance-monitoring.yml`** — Bundle-size regression gates (Sat 03:00 + PR gate)
+- **`node-matrix.yml`** — Multi-version Node CI (Sat 03:30 + PRs)
+- **`multi-os-gate.yml`** — Windows hard gate + Linux informational (syntax, tools, extension check)
+- **`autonomous-agent.yml`** — 6h autonomous improvement cycle
+- **`generate-docs.yml`** — API docs generation (TypeDoc + pdoc)
+- **`ci-self-heal.yml`** — Self-healing workflow for automated fixes
+- **Plus 10 more workflows** for specialized tasks (lockfile validation, branch cleanup, nexus enforcement, etc.)
+
+**All 24 root workflows carry:**
+- Least-privilege top-level `permissions:`
+- Job `timeout-minutes: 30`
+- Top-level `concurrency:` groups (cancel-in-progress on PR flows only)
+
+Workflow audit: 1 accepted finding (documented WF004 review-flag on `ci-self-heal.yml`).s.yml`** (per repo) — Lint, test, build on PR/push
 - **`python-checks.yml`** — Python syntax validation and optional flake8
 - **`lint-autofix.yml`** — Scheduled ESLint fixes with auto-commit
 - **`dependabot.yml`** — Automated dependency updates

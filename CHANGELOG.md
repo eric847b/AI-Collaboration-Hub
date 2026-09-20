@@ -48,6 +48,24 @@ All notable workspace-level changes are documented here.
 - Fleet sync parity restored (SHA256-verified): nested `autonomous-github-agent` was missing `agent.py`/`security.py`/`stale_branches.py`; 11/11 catalyst modules + 13/13 `singularity_operator` subtree byte-for-byte
 - Orphaned gitlink removed: `modular-hub-modernization` (mode 160000 without `.gitmodules`); dir now a gitignored local working mirror
 - 6 broken Markdown links fixed (ai-chat-websites Docs/ depth + pre-existing stale paths)
+
+## [Unreleased] — 2026-09-19 (roadmap refresh)
+
+### Added
+- **Round 11+ roadmap** — new open work section in `docs/ROADMAP.md` with 5 prioritized categories: External/Community 🌐, Quality & CI enhancements, Observability enhancements, Developer Experience, Documentation
+- **Completed rounds 5-10** — documented in `docs/ROADMAP.md` section 1 with dates and focus summaries
+- **Round Completion Template** — standardized template added to `docs/ROADMAP.md` section 5 for future rounds
+- **Enhanced durable rules** — 2 new rules added to `AGENTS.md` and `docs/ROADMAP.md` requiring gate verification before marking items complete
+
+### Updated
+- `docs/ROADMAP.md` — revised 2026-09-19, gate PASS 22/22
+- `docs/STATUS.md` — regenerated 2026-09-19
+- `README.md` — updated CI/automation section with full 24-workflow inventory
+- `AGENTS.md` — added last gate run summary and current focus
+- `docs/README.md` — updated with current round status
+
+### Fixed
+- Updated all documentation timestamps and verification evidence to reflect current state
 - Corrupted `.vscode/tasks.json` rebuilt; stale `QUALITY_STATUS` references updated in `DEVELOPER_GUIDE.md`, `ai-chat-websites/CONTRIBUTING.md`, `ai-chat-websites/Docs/API.md`; stale `npm run health/verify` docs updated to `npm run gate`
 - `third-door-blink-controller`: `.gitignore` expanded with security-critical patterns (`.env*`, `.expo/`, `web-build/`, native build outputs, logs); previously only `node_modules` + `expo-env.d.ts` were ignored, risking accidental `.env.local` commits
 - `third-door-blink-controller`: removed unused imports (`Text`, `Platform`, `Layout`) and dead `lastBlinkTime` state from `app/index.tsx`

@@ -40,8 +40,9 @@ dist/
 # package.json) — only its generated dist/ output stays ignored (via dist/)
 !ai-chat-websites/Userscripts/build/
 
-# IDE
-.vscode/
+# IDE (root-anchored: only the workspace-level recommendations file is shared)
+/.vscode/*
+!/.vscode/extensions.json
 .idea/
 .windsurf/
 *.swp

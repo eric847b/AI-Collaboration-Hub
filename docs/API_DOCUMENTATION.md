@@ -109,6 +109,8 @@ pdoc --html --force --output-directory docs/api singularity-operator/
 
 Docs are automatically generated and deployed on every push to main via the `generate-docs.yml` workflow.
 
+**Status:** Workflow deploys best-effort; GitHub Pages enablement required for successful deployment (see `docs/ROADMAP.md` — External/Community item).
+
 Access at: `https://[username].github.io/ai-collaboration-hub/`
 
 ### Manual Deployment
@@ -122,7 +124,16 @@ python -m pdoc singularity-operator/  # Python projects
 open docs/index.html
 ```
 
----
+### CI Integration
+
+The `generate-docs.yml` workflow:
+- Runs on every push to main
+- Generates TypeDoc for Node/TypeScript projects
+- Generates pdoc for Python projects
+- Uploads artifacts (90-day retention)
+- Attempts GitHub Pages deployment (soft-fails if `github-pages` environment not enabled)
+
+**Last deployment attempt:** See GitHub Actions → `generate-docs` workflow runs.
 
 ## Best Practices
 

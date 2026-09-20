@@ -6,7 +6,7 @@
 > `ROUND_3_COMPLETION.md`, `ROUND_3_STATUS.md`.
 > History: `docs/ARCHIVE-improvement-rounds-2026-08.md` · Live state: `docs/STATUS.md`
 
-**Last revised:** 2026-09-14 · **Quality gate:** `npm run gate` · **Full catalyst series:** `npm run quality`
+**Last revised:** 2026-09-19 · **Quality gate:** `npm run gate` · **Full catalyst series:** `npm run quality`
 
 ## Legend
 
@@ -22,6 +22,13 @@
 | 2 | Lockfiles 4/4, TypeScript strict, husky + lint-staged, Python CI, coverage tracking | ✅ 2026-08-14 |
 | 3 | Coverage ≥70% gate, security scanning, API docs generation, VS Code workspace, DevContainer | ✅ 2026-08-14 (re-verified 2026-09-14) |
 | 4 | Bundle/perf monitoring, multi-version Node CI, E2E smoke tests, debug launch configs, doc consolidation | ✅ 2026-09-14 |
+| 5 | Full E2E suite (Playwright), visual regression, load-testing framework, multi-OS spot-check | ✅ 2026-09-14 |
+| 6 | Fleet sync tools (sync-parity, check-doc-links), AGENTS.md, documentation index, PR template, CHANGELOG | ✅ 2026-09-14 |
+| 7 | Extension health check (34 checks), OPS Dashboard extension section | ✅ 2026-09-15 |
+| 8 | Secret-scan tool (offline twin of CI), pre-commit integration | ✅ 2026-09-15 |
+| 9 | Workflow audit tool (12 rules WF001–WF012), action SHA pinning ratchet (119 → 51 findings) | ✅ 2026-09-15 |
+| 10 | Accepted-debt zeroing (WF008/WF009/WF006), timeout/concurrency/permissions on 22 workflows, ledger 51 → 1 | ✅ 2026-09-15 |
+| 11 | Docs/DX expansion: 7 new guides + TOOLING_GUIDE + COMMUNITY, cross-repo-tests.mjs (5/5), ops-dashboard-refresh.yml (daily dashboard cron), extensions.json, parity reconcile | ✅ 2026-09-19 |
 
 ### Round 3 verification checklist (was left unchecked; verified 2026-09-14)
 
@@ -35,39 +42,40 @@
 
 ---
 
-## 2. Open Work — Round 5+ (prioritized)
+## 2. Open Work — Round 12+ (prioritized)
 
-### A. Quality & CI
+> Round 11 (2026-09-19) completed the previous open-work list — the full completion record is
+> subsection K below. Everything in A–D is the fresh plan.
 
-- [x] Full E2E suite: Playwright for `nexus-infinity-hub` & `self-evolve-dash` — `@playwright/test` ^1.63 devDependency (lockfiles updated), `playwright.config.js` (serves the production build via `vite preview`), `e2e/app.spec.js` (3 tests: title, `#root` renders, zero console/page errors), `.github/workflows/playwright-e2e.yml` (chromium + HTML report artifact; validated via `test --list`) (2026-09-14)
-- [x] Visual regression: Playwright screenshot diffing shipped — `e2e/visual.spec.js` (full-page `toHaveScreenshot`, animations disabled, 2% diff tolerance) in both apps; **baselines are seeded on Linux CI** via `playwright-e2e.yml` dispatch `mode=seed` (auto-commits `*-snapshots/`), checks skip gracefully until seeded; `npm run test:visual` (2026-09-14)
-- [x] Load-testing framework — dependency-free `tools/load-test.mjs` (RPS + p50/p95/p99 latency, error-rate & p95 gates), wired into `e2e-smoke.yml` (2026-09-14)
-- [x] Multi-OS spot-check — `.github/workflows/multi-os-gate.yml`: Windows hard gate + Linux informational pwsh gate + cross-platform `node --check` (2026-09-14)
+### A. External / Community 🌐 (carried forward)
 
-### B. Observability
+These items require external services, accounts, or coordination with other repositories:
 
-- [x] Bundle/perf trend ledger + CI regression gate → `tools/bundle-trend.cjs` + `performance-monitoring.yml` (2026-09-14). Extended with a pre-build integrity gate: `checksum` (SHA-256 manifest of every file under build outputs → `dist/.checksum-manifest.json`, idempotent) + `verify` (re-hash + diff, exit 1 with `changed|removed|added` report on drift). Live-validated both apps: clean exit 0, injected drift files detected & reported, restored → clean again; manifests gitignored via `dist` (2026-09-17)
-- [x] Repo-level observability dashboard — `tools/ops-dashboard.mjs` → `docs/metrics/OPS-DASHBOARD.md`: aggregates CI workflow inventory (from disk), tooling inventory, bundle ledger + deltas, fleet mirror parity (live), Markdown link health (live), machine telemetry (`agent-report.json`, `auto-ops-report.json`, `auto-fix-ledger.json`). `npm run dashboard`; CI smoke + artifact in `multi-os-gate.yml` (2026-09-14)
-- [x] Runtime error-telemetry hook — `src/lib/telemetry.ts` (dependency-free, identical module in both Vite apps): captures window `error` events, unhandled promise rejections and `console.error` (React render errors surface via the dash `ErrorBoundary`, which now calls `reportError(..., 'react', ...)`); bounded 50-entry ring buffer + localStorage persistence (`telemetry:errors`); batch-flushes as JSON via sendBeacon/fetch-keepalive ONLY when an endpoint is configured (`window.TELEMETRY_ENDPOINT` or `installTelemetry({ endpoint })`) — fully local/inert without one; 13 vitest unit tests in nexus (`telemetry.test.ts`); `window.__telemetry` debug snapshot (2026-09-16)
-- [x] Synthetic/uptime monitoring — self-hosted piece DONE: `tools/e2e-smoke.mjs` gained repeatable `--route <path>` probes (default `/`; per-route HTTP-200 pass/fail — dependency-free multi-route synthetic check). The external-service part (real uptime dashboards) stays 🌐 (2026-09-16)
+- [ ] **GitHub Pages enablement for API docs** — repo Settings → Pages → GitHub Actions. Workflow already deploys best-effort; enabling the `github-pages` environment will make deployment succeed instead of soft-failing.
+- [ ] **Third-party security audit** — owned by `ai-chat-websites/next_year_roadmap.md`; coordinate with that repo's roadmap.
+- [ ] **ai-chat-websites community items** — Discord, video tutorials, store publishing, 80/90% coverage gates — tracked in that repo's `next_year_roadmap.md`.
+- [ ] **External uptime dashboards** — synthetic monitoring tool (`tools/e2e-smoke.mjs` with `--route` probes) is self-hosted and ready; the external-service piece (real uptime dashboards) remains 🌐.
 
-### C. Fleet sync (from `docs/SYNC_CATALYST.md` + `tools/sync_fleet_catalysts.md`)
+### B. Quality & CI (Round 12)
 
-- [x] Byte-for-byte parity, all 11 critical catalyst modules — `agent.py`, `security.py`, `stale_branches.py`, `roi_catalyst.py`, `failure_solver.py`, `failure_solver_draft_ext.py`, `profile_io.py`, `cross_repo_coordinator.py`, `fleet_maintenance.py`, `fleet-maintenance.yml`, `completed_catalyst_dataset.md` (SHA256-verified 2026-09-14; several had drifted despite earlier ✅ claims — the nested mirror was even missing agent/security/stale_branches entirely)
-- [x] Deep parity: `singularity_operator/` package subtree — 13/13 files, zero SHA256 diffs (2026-09-14)
-- [x] Mirrors: modular-hub-modernization backfilled (9 files incl. FailureSolver trio); collabhub-modules partial (`VERSION`, `release.yml`); `zero-cost-wealth-playbook-tool` stays reference-only. 3 divergences (collabhub `package.json`/`README.md`, modular `README.md`) deliberately kept nested — the nested trees are actively developed here; flagged for manual review, never auto-overwritten. `modular-hub-modernization` turned out to be an **orphaned gitlink** (mode 160000, no `.gitmodules` mapping — unusable by fresh clones): gitlink removed and the dir is now a gitignored local working mirror of the standalone repo.
+Building on the now-complete CI foundation (Round 11 delivered cross-repo integration tests — see subsection K):
 
-### D. External / community 🌐
+- [ ] **Performance regression alerts** — extend `bundle-trend.cjs` with threshold alerting (CI annotations + optional webhook) instead of gate-only failures.
+- [ ] **Dependency update automation** — evaluate Dependabot or Renovate for automated lockfile-update PRs across all Node/Python projects; prefer one shared config over per-project sprawl.
+- [ ] **Coverage trend visualization** — turn the ledger data behind `docs/COVERAGE_PERFORMANCE_TRENDS.md` into per-project charts surfaced in the OPS Dashboard.
+- [ ] **Machine telemetry aggregation** — summarize `agent-report.json` / `auto-ops-report.json` / `auto-fix-ledger.json` trends (auto-fix success rate, agent run frequency) in the OPS Dashboard.
 
-- [ ] Third-party security audit (owned by `ai-chat-websites/next_year_roadmap.md`)
-- [ ] GitHub Pages enablement for API docs (repo Settings → Pages → GitHub Actions) — workflow already deploys best-effort
-- [ ] ai-chat-websites community items (Discord, video tutorials, store publishing, 80/90% coverage gates) — tracked in that repo's roadmap
+### C. Observability & Runtime (Round 12)
 
-### E. Housekeeping
+- [ ] **Telemetry endpoint configuration** — the runtime error-telemetry hook (`src/lib/telemetry.ts`) is built and inert without an endpoint. Configure `window.TELEMETRY_ENDPOINT` or `installTelemetry({ endpoint })` for production error reporting (needs an owner decision on the receiving backend).
+- [ ] **Dashboard freshness guard** — teach `ops-dashboard.mjs` to track per-section update timestamps, skip unchanged sections, and expose a staleness check the gate can consume.
+- [ ] **Flaky-test tracker** — record Playwright/vitest retry occurrences across CI runs and surface a flake-rate trend in the OPS Dashboard.
 
-- [x] Consolidate 7 stale planning docs → this file + `STATUS.md` + `ARCHIVE-improvement-rounds-2026-08.md` (2026-09-14)
-- [x] Fix corrupted `.vscode/tasks.json` (broken JSON line); add real tasks + `.vscode/launch.json` (2026-09-14)
-- [x] Root junk review (2026-09-14): deleted `_sg.py` (tracked scratch debug script), `tmp-alerts.json` + `tmp-reg-meta.json` (pipeline outputs), stale `FreedomReport.txt` / `LocalRepoReview.txt` (regenerable via `tools/review-repos.ps1` / `analyze-freedom.ps1`); moved the one-off `fix-security-alerts.cjs` pipeline into `tools/`; KEPT machine-state `agent-report.json`, `auto-fix-ledger.json`, `auto-ops-report.json` (actively written by `autonomous-agent.yml` / `ci-self-heal.yml`)
+### D. Developer Experience (Round 12)
+
+- [ ] **Project template generator** — turn `docs/WORKSPACE_TEMPLATES.md` into an actual scaffolding script (`tools/new-project.mjs`) that stamps a new Vite/React app with the standard configs (ESLint, Prettier, Playwright, telemetry hook).
+- [ ] **Interactive CLI tools (re-scoped)** — the naive interactive-prompt approach was tried and rejected in Round 11 (see subsection K); re-scope as explicit subcommands/flags (e.g., `bundle-trend.cjs <app>`, `sync-parity.mjs sync --mode=overwrite`) instead of stdin prompts.
+- [ ] **Node 26 local runtime alignment** — CI enforces `engines >= 26` while the local default runtime is v24 (informational gate warning only); either upgrade the local toolchain or document the accepted delta permanently.
 
 ---
 
@@ -116,9 +124,21 @@
 - [x] Ledger pruned in the same change per the ratchet contract (**51 → 1 accepted findings**: medium 10 → 1, low 41 → 0; WF008/WF009/WF006 all zero). Sole survivor: the **WF004 review-flag on `ci-self-heal.yml:25`** — an inherently privileged, legitimate `workflow_run` self-healer that needs `contents: write` to push fixes; every step was reviewed this session (default checkout of the default branch, repo-owned scripts, dispatch-only inputs, zero event-payload shell interpolation), so it stays as documented, justified acceptance instead of weakening the rule
 - [x] Validation evidence: gate PASS 22/22; `workflow-audit --check-baseline` green (1 accepted); `--self-test` 12/12 fixtures + ledger boundary + exit-code contract; pre-commit secret-scan clean on the staged index
 
+### K. Round 11 — new items (added AND completed 2026-09-19)
+
+- [x] **Cross-repo integration tests** — `tools/cross-repo-tests.mjs`: TC-001 SHA256 parity across the 4 fleet pairs (autonomous-github-agent catalysts, singularity_operator subtree, collabhub-modules mirror, modular-hub-modernization mirror), TC-002 per-file hash verification of the 8 standalone catalysts, TC-003 ROI Catalyst self-test entry, TC-004 FailureSolver validate entry, TC-005 catalyst-workflow hash + actionlint. Supersedes and deletes the broken `tools/cross-repo-int.test.mjs` duplicate (could not resolve standalone roots living outside the workspace). Evidence: 5/5 PASS, exit 0
+- [x] **OPS Dashboard auto-refresh** — `.github/workflows/ops-dashboard-refresh.yml`: daily cron `0 4 * * *` + `workflow_dispatch` + path triggers (docs/tools/workflows/package manifests); runs the gate, regenerates the dashboard, commits only on change; SHA-pinned actions (checkout@v7, setup-node@v7), node 26 to match `engines`, timeout/concurrency/least-privilege compliant. Evidence: actionlint clean; `workflow-audit --check-baseline` green; audit ledger re-seeded 24 → 25 workflows (1 accepted finding unchanged)
+- [x] **VS Code extension recommendations** — `.vscode/extensions.json` populated (ESLint, Prettier, TS Nightly, Vitest/Jest/pytest/Python, Playwright, GitHub Actions + PR, GitLens, spell-checker, Error Lens, Mermaid) and made shareable via a root-anchored `.gitignore` exception (`/.vscode/*` + `!/.vscode/extensions.json` — a dir-level `.vscode/` pattern cannot be negated; nested project `.vscode/` dirs keep their own per-project rules)
+- [x] **Documentation expansion** — 7 new docs (`TESTING_GUIDE`, `TROUBLESHOOTING`, `WORKSPACE_TEMPLATES`, `COVERAGE_PERFORMANCE_TRENDS`, `CROSS_REPO_INTEGRATION_TESTS`, `API_DOCUMENTATION_COVERAGE`, `OPS_DASHBOARD_AUTOMATION`) + `tools/TOOLING_GUIDE.md` + `COMMUNITY.md`; README/AGENTS/CONTRIBUTING/CHANGELOG/SECURITY/DEVELOPER_GUIDE refreshed to match. Evidence: `check-doc-links` 165 files / 47 links / 0 broken
+- [x] **Interactive CLI item consciously rejected** — the no-arg interactive path prototyped into `bundle-trend.cjs` fell through synchronously past its prompt (stdin callbacks don't block the script, and CI/smoke requires non-interactive tools); reverted to the canonical non-interactive CLI and re-scoped the roadmap item to explicit subcommands/flags (section D)
+- [x] **Parity reconciliation** — the session's one real DIFF (`singularity_operator/advanced_userscript.py`, standalone ahead under overwrite mode) reconciled via the sanctioned `node tools/sync-parity.mjs sync`; `check` re-run green
+- [x] **OPS Dashboard regenerated** — `node tools/ops-dashboard.mjs` → `docs/metrics/OPS-DASHBOARD.md` now reflects 25 workflows
+
+**Validation evidence:** gate PASS 22/22 (2026-09-19); `cross-repo-tests.mjs` 5/5; actionlint clean on the new workflow; `workflow-audit --check-baseline` green (exit 0, 1 accepted); `check-doc-links.mjs` 165 files / 47 links / 0 broken; `sync-parity.mjs check` green after reconcile.
+
 ---
 
-## 3. Continuous Improvement Loop (updated 2026-09-14)
+## 3. Continuous Improvement Loop (updated 2026-09-19)
 
 Replaces `CLINE_CONTINUOUS_IMPROVEMENT.md` (deleted; its stale `npm run health/verify` commands pointed at scripts that no longer exist):
 
@@ -144,3 +164,22 @@ Run the autonomous continuous improvement cycle:
 - No secrets in the repo — provider keys live only in `~/.cline/data/settings/…` or encrypted Actions secrets.
 - `tools/*.ps1` must derive all paths from `$PSScriptRoot`; absolute user profiles are forbidden.
 - Never use `npx` inside `.husky/pre-commit` (stalls); the hook calls `node_modules/.bin/*` directly.
+- New items added to this roadmap MUST be verified via `npm run gate` before marking complete.
+- All completed rounds MUST include verification evidence (test results, command output, or audit logs).
+
+---
+
+## 5. Round Completion Template
+
+When completing a round, add a section like this:
+
+### Round N — new items (added AND completed YYYY-MM-DD)
+
+- [x] **Item description** — details of what was done, tools/files changed, verification evidence
+- [x] **Item description** — more items as needed
+
+**Validation evidence:** gate PASS X/X; specific test results or audit output; any relevant metrics.
+
+---
+
+*Last gate run: 2026-09-19 — PASS (22/22, 1 informational warning: Node v24.14.0 < engines ≥26)*

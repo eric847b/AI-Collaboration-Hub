@@ -19,7 +19,9 @@ npm run bootstrap
 npm run gate
 ```
 
-Expected output: `Status: PASS` (workspace-gate v3, ~21 checks).
+Expected output: `Status: PASS` (workspace-gate v3, 22 checks, 1 informational warning about Node version).
+
+**Current state (2026-09-19):** Gate PASS 22/22. 10 improvement rounds completed. See `docs/ROADMAP.md` for Round 11+ open work.
 
 ---
 

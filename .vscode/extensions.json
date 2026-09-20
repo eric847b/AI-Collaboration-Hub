@@ -1,0 +1,45 @@
+{
+  "// See https://code.visualstudio.com/docs/editor/extension-gallery#_workspace-recommended-extensions": "This file recommends extensions for the AI Collaboration Hub workspace. Extensions are organized by category and marked as recommended or optional.",
+  "recommendations": [
+    // Core Development
+    "dbaeumer.vscode-eslint",          // ESLint integration (required for linting)
+    "esbenp.prettier-vscode",          // Prettier formatter (required for formatting)
+    "ms-vscode.vscode-typescript-next", // TypeScript Nightly (for latest TS features)
+
+    // Testing
+    "vitest.explorer",                 // Vitest test explorer (for nexus-infinity-hub, self-evolve-dash)
+    "ms-jest.jest",                    // Jest test explorer (for ai-chat-websites)
+    "ms-python.pytest",                // pytest support (for Python projects)
+    "ms-python.vscode-python",         // Python language support
+
+    // Playwright E2E
+    "ms-playwright.playwright",        // Playwright test runner & viewer
+
+    // Git & Collaboration
+    "GitHub.vscode-github-actions",    // GitHub Actions workflow editing & validation
+    "GitHub.vscode-pull-request-github", // GitHub PRs & issues
+    "eamodio.gitlens",                 // Enhanced Git capabilities
+
+    // Workspace-Specific Tools
+    "ms-vscode.vscode-typescript-tslint-plugin", // TS linting integration
+
+    // Optional: Productivity
+    "streetsidesoftware.code-spell-checker", // Spell checking
+    "usernamehw.errorlens",            // Inline error display
+    "stylelint.vscode-stylelint",      // CSS linting (if using CSS/SCSS)
+
+    // Optional: Python
+    "ms-python.black-formatter",       // Python formatting (optional, pytest handles it)
+    "charliermarsh.ruff",              // Fast Python linter (optional alternative)
+
+    // Optional: Visualization
+    "bierner.markdown-mermaid",        // Mermaid diagrams in Markdown
+    "yzhang.markdown-all-in-one"       // Markdown enhancements
+  ],
+  "// Unstable extensions that should not be auto-installed": {
+    "// For more details": "https://code.visualstudio.com/docs/editor/extension-gallery#_workspace-recommended-extensions"
+  },
+  "unwantedRecommendations": [
+    // No unwanted recommendations - all listed are stable and useful
+  ]
+}
