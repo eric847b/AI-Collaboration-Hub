@@ -1,7 +1,7 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T15:43:08Z",
+  "scanned_at": "2026-09-20T18:34:07Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
@@ -9,7 +9,8 @@
   "duplicate_drafts": {
     "closed": [],
     "kept": [
-      650
+      672,
+      671
     ],
     "errors": []
   },
@@ -24,12 +25,23 @@
   "dependabot_conflicts": {
     "rebase_requests": [],
     "recreate_requests": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 658,
+        "reason": "not-patch-conflict-policy"
+      }
+    ],
     "errors": []
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 658,
+        "reason": "not-patch",
+        "title": "chore(deps): bump the npm-third-door group across 1 directory with 5 updates"
+      }
+    ],
     "errors": []
   }
 }
