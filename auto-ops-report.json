@@ -1,7 +1,7 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-17T21:26:02Z",
+  "scanned_at": "2026-09-20T04:37:36Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
@@ -9,7 +9,7 @@
   "duplicate_drafts": {
     "closed": [],
     "kept": [
-      632
+      641
     ],
     "errors": []
   },
@@ -24,50 +24,12 @@
   "dependabot_conflicts": {
     "rebase_requests": [],
     "recreate_requests": [],
-    "skipped": [
-      {
-        "number": 626,
-        "reason": "not-patch-conflict-policy"
-      },
-      {
-        "number": 619,
-        "reason": "not-patch-conflict-policy"
-      },
-      {
-        "number": 618,
-        "reason": "not-patch-conflict-policy"
-      },
-      {
-        "number": 616,
-        "reason": "not-patch-conflict-policy"
-      }
-    ],
+    "skipped": [],
     "errors": []
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [
-      {
-        "number": 616,
-        "reason": "not-patch",
-        "title": "chore(deps)(deps): bump the npm-nexus group across 1 directory with 10 updates"
-      },
-      {
-        "number": 618,
-        "reason": "not-patch",
-        "title": "chore(deps)(deps): bump the npm-dash group across 1 directory with 6 updates"
-      },
-      {
-        "number": 619,
-        "reason": "not-patch",
-        "title": "chore(deps)(deps-dev): bump jsdom from 27.4.0 to 30.0.1 in /nexus-infinity-hub"
-      },
-      {
-        "number": 626,
-        "reason": "not-patch",
-        "title": "chore(deps)(deps-dev): bump vite from 6.4.3 to 8.3.0 in /self-evolve-dash"
-      }
-    ],
+    "skipped": [],
     "errors": []
   }
 }
