@@ -67,7 +67,7 @@ Building on the now-complete CI foundation (Round 11 delivered cross-repo integr
 ### C. Observability & Runtime (Round 12)
 
 - [ ] **Telemetry endpoint configuration** — the runtime error-telemetry hook (`src/lib/telemetry.ts`) is built and inert without an endpoint. Configure `window.TELEMETRY_ENDPOINT` or `installTelemetry({ endpoint })` for production error reporting (needs an owner decision on the receiving backend).
-- [ ] **Dashboard freshness guard** — teach `ops-dashboard.mjs` to track per-section update timestamps, skip unchanged sections, and expose a staleness check the gate can consume.
+- [x] **Dashboard freshness guard** — delivered 2026-09-19: per-section `ts:` markers, idempotent regen (unchanged sections keep their timestamps), `--check` staleness mode; gate + verify-tools + cron workflow all consume it (see subsection L)
 - [ ] **Flaky-test tracker** — record Playwright/vitest retry occurrences across CI runs and surface a flake-rate trend in the OPS Dashboard.
 
 ### D. Developer Experience (Round 12)
@@ -140,8 +140,11 @@ Building on the now-complete CI foundation (Round 11 delivered cross-repo integr
 ### L. Round 12 — items (started 2026-09-19)
 
 - [x] **Performance regression alerts (B1)** — `bundle-trend.cjs` `check` now emits one GitHub `::error::` annotation per regressed bundle when running under Actions (`GITHUB_ACTIONS=true`; title = bundle name, body = base→now bytes, threshold) and posts an optional best-effort JSON webhook (`--webhook-url` flag or `BUNDLE_ALERT_WEBHOOK` env, https/http with 5 s timeout — **always non-fatal**: alert delivery never changes the gate outcome). Wired into `performance-monitoring.yml` via a **step-scoped** `BUNDLE_ALERT_WEBHOOK: ${{ secrets.BUNDLE_ALERT_WEBHOOK }}` on the gate step — unset/empty secret → annotations only; step scope is deliberate since workflow-level secret env trips WF012.
+- [x] **Dashboard freshness guard (C2)** — `ops-dashboard.mjs` now stamps every section with a machine-parseable marker (`<!-- ops-section:<name> ts:<ISO8601> -->`), preserves unchanged sections' timestamps on regen (idempotent output — a run on a current dashboard writes nothing, which the cron workflow's existing nothing-to-commit guard already handles) and gained a `--check` staleness mode (per-section age vs 24 h max, exit 1 on stale, per-section ok/stale table). Consumed in three places: `workspace-gate.ps1` v3 gained a **warn-only** freshness step (gate count 22 → 23; staleness warns but never gates, matching the engines-warning convention), `verify-tools.mjs` runs `--check` as its read-only probe for the tool, and `ops-dashboard-refresh.yml` verifies markers post-regen before committing.
 
 **Validation evidence (2026-09-19):** temp-ledger regression run exits 1 with the `::error::` annotation emitted under `GITHUB_ACTIONS=true`; webhook-unreachable path stays exit 1 (non-fatal); clean path exits 0; `node --check` 0; actionlint 0 on `performance-monitoring.yml`; `workflow-audit --check-baseline` green (1 accepted finding unchanged); gate PASS 22/22.
+
+**C2 validation evidence (2026-09-19):** `node tools/ops-dashboard.mjs --check` → all 7 sections fresh, exit 0; idempotence proven (second regen run exits 0 writing nothing); `verify-tools.mjs` probe green (`ops-dashboard.mjs --check: ok`); actionlint 0 on `ops-dashboard-refresh.yml`; `sync-parity.mjs check` green (13/13 subtree, standalone reconciled); **gate PASS 23/23** with the new warn-only freshness step.
 
 ---
 

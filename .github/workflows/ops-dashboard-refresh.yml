@@ -47,6 +47,9 @@ jobs:
       - name: Regenerate OPS Dashboard
         run: node tools/ops-dashboard.mjs
 
+      - name: Verify Dashboard Freshness
+        run: node tools/ops-dashboard.mjs --check
+
       - name: Check for Changes
         id: changes
         run: |

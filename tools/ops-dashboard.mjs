@@ -10,6 +10,15 @@
  *   - machine-written reports (agent-report.json, auto-ops-report.json, auto-fix-ledger.json)
  *
  *   node tools/ops-dashboard.mjs [--out docs/metrics/OPS-DASHBOARD.md]
+ *   node tools/ops-dashboard.mjs --check [--max-age-hours 24]
+ *
+ * Idempotent regeneration: every section carries a `<!-- ops-section:<id>
+ * ts:<iso> -->` marker recording when its CONTENT last changed. Unchanged
+ * sections keep their original stamps and a fully unchanged run does not
+ * rewrite the file at all (no git churn). `--check` exits 1 when the output
+ * is missing, lacks markers, or any section is older than --max-age-hours
+ * (the workspace gate consumes this as a warning; the daily cron workflow
+ * refreshes the dashboard, so staleness is an ops signal, not a code fault).
  *
  * Report-only by design: exits 0 even when individual sections are degraded.
  */
@@ -62,8 +71,11 @@ function runTool(cmd) {
 }
 
 // ---- section collectors -------------------------------------------------
+// Each collector returns { id, lines }; ids are the stable keys referenced
+// by the per-section freshness markers written into the generated Markdown.
 
-function workflowsSection(lines) {
+function workflowsSection() {
+  const lines = [];
   const dir = path.join(ROOT, '.github', 'workflows');
   const files = fs
     .readdirSync(dir)
@@ -72,22 +84,26 @@ function workflowsSection(lines) {
   lines.push(`## CI Workflows (${files.length})`, '');
   for (const f of files) lines.push(`- \`${f}\``);
   lines.push('');
+  return { id: 'workflows', lines };
 }
 
-function toolingSection(lines) {
+function toolingSection() {
+  const lines = [];
   const dir = path.join(ROOT, 'tools');
   const files = fs.readdirSync(dir).filter((f) => /\.(mjs|cjs|ps1|json)$/.test(f)).sort();
   lines.push(`## Workspace Tooling (${files.length} files in tools/)`, '');
   for (const f of files) lines.push(`- \`${f}\``);
   lines.push('');
+  return { id: 'tooling', lines };
 }
 
-function bundleSection(lines) {
+function bundleSection() {
+  const lines = [];
   const ledger = readJsonSafe(path.join('docs', 'metrics', 'bundle-history.json'));
   const entries = ledger && Array.isArray(ledger.entries) ? ledger.entries : [];
   if (entries.length === 0) {
     lines.push('## Bundle Ledger', '', '_Empty — run `node tools/bundle-trend.cjs collect` after building projects._', '');
-    return;
+    return { id: 'bundle', lines };
   }
   const latest = entries[entries.length - 1];
   const prev = entries.length > 1 ? entries[entries.length - 2] : null;
@@ -104,19 +120,24 @@ function bundleSection(lines) {
     lines.push(`| ${n} | ${human(latest.projects[n].bytes)} | ${latest.projects[n].files} | ${delta} |`);
   }
   lines.push('');
+  return { id: 'bundle', lines };
 }
 
-function toolOutputSection(lines, title, cmd) {
-  lines.push(`## ${title}`, '', '```text', runTool(cmd), '```', '');
+function toolOutputSection(id, title, cmd) {
+  return { id, lines: [`## ${title}`, '', '```text', runTool(cmd), '```', ''] };
 }
 
-function extensionSection(lines) {
+function extensionSection() {
   // Extension health is part of CI (multi-os-gate) via --quiet; inline the full
   // report here so the dashboard shows per-check findings, not just pass/fail.
-  lines.push('## Browser Extension (Unified AI Assistant Suite)', '', '```text', runTool('node tools/extension-check.mjs'), '```', '');
+  return {
+    id: 'extension',
+    lines: ['## Browser Extension (Unified AI Assistant Suite)', '', '```text', runTool('node tools/extension-check.mjs'), '```', ''],
+  };
 }
 
-function machineReportsSection(lines) {
+function machineReportsSection() {
+  const lines = [];
   const reports = ['agent-report.json', 'auto-ops-report.json', 'auto-fix-ledger.json'];
   lines.push('## Machine-Generated Reports', '');
   for (const r of reports) {
@@ -124,24 +145,117 @@ function machineReportsSection(lines) {
     lines.push(`- \`${r}\`: ${data ? summarizeJson(data) : '_not readable / absent_'}`);
   }
   lines.push('');
+  return { id: 'machine-reports', lines };
+}
+
+// ---- freshness guard ------------------------------------------------------
+// `--check` validates that every known section exists in the output and is
+// younger than --max-age-hours (default 24 — matches the daily cron cadence).
+// A missing output, a missing marker, or an unparseable stamp all count as
+// stale so the failure is always actionable ("regenerate the dashboard").
+
+const MARKER_RE = /^<!-- ops-section:([a-z0-9-]+) ts:(\S+) -->$/;
+const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'parity', 'doclinks', 'extension', 'machine-reports'];
+
+function parseFreshness(raw) {
+  const stamps = new Map();
+  const bodies = new Map();
+  if (!raw) return { stamps, bodies };
+  const lines = raw.split(/\r?\n/);
+  let current = null;
+  let currentStart = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(MARKER_RE);
+    if (!m) continue;
+    if (current) bodies.set(current, lines.slice(currentStart, i).join('\n').trimEnd());
+    current = m[1];
+    stamps.set(current, m[2]);
+    currentStart = i + 1;
+  }
+  if (current) bodies.set(current, lines.slice(currentStart).join('\n').trimEnd());
+  return { stamps, bodies };
+}
+
+function freshnessCheck() {
+  const maxAgeHours = parseFloat(opt('--max-age-hours', '24'));
+  if (!fs.existsSync(OUT)) {
+    console.error(`ops-dashboard: freshness FAIL — ${path.relative(ROOT, OUT)} does not exist; run: node tools/ops-dashboard.mjs`);
+    process.exit(1);
+  }
+  const raw = fs.readFileSync(OUT, 'utf8');
+  const { stamps } = parseFreshness(raw);
+  const now = Date.now();
+  let stale = 0;
+  console.log(`ops-dashboard: freshness check (max age ${maxAgeHours}h)`);
+  for (const id of SECTION_IDS) {
+    const ts = stamps.get(id);
+    const parsed = ts ? Date.parse(ts) : NaN;
+    if (!ts || !Number.isFinite(parsed)) {
+      console.log(`  ${id.padEnd(16)} no timestamp marker — regenerate`);
+      stale += 1;
+      continue;
+    }
+    const ageH = (now - parsed) / 3.6e6;
+    if (ageH > maxAgeHours) {
+      console.log(`  ${id.padEnd(16)} ${ageH.toFixed(1)}h  STALE (> ${maxAgeHours}h)`);
+      stale += 1;
+    } else {
+      console.log(`  ${id.padEnd(16)} ${ageH.toFixed(1)}h  ok`);
+    }
+  }
+  if (stale > 0) {
+    console.error(`ops-dashboard: ${stale} stale/unknown section(s) — run: node tools/ops-dashboard.mjs`);
+    process.exit(1);
+  }
+  console.log(`ops-dashboard: all ${SECTION_IDS.length} sections fresh`);
 }
 
 // ---- main ----------------------------------------------------------------
 
-const lines = [];
-lines.push('# OPS Dashboard');
-lines.push('');
-lines.push(`> Auto-generated by \`node tools/ops-dashboard.mjs\` — do not hand-edit. Generated: ${new Date().toISOString()}`);
-lines.push('');
-workflowsSection(lines);
-toolingSection(lines);
-bundleSection(lines);
-toolOutputSection(lines, 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check');
-toolOutputSection(lines, 'Markdown Link Health', 'node tools/check-doc-links.mjs');
-extensionSection(lines);
-machineReportsSection(lines);
+if (argv.includes('--check')) {
+  freshnessCheck();
+  process.exit(0);
+}
+
+const sections = [
+  workflowsSection(),
+  toolingSection(),
+  bundleSection(),
+  toolOutputSection('parity', 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check'),
+  toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
+  extensionSection(),
+  machineReportsSection(),
+];
+
+const existingRaw = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
+const { stamps: oldStamps, bodies: oldBodies } = parseFreshness(existingRaw);
+
+const nowIso = new Date().toISOString();
+let anyChanged = false;
+const blocks = [];
+for (const s of sections) {
+  const body = s.lines.join('\n').trimEnd();
+  const unchanged = oldBodies.has(s.id) && oldBodies.get(s.id) === body;
+  if (!unchanged) anyChanged = true;
+  const ts = unchanged && oldStamps.has(s.id) ? oldStamps.get(s.id) : nowIso;
+  blocks.push(`<!-- ops-section:${s.id} ts:${ts} -->\n${body}`);
+}
+
+// Idempotence: a fully unchanged run leaves the file byte-identical on disk.
+if (existingRaw !== null && !anyChanged) {
+  console.log(`ops-dashboard: unchanged -> ${path.relative(ROOT, OUT)} (no section changed, not rewritten)`);
+  process.exit(0);
+}
+
+const header = [
+  '# OPS Dashboard',
+  '',
+  `> Auto-generated by \`node tools/ops-dashboard.mjs\` — do not hand-edit. Generated: ${nowIso}`,
+  `> Per-section timestamps record when each section's content last changed; validate with \`--check\`.`,
+];
+const content = header.join('\n') + '\n\n' + blocks.join('\n\n') + '\n';
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
-fs.writeFileSync(OUT, lines.join('\n') + '\n', 'utf8');
-console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${lines.length} lines)`);
+fs.writeFileSync(OUT, content, 'utf8');
+console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sections.length} sections stamped)`);
 
 

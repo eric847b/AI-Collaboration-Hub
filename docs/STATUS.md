@@ -35,7 +35,7 @@ Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll 
 `workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (+ load-test step),
 `multi-os-gate` (Windows hard gate / Linux informational), `playwright-e2e` (full-browser E2E;
 all added 2026-09-14), `ops-dashboard-refresh` (daily dashboard cron + manual dispatch, gate +
-regen + change-only commit; added 2026-09-19).
+regen + freshness check + change-only commit; added 2026-09-19).
 
 All 70 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
 (`owner/repo@<sha> # <ref>`) — WF005 supply-chain debt zeroed 2026-09-15 by the `workflow-audit`
@@ -57,8 +57,8 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`); B1 alerting: `::error::` annotations on regression + optional webhook (`BUNDLE_ALERT_WEBHOOK`, step-scoped in `performance-monitoring.yml`) — 2026-09-14 |
 | `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode) — 41 files / 4 pairs at parity (2026-09-14) |
 | `tools/cross-repo-tests.mjs` | end-to-end fleet integration tests: SHA256 parity + hash verification of the standalone catalysts, module self-test entries, workflow validation (TC-001–TC-005) — 5/5 (2026-09-19) |
-| `tools/check-doc-links.mjs` | relative-link health for all Markdown — 152 files / 0 broken (2026-09-14) |
-| `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard` (2026-09-14) |
+| `tools/check-doc-links.mjs` | relative-link health for all Markdown — 165 files / 47 links / 0 broken (2026-09-19) |
+| `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard`; C2 freshness guard: per-section `ts:` markers, idempotent regen, `--check` staleness mode (consumed by gate, verify-tools + cron) — 2026-09-14, freshness 2026-09-19 |
 | `tools/verify-tools.mjs` | one-command health check for all `tools/*.mjs\|*.cjs`: `node --check` + read-only smoke runs (`npm run tools:verify`, `--strict` also fails on parity DIFFs) — 2026-09-15 |
 | `tools/extension-check.mjs` | read-only health check for the ai-chat-websites Unified AI Assistant Suite extension: manifest MV3 shape, background.js routing-ladder plumbing, options.html ladder UI, LADDER_PROVIDERS parity, no hardcoded secrets (34 checks; wired into `multi-os-gate.yml`) — 2026-09-15 |
 | `tools/secret-scan.mjs` | offline read-only twin of `.github/workflows/secret-scan.yml`: 20 detectors, redacted evidence, `--staged`/`--all`/`--strict`/`--self-test`/`--check-ci`/`--list-rules`; wired into `.husky/pre-commit` (staged) + `multi-os-gate.yml` (`--quiet` + CI-parity) — 2026-09-15 |
@@ -83,7 +83,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 
 ```
 2026-09-19 — tools/workspace-gate.ps1 v3 (now includes the Workflow Audit step)
-Passed=22  Failed=0  Warnings=1
+Passed=23  Failed=0  Warnings=1
   warn: node v24.14.0 < engines requirement >= 26 (npm not engine-strict; informational)
 Status: PASS
 ```

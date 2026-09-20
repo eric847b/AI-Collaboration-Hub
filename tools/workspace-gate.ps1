@@ -57,6 +57,18 @@ if (Test-Path 'tools/workflow-audit.mjs') {
     else { Fail "workflow audit growth or stale ledger:`n$waOut" }
 } else { Warn 'tools/workflow-audit.mjs absent - workflow audit skipped' }
 
+# ---- Dashboard freshness (warn-only; the daily cron refreshes it) ------
+# ops-dashboard.mjs --check exits 1 when docs/metrics/OPS-DASHBOARD.md is
+# missing, lacks per-section timestamps, or any section is older than the
+# 24h max age. Deliberately a WARNING, not a failure: a gate run just before
+# the daily 04:00 UTC cron can legitimately see a ~24h-old dashboard.
+Log "`nDashboard Freshness:" Yellow
+if (Test-Path 'tools/ops-dashboard.mjs') {
+    $dashOut = & node 'tools/ops-dashboard.mjs' --check 2>&1 | Out-String
+    if ($LASTEXITCODE -eq 0) { Ok 'ops dashboard sections fresh (<= 24h)' }
+    else { Warn "ops dashboard stale or missing timestamps:`n$dashOut" }
+} else { Warn 'tools/ops-dashboard.mjs absent - dashboard freshness skipped' }
+
 # ---- Node projects (auto-discovered) --------------------------------
 Log "`nNode Projects:" Yellow
 $nodeProjects = @(Get-ChildItem -Directory |
