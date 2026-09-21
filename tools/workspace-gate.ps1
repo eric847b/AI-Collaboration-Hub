@@ -64,7 +64,12 @@ if (Test-Path 'tools/workflow-audit.mjs') {
 # the daily 04:00 UTC cron can legitimately see a ~24h-old dashboard.
 Log "`nDashboard Freshness:" Yellow
 if (Test-Path 'tools/ops-dashboard.mjs') {
-    $dashOut = & node 'tools/ops-dashboard.mjs' --check | Out-String
+        # NativeCommandError-safe: --check exits 1 on stale sections by design,
+    # so we must not let $ErrorActionPreference='Stop' abort before the warn-only
+    # branch below runs (PowerShell 5.1 native-command trap — durable rule 9).
+    $prevErr = $ErrorActionPreference; $ErrorActionPreference = 'SilentlyContinue'
+        $dashOut = & node 'tools/ops-dashboard.mjs' --check | Out-String
+    $ErrorActionPreference = $prevErr
     if ($LASTEXITCODE -eq 0) { Ok 'ops dashboard sections fresh (<= 24h)' }
     else { Warn "ops dashboard stale or missing timestamps:`n$dashOut" }
 } else { Warn 'tools/ops-dashboard.mjs absent - dashboard freshness skipped' }

@@ -14,19 +14,19 @@ The OPS Dashboard (`docs/metrics/OPS-DASHBOARD.md`) is currently generated manua
 
 ## Current State
 
-### Manual Generation Required
+### Scheduled Automation (Live)
 
 | Component | Update Cadence | Last Auto Update |
 |-----------|----------------|------------------|
-| CI Workflows | On workflow changes | Manual |
-| Tooling | On tool changes | Manual |
-| Bundle Ledger | On builds | Manual |
-| Fleet Parity | On sync | Manual |
-| Markdown Links | On doc changes | Manual |
-| Extension Health | On manifest changes | Manual |
-| Machine Telemetry | Per machine | Manual |
+| CI Workflows | Daily via `ops-dashboard-refresh.yml` cron (`0 4 * * *`) + path triggers | Auto (daily at 04:00 UTC) |
+| Tooling | Daily (same cron) | Auto |
+| Bundle Ledger | Daily (same cron) | Auto |
+| Fleet Parity | Daily (same cron) | Auto |
+| Markdown Links | Daily (same cron) | Auto |
+| Extension Health | Daily (same cron) | Auto |
+| Machine Telemetry | Daily (same cron) | Auto |
 
-**Problem:** Dashboard is stale after any repository change unless manually regenerated.
+**Automation is live:** the daily cron regenerates the dashboard with `node tools/ops-dashboard.mjs --refresh` (which force-bumps all section timestamps so stale-but-unchanged dashboards self-heal — without `--refresh` unchanged sections keep their original timestamps for true idempotence/no-churn). A `--check` freshness guard (per-section `ts:` markers vs 24 h max) is consumed as warn-only by `workspace-gate.ps1`, as a smoke probe by `verify-tools.mjs`, and as a post-regen verification step in the cron workflow itself.
 
 ---
 
@@ -53,7 +53,7 @@ on:
 **Actions:**
 1. Checkout repository
 2. Install Node.js dependencies
-3. Run `node tools/ops-dashboard.mjs`
+   3. Run `node tools/ops-dashboard.mjs --refresh`
 4. Check for changes
 5. Commit and push if updated
 
@@ -90,7 +90,7 @@ For metrics that change frequently (bundle sizes, link health), consider:
 - [x] Test workflow execution — static validation (actionlint clean, `workflow-audit --check-baseline` green, ledger re-seeded 24 → 25 workflows) + live regeneration via `node tools/ops-dashboard.mjs`; first scheduled run due 2026-09-20 04:00 UTC
 
 ### Phase 2: Smart Diffs (Short-term)
-- [ ] Modify `ops-dashboard.mjs` to track last update timestamp per section
+- [x] Modify `ops-dashboard.mjs` to track last update timestamp per section — implemented as `<!-- ops-section:<id> ts:<iso> -->` markers; `--refresh` force-bumps all stamps, default regen preserves unchanged sections (idempotent/no-churn)
 - [ ] Add logic to skip unchanged sections
 - [ ] Cache expensive computations (parity checks, link health)
 

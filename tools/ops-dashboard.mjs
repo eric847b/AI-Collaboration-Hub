@@ -9,8 +9,9 @@
  *   - Markdown link health (delegates to tools/check-doc-links.mjs)
  *   - machine-written reports (agent-report.json, auto-ops-report.json, auto-fix-ledger.json)
  *
- *   node tools/ops-dashboard.mjs [--out docs/metrics/OPS-DASHBOARD.md]
+  *   node tools/ops-dashboard.mjs [--out docs/metrics/OPS-DASHBOARD.md]
  *   node tools/ops-dashboard.mjs --check [--max-age-hours 24]
+ *   node tools/ops-dashboard.mjs --refresh
  *
  * Idempotent regeneration: every section carries a `<!-- ops-section:<id>
  * ts:<iso> -->` marker recording when its CONTENT last changed. Unchanged
@@ -203,8 +204,8 @@ function freshnessCheck() {
       console.log(`  ${id.padEnd(16)} ${ageH.toFixed(1)}h  ok`);
     }
   }
-  if (stale > 0) {
-    console.error(`ops-dashboard: ${stale} stale/unknown section(s) — run: node tools/ops-dashboard.mjs`);
+     if (stale > 0) {
+    console.log(`ops-dashboard: ${stale} stale/unknown section(s) — run: node tools/ops-dashboard.mjs`);
     process.exit(1);
   }
   console.log(`ops-dashboard: all ${SECTION_IDS.length} sections fresh`);
@@ -230,19 +231,20 @@ const sections = [
 const existingRaw = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
 const { stamps: oldStamps, bodies: oldBodies } = parseFreshness(existingRaw);
 
-const nowIso = new Date().toISOString();
+  const nowIso = new Date().toISOString();
+  const forceRefresh = argv.includes('--refresh');
 let anyChanged = false;
 const blocks = [];
 for (const s of sections) {
   const body = s.lines.join('\n').trimEnd();
-  const unchanged = oldBodies.has(s.id) && oldBodies.get(s.id) === body;
+    const unchanged = oldBodies.has(s.id) && oldBodies.get(s.id) === body;
   if (!unchanged) anyChanged = true;
-  const ts = unchanged && oldStamps.has(s.id) ? oldStamps.get(s.id) : nowIso;
+  const ts = (forceRefresh || !unchanged || !oldStamps.has(s.id)) ? nowIso : oldStamps.get(s.id);
   blocks.push(`<!-- ops-section:${s.id} ts:${ts} -->\n${body}`);
 }
 
-// Idempotence: a fully unchanged run leaves the file byte-identical on disk.
-if (existingRaw !== null && !anyChanged) {
+// Idempotence: a fully unchanged, non-refresh run leaves the file byte-identical.
+if (existingRaw !== null && !anyChanged && !forceRefresh) {
   console.log(`ops-dashboard: unchanged -> ${path.relative(ROOT, OUT)} (no section changed, not rewritten)`);
   process.exit(0);
 }
