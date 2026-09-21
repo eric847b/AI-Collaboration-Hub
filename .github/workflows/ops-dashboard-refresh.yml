@@ -45,7 +45,7 @@ jobs:
         run: npm run gate
 
       - name: Regenerate OPS Dashboard
-        run: node tools/ops-dashboard.mjs
+        run: node tools/ops-dashboard.mjs --refresh
 
       - name: Verify Dashboard Freshness
         run: node tools/ops-dashboard.mjs --check

@@ -58,7 +58,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode) — 41 files / 4 pairs at parity (2026-09-14) |
 | `tools/cross-repo-tests.mjs` | end-to-end fleet integration tests: SHA256 parity + hash verification of the standalone catalysts, module self-test entries, workflow validation (TC-001–TC-005) — 5/5 (2026-09-19) |
 | `tools/check-doc-links.mjs` | relative-link health for all Markdown — 165 files / 47 links / 0 broken (2026-09-19) |
-| `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard`; C2 freshness guard: per-section `ts:` markers, idempotent regen, `--check` staleness mode (consumed by gate, verify-tools + cron) — 2026-09-14, freshness 2026-09-19 |
+| `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, parity, links, machine telemetry) — `npm run dashboard`; C2 freshness guard: per-section `ts:` markers, idempotent regen, `--refresh` (force-bump timestamps for stale-but-unchanged dashboards, used by cron), `--check` staleness mode (consumed by gate, verify-tools + cron); warn-only PS 5.1-safe gate step — 2026-09-14, freshness 2026-09-19 |
 | `tools/verify-tools.mjs` | one-command health check for all `tools/*.mjs\|*.cjs`: `node --check` + read-only smoke runs (`npm run tools:verify`, `--strict` also fails on parity DIFFs) — 2026-09-15 |
 | `tools/extension-check.mjs` | read-only health check for the ai-chat-websites Unified AI Assistant Suite extension: manifest MV3 shape, background.js routing-ladder plumbing, options.html ladder UI, LADDER_PROVIDERS parity, no hardcoded secrets (34 checks; wired into `multi-os-gate.yml`) — 2026-09-15 |
 | `tools/secret-scan.mjs` | offline read-only twin of `.github/workflows/secret-scan.yml`: 20 detectors, redacted evidence, `--staged`/`--all`/`--strict`/`--self-test`/`--check-ci`/`--list-rules`; wired into `.husky/pre-commit` (staged) + `multi-os-gate.yml` (`--quiet` + CI-parity) — 2026-09-15 |
@@ -82,8 +82,8 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 ## Last gate run
 
 ```
-2026-09-19 — tools/workspace-gate.ps1 v3 (now includes the Workflow Audit step)
-Passed=23  Failed=0  Warnings=1
+| 2026-09-19 — tools/workspace-gate.ps1 v3 (now includes the Workflow Audit step)
+Passed=24  Failed=0  Warnings=1
   warn: node v24.14.0 < engines requirement >= 26 (npm not engine-strict; informational)
 Status: PASS
 ```
