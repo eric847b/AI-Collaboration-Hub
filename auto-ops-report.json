@@ -1,16 +1,21 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T22:16:51Z",
+  "scanned_at": "2026-09-21T12:17:02Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
-    "closed": [],
+    "closed": [
+      {
+        "number": 685,
+        "key": "bot:\ud83e\udd16 docs: python syntax error in ./singularity-opera"
+      }
+    ],
     "kept": [
-      679,
-      678
+      688,
+      679
     ],
     "errors": []
   },
@@ -30,7 +35,13 @@
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 686,
+        "reason": "failing:Python project checks (singularity-operator),python-check (3.12, singularity-operator),python-check (3.10, singularity-operator),python-check (3.11, singularity-operator)",
+        "title": "chore(deps): bump prettier from 3.9.7 to 3.9.8 in /ai-chat-websites in the npm-chat group"
+      }
+    ],
     "errors": []
   }
 }
