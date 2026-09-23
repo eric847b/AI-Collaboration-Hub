@@ -5,6 +5,7 @@
  *   - CI workflow inventory (from disk — the source of truth)
  *   - workspace Node tooling inventory
  *   - bundle-size ledger (latest snapshot + trend deltas)
+ *   - coverage-trend ledger (latest snapshot + lines-% sparklines)
  *   - fleet mirror parity (delegates to tools/sync-parity.mjs; auto-skips without clones)
  *   - Markdown link health (delegates to tools/check-doc-links.mjs)
  *   - machine-written reports (agent-report.json, auto-ops-report.json, auto-fix-ledger.json)
@@ -124,6 +125,48 @@ function bundleSection() {
   return { id: 'bundle', lines };
 }
 
+function coverageSection() {
+  const lines = [];
+  const fmt = (v) => (v === null || v === undefined ? 'n/a' : `${Number(v).toFixed(1)}%`);
+  const ledger = readJsonSafe(path.join('docs', 'metrics', 'coverage-history.json'));
+  const entries = ledger && Array.isArray(ledger.entries) ? ledger.entries : [];
+  if (entries.length === 0) {
+    lines.push('## Coverage Trends', '', '_Empty — run `node tools/coverage-trend.cjs collect` after running vitest coverage._', '');
+    return { id: 'coverage', lines };
+  }
+  const GRAINS = ' .:-=+*#%@';
+  const spark = (series) => {
+    const nums = series.filter((v) => v !== null && v !== undefined);
+    if (nums.length === 0) return '(no data)';
+    const lo = Math.min(...nums);
+    const hi = Math.max(...nums);
+    const span = hi - lo || 1;
+    return series
+      .map((v) => {
+        if (v === null || v === undefined) return ' ';
+        const i = Math.min(GRAINS.length - 1, Math.floor(((v - lo) / span) * (GRAINS.length - 1)));
+        return GRAINS[i];
+      })
+      .join('');
+  };
+  const latest = entries[entries.length - 1];
+  const names = Object.keys(latest.projects || {}).sort();
+  lines.push(`## Coverage Trends (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
+  lines.push('| Project | Lines | Stmts | Funcs | Branches | Status | Trend |');
+  lines.push('|---------|------:|------:|------:|---------:|--------|-------|');
+  for (const n of names) {
+    const pr = latest.projects[n] || {};
+    const s = pr.summary || {};
+    const series = entries.map((e) => {
+      const p = (e.projects || {})[n];
+      return p && p.summary ? p.summary.lines : null;
+    });
+    lines.push(`| ${n} | ${fmt(s.lines)} | ${fmt(s.statements)} | ${fmt(s.functions)} | ${fmt(s.branches)} | ${pr.status || 'pending'} | \`${spark(series)}\` |`);
+  }
+  lines.push('', '_Full history: `docs/metrics/coverage-report.md` (`node tools/coverage-trend.cjs markdown`)._', '');
+  return { id: 'coverage', lines };
+}
+
 function toolOutputSection(id, title, cmd) {
   return { id, lines: [`## ${title}`, '', '```text', runTool(cmd), '```', ''] };
 }
@@ -156,7 +199,7 @@ function machineReportsSection() {
 // stale so the failure is always actionable ("regenerate the dashboard").
 
 const MARKER_RE = /^<!-- ops-section:([a-z0-9-]+) ts:(\S+) -->$/;
-const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'parity', 'doclinks', 'extension', 'machine-reports'];
+const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'parity', 'doclinks', 'extension', 'machine-reports'];
 
 function parseFreshness(raw) {
   const stamps = new Map();
@@ -222,6 +265,7 @@ const sections = [
   workflowsSection(),
   toolingSection(),
   bundleSection(),
+  coverageSection(),
   toolOutputSection('parity', 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check'),
   toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
   extensionSection(),

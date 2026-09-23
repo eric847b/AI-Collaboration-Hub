@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "timestamp": "2026-09-22T23:19:12.599Z",
+      "gitSha": "80052d1",
+      "note": "baseline",
+      "projects": {
+        "nexus-infinity-hub": {
+          "source": "istanbul coverage-summary.json",
+          "artifact": "nexus-infinity-hub/coverage/coverage-summary.json",
+          "summary": null,
+          "status": "pending (no summary artifact - run vitest --coverage)"
+        },
+        "self-evolve-dash": {
+          "source": "istanbul coverage-summary.json",
+          "artifact": "self-evolve-dash/coverage/coverage-summary.json",
+          "summary": null,
+          "status": "pending (no summary artifact - run vitest --coverage)"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-09-22T23:27:42.971Z",
+      "gitSha": "80052d1",
+      "note": "vitest coverage (nexus real, self-evolve pending)",
+      "projects": {
+        "nexus-infinity-hub": {
+          "source": "raw V8 coverage-final.json (vitest include/exclude applied)",
+          "artifact": "nexus-infinity-hub/coverage/coverage-final.json",
+          "summary": {
+            "lines": 16.15598885793872,
+            "statements": 16.15598885793872,
+            "functions": 16.041666666666668,
+            "branches": 16.17933723196881
+          },
+          "status": "below gate (16.2% lines < 70%)"
+        },
+        "self-evolve-dash": {
+          "source": "istanbul coverage-summary.json",
+          "artifact": "self-evolve-dash/coverage/coverage-summary.json",
+          "summary": null,
+          "status": "pending (no summary artifact - run vitest --coverage)"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-09-22T23:28:07.040Z",
+      "gitSha": "80052d1",
+      "note": "vitest coverage (nexus real, self-evolve pending)",
+      "projects": {
+        "nexus-infinity-hub": {
+          "source": "raw V8 coverage-final.json (vitest include/exclude applied)",
+          "artifact": "nexus-infinity-hub/coverage/coverage-final.json",
+          "summary": {
+            "lines": 16.15598885793872,
+            "statements": 16.15598885793872,
+            "functions": 16.041666666666668,
+            "branches": 16.17933723196881
+          },
+          "status": "below gate (16.2% lines < 70%)"
+        },
+        "self-evolve-dash": {
+          "source": "istanbul coverage-summary.json",
+          "artifact": "self-evolve-dash/coverage/coverage-summary.json",
+          "summary": null,
+          "status": "pending (no summary artifact - run vitest --coverage)"
+        }
+      }
+    }
+  ]
+}

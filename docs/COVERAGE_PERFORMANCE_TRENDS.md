@@ -2,7 +2,7 @@
 
 > **Visual trends for test coverage and bundle performance across projects.**
 > 
-> **Last updated:** 2026-09-19 · **Gate status:** PASS (22/22) · **Completed rounds:** 11
+> **Last updated:** 2026-09-23 · **Gate status:** PASS (24/24) · **Completed rounds:** 11 (Round 12 in progress: B coverage-trend visualization shipped)
 
 ---
 
@@ -15,6 +15,8 @@ This dashboard visualizes test coverage and bundle performance trends across all
 ## Test Coverage Trends
 
 ### Current Coverage Status
+
+Live coverage is tracked per-snapshot in `docs/metrics/coverage-history.json` (via `node tools/coverage-trend.cjs collect`, preferred source: istanbul `coverage-summary.json`, fallback: decoded raw-V8 `coverage-final.json`) and surfaced in the OPS Dashboard **Coverage Trends** section with per-project lines/stmts/funcs/branches + ASCII lines-% sparklines. Full history: `docs/metrics/coverage-report.md` (`node tools/coverage-trend.cjs markdown`).
 
 | Project | Coverage | Requirement | Status | Last Tested |
 |---------|----------|-------------|--------|-------------|
@@ -30,6 +32,7 @@ This dashboard visualizes test coverage and bundle performance trends across all
 - collabhub-modules has 18/18 tests passing (100% test pass rate)
 - Python projects have advisory coverage targets
 - ai-chat-websites 80/90% coverage goal is tracked in its own roadmap
+- nexus-infinity-hub currently measures ~16% lines via local vitest run (2026-09-23; untested UI surface dominates) — the ledger + sparklines exist precisely to track this upward; CI gates remain ≥70%
 
 ---
 
@@ -155,6 +158,7 @@ node tools/load-test.mjs --project self-evolve-dash
 ## Related Tools
 
 - **`tools/bundle-trend.cjs`** — Bundle size tracking + regression gate
+- **`tools/coverage-trend.cjs`** — Coverage tracking (collect/report/markdown) + append-only ledger — delivered 2026-09-23
 - **`tools/ops-dashboard.mjs`** — OPS Dashboard generator
 - **`tools/load-test.mjs`** — Load testing with performance gates
 - **`tools/verify-tools.mjs`** — Tool health verification
@@ -165,9 +169,9 @@ node tools/load-test.mjs --project self-evolve-dash
 ## Future Enhancements
 
 ### Priority 1: Coverage in OPS Dashboard
-- [ ] Parse coverage from test output
-- [ ] Store coverage history
-- [ ] Display coverage trends in dashboard
+- [x] Parse coverage from test output — `tools/coverage-trend.cjs collect` reads istanbul summaries (or decodes raw V8) — delivered 2026-09-23
+- [x] Store coverage history — `docs/metrics/coverage-history.json` append-only ledger (MAX 200 entries) — delivered 2026-09-23
+- [x] Display coverage trends in dashboard — OPS Dashboard **Coverage Trends** section with per-project metrics + ASCII sparklines + link to `coverage-report.md` — delivered 2026-09-23
 
 ### Priority 2: Automated Performance Testing
 - [ ] Schedule load tests via CI
@@ -181,4 +185,4 @@ node tools/load-test.mjs --project self-evolve-dash
 
 ---
 
-*Last updated: 2026-09-19 · Gate: PASS (22/22) · Rounds: 10 complete*
+*Last updated: 2026-09-23 · Gate: PASS (24/24) · Rounds: 11 complete, Round 12 in progress (coverage-trend visualization shipped)*

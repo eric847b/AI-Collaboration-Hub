@@ -18,6 +18,7 @@
  *      - handoff-check.mjs    -> --quiet (exit 1 on a malformed .renitor handoff)
  *      - sync-parity.mjs      -> check [--strict] (report-only; never syncs)
  *      - bundle-trend.cjs     -> report --limit 1 (read-only ledger read)
+ *      - coverage-trend.cjs   -> report --limit 1 (read-only ledger read)
  *      - ops-dashboard.mjs    -> --check (read-only freshness validation;
  *                                generation itself rewrites its output file)
  *      - load-test.mjs / e2e-smoke.mjs -> syntax-checked only (they spawn servers)
@@ -44,6 +45,7 @@ const SMOKE = {
   'handoff-check.mjs': ['--quiet'],
   'sync-parity.mjs': strict ? ['check', '--strict'] : ['check'],
   'bundle-trend.cjs': ['report', '--limit', '1'],
+  'coverage-trend.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],
 };
 

@@ -61,7 +61,7 @@ These items require external services, accounts, or coordination with other repo
 Building on the now-complete CI foundation (Round 11 delivered cross-repo integration tests — see subsection K):
 
 - [x] **Dependency update automation** — delivered 2026-09-19: the shared config (`.github/dependabot.yml`) audited against the real tracked-manifest map; gap closed (root npm tooling entry added so eslint/husky/lint-staged/prettier get update PRs), AGA-generated placeholder pip manifests (`AI-Collaboration-Hub/`, `nexus-core/`) consciously excluded to avoid fighting the generator; coverage table documented in `docs/DEPENDENCY_WORKFLOWS.md`
-- [ ] **Coverage trend visualization** — turn the ledger data behind `docs/COVERAGE_PERFORMANCE_TRENDS.md` into per-project charts surfaced in the OPS Dashboard.
+- [x] **Coverage trend visualization** — delivered 2026-09-23: `tools/coverage-trend.cjs` (collect/report/markdown, mirrors bundle-trend.cjs; istanbul `coverage-summary.json` preferred, raw-V8 `coverage-final.json` decoded with the same include/exclude semantics vitest applies; live-verified against nexus-infinity-hub at 16.2% lines) + new **Coverage Trends** section in the OPS Dashboard (per-project lines/stmts/funcs/branches table + ASCII lines-% sparklines + link to `docs/metrics/coverage-report.md`); ledger `docs/metrics/coverage-history.json` + provider wired into `verify-tools.mjs` as `report --limit 1` smoke
 - [ ] **Machine telemetry aggregation** — summarize `agent-report.json` / `auto-ops-report.json` / `auto-fix-ledger.json` trends (auto-fix success rate, agent run frequency) in the OPS Dashboard.
 
 ### C. Observability & Runtime (Round 12)
@@ -145,6 +145,8 @@ Building on the now-complete CI foundation (Round 11 delivered cross-repo integr
 **Validation evidence (2026-09-19):** temp-ledger regression run exits 1 with the `::error::` annotation emitted under `GITHUB_ACTIONS=true`; webhook-unreachable path stays exit 1 (non-fatal); clean path exits 0; `node --check` 0; actionlint 0 on `performance-monitoring.yml`; `workflow-audit --check-baseline` green (1 accepted finding unchanged); gate PASS 22/22.
 
 **C2 validation evidence (2026-09-19):** `node tools/ops-dashboard.mjs --check` → all 7 sections fresh, exit 0; idempotence proven (second regen run exits 0 writing nothing); `verify-tools.mjs` probe green (`ops-dashboard.mjs --check: ok`); actionlint 0 on `ops-dashboard-refresh.yml`; `sync-parity.mjs check` green (13/13 subtree, standalone reconciled); **gate PASS 23/23** with the new warn-only freshness step.
+
+- [x] **Coverage trend visualization (B, Round 12)** — `tools/coverage-trend.cjs` (collect/report/markdown, mirrors bundle-trend.cjs; istanbul `coverage-summary.json` preferred, raw-V8 `coverage-final.json` fallback decoded with vitest include/exclude; live-verified vs nexus-infinity-hub 16.2% lines) + **Coverage Trends** OPS Dashboard section (lines/stmts/funcs/branches table + ASCII sparklines + link to `docs/metrics/coverage-report.md`); ledger `docs/metrics/coverage-history.json`; `report --limit 1` wired into `verify-tools.mjs` smoke. Evidence: syntax 0, collect/report/markdown all exit 0, dashboard regen writes 8 sections + `--check` all-fresh, gate PASS 24/24, doc-links 0 broken (167/47), workflow-audit green (1 accepted), bundle section unchanged.
 
 ---
 
