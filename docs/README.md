@@ -17,6 +17,7 @@
 | `TESTING_GUIDE.md` | Complete testing reference (unit, E2E, visual, load, security, workflow tests) |
 | `metrics/bundle-history.json` | Bundle-size ledger (maintained by `tools/bundle-trend.cjs`; CI auto-commits) |
 | `metrics/OPS-DASHBOARD.md` | Operations dashboard (workflows, tooling, bundle, parity, links, telemetry) |
+| `OCSC-1-NOTES.md` | OCSC-1 "division is addition" framework — knowledge capture from Grok threads, verified vs. claimed split |
 
 ## New in 2026-09-19
 
