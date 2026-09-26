@@ -19,6 +19,7 @@
     "metrics:report": "node tools/bundle-trend.cjs markdown",
     "dashboard": "node tools/ops-dashboard.mjs",
     "tools:verify": "node tools/verify-tools.mjs",
+    "scaffold": "node tools/new-project.mjs --help",
     "scan:secrets": "node tools/secret-scan.mjs",
     "scan:staged": "node tools/secret-scan.mjs --staged",
     "workflow:audit": "node tools/workflow-audit.mjs",

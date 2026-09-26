@@ -17,6 +17,7 @@
  *      - dependabot-check.mjs -> (no args; exit 1 on an uncovered manifest)
  *      - handoff-check.mjs    -> --quiet (exit 1 on a malformed .renitor handoff)
  *      - sync-parity.mjs      -> check [--strict] (report-only; never syncs)
+ *      - new-project.mjs      -> --self-test (temp-dir scaffold + contract)
  *      - bundle-trend.cjs     -> report --limit 1 (read-only ledger read)
  *      - coverage-trend.cjs   -> report --limit 1 (read-only ledger read)
  *      - ops-dashboard.mjs    -> --check (read-only freshness validation;
@@ -44,6 +45,7 @@ const SMOKE = {
   'dependabot-check.mjs': [],
   'handoff-check.mjs': ['--quiet'],
   'sync-parity.mjs': strict ? ['check', '--strict'] : ['check'],
+  'new-project.mjs': ['--self-test'],
   'bundle-trend.cjs': ['report', '--limit', '1'],
   'coverage-trend.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],

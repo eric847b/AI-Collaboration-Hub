@@ -196,6 +196,25 @@ npm run metrics:report                     # npm alias
 
 ---
 
+### `tools/new-project.mjs` — Project Template Generator
+
+**Purpose:** Executable form of `docs/WORKSPACE_TEMPLATES.md` — stamps a
+workspace-standard Vite/React app (strict TS, ESLint, Prettier, Playwright,
+telemetry hook copied verbatim from the canonical source). Explicit flags only;
+no stdin prompts (interactive prompts were tried and rejected in Round 11).
+
+**Usage:**
+```powershell
+node tools/new-project.mjs --name my-app --dry-run  # preview 18 files
+node tools/new-project.mjs --name my-app            # scaffold ./my-app
+node tools/new-project.mjs --self-test              # temp-dir contract check
+npm run scaffold                                    # help
+```
+
+**Wired into:** `verify-tools.mjs` smoke matrix (`--self-test`), `npm run scaffold`
+
+---
+
 ### Integration Testing Reference
 
 **Cross-Repo Integration Tests:** `docs/CROSS_REPO_INTEGRATION_TESTS.md` provides structured integration tests that go beyond `sync-parity.mjs` to verify functional parity of catalyst modules between standalone repositories and nested monorepo mirrors.

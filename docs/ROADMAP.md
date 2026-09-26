@@ -72,7 +72,7 @@ Building on the now-complete CI foundation (Round 11 delivered cross-repo integr
 
 ### D. Developer Experience (Round 12)
 
-- [ ] **Project template generator** — turn `docs/WORKSPACE_TEMPLATES.md` into an actual scaffolding script (`tools/new-project.mjs`) that stamps a new Vite/React app with the standard configs (ESLint, Prettier, Playwright, telemetry hook).
+- [x] **Project template generator** — delivered 2026-09-26: `tools/new-project.mjs` (explicit flags only — `--name/--out/--port/--app-id/--force/--dry-run`, `--self-test` temp-dir contract, `--help`; stamps 18 files: engines ≥26 package.json, strict tsconfigs, ESLint, Prettier, Playwright scoped-port config, vitest config, canonical `telemetry.ts` copied verbatim, e2e spec, index.html, README, .gitignore); wired into `verify-tools.mjs` smoke + `npm run scaffold`; `docs/WORKSPACE_TEMPLATES.md` + `tools/TOOLING_GUIDE.md` updated. Evidence: `--self-test` PASS, `node --check` 0, doc-links 0 broken, secret-scan clean.
 - [ ] **Interactive CLI tools (re-scoped)** — the naive interactive-prompt approach was tried and rejected in Round 11 (see subsection K); re-scope as explicit subcommands/flags (e.g., `bundle-trend.cjs <app>`, `sync-parity.mjs sync --mode=overwrite`) instead of stdin prompts.
 - [ ] **Node 26 local runtime alignment** — CI enforces `engines >= 26` while the local default runtime is v24 (informational gate warning only); either upgrade the local toolchain or document the accepted delta permanently.
 

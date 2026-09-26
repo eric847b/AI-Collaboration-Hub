@@ -1,6 +1,8 @@
 # Workspace Templates
 
 > **Project scaffolding templates for creating new Vite/React apps with standardized configurations.**
+>
+> **Generator:** `node tools/new-project.mjs --name my-app` (non-interactive; see `--help`)
 > 
 > **Last updated:** 2026-09-19 · **Gate status:** PASS (22/22) · **Completed rounds:** 11
 
@@ -8,7 +10,18 @@
 
 ## Creating a New Project
 
-### Step-by-Step
+> Prefer the generator — it stamps the workspace-standard configs (ESLint,
+> Prettier, Playwright, telemetry hook) with explicit flags only (no prompts):
+>
+> ```powershell
+> node tools/new-project.mjs --name my-app --dry-run  # preview 18 files
+> node tools/new-project.mjs --name my-app            # scaffold ./my-app
+> npm run scaffold                                    # help
+> ```
+>
+> Manual steps below remain for reference.
+
+### Step-by-Step (manual)
 
 1. **Create directory and initialize:**
    ```powershell
