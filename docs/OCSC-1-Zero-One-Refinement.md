@@ -6,7 +6,7 @@
 
 **Eric (cleaned):** One parent group of 0 is something.
 **Refined:** The container is not the content. A group that holds zero still exists as one group — zero is one instance of the zero-group, not "nothing." Emptiness of content never cancels existence of the holder.
-**Tension:** Treats 0 as an entity, not a numerical void — consistent with the framework's ontology, at odds with conventional arithmetic where 0 is a count, not a group. (Both refinements agree.)
+**Tension:** Treats 0 as an entity, not a numerical void — consistent with the framework's ontology, at odds with conventional arithmetic where 0 is a count, not a group. (Named in Copilot's tension map; substantive claim shared by both refinements.)
 
 ## 2. Zero is one zero, and there is only one zero
 
