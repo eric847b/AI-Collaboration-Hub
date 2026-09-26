@@ -25,7 +25,7 @@
     "workflow:audit:strict": "node tools/workflow-audit.mjs --strict --check-baseline",
     "check:handoff": "node tools/handoff-check.mjs",
     "tools:selftest": "node tools/secret-scan.mjs --self-test && node tools/handoff-check.mjs --self-test && node tools/workflow-audit.mjs --self-test",
-    "prepare": "husky"
+    "prepare": "git config core.hooksPath .husky"
   },
   "version": "1.0.0",
   "main": "index.js",
@@ -41,18 +41,5 @@
     "url": "https://github.com/eric847b/AI-Collaboration-Hub/issues"
   },
   "homepage": "https://github.com/eric847b/AI-Collaboration-Hub#readme",
-  "devDependencies": {
-    "eslint": "^10.9.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.5.2",
-    "prettier": "^3.9.6"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix --max-warnings=0"
-    ],
-    "*.{json,md,css}": [
-      "prettier --write"
-    ]
-  }
+  "devDependencies": {}
 }

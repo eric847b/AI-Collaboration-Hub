@@ -68,7 +68,7 @@ const check = (name, cond) => { console.log((cond ? 'PASS' : 'FAIL') + ' - ' + n
 /* ---------- 902 Prompt Compressor ---------- */
 {
   const env = makeEnv();
-  load('902-prompt-compressor.module.user.js', env);
+  load('002-prompt-compressor.module.user.js', env);
   const api = env.window.pcp_api;
   check('902 exposes pcp_api', !!api && typeof api.compressText === 'function');
 
@@ -101,7 +101,7 @@ const check = (name, cond) => { console.log((cond ? 'PASS' : 'FAIL') + ' - ' + n
   let confirmResult = true;
   env.window.confirm = () => confirmResult;
 
-  load('903-duplicate-send-guard.module.user.js', env);
+  load('003-duplicate-send-guard.module.user.js', env);
   const api = env.window.dsg_api;
   check('903 exposes dsg_api', !!api && typeof api.isDuplicate === 'function');
   check('903 starts clean', api.sentCountToday() === 0 && !api.isDuplicate('some long unique prompt text here'));
@@ -143,7 +143,7 @@ const check = (name, cond) => { console.log((cond ? 'PASS' : 'FAIL') + ' - ' + n
 /* ---------- 901 Token Quota Guard ---------- */
 {
   const env = makeEnv();
-  load('901-token-quota-guard.module.user.js', env);
+  load('001-token-quota-guard.module.user.js', env);
   const api = env.window.tqg_api;
   check('901 exposes tqg_api', !!api && typeof api.stats === 'function');
   const est = api.estimate('word '.repeat(100));
