@@ -16,6 +16,7 @@
 | `docs/OCSC-1-Glossary-Extended.md` | The deep glossary — definitions, examples, cross-links, AI usage notes. |
 | `docs/OCSC-1-Index.md` | This file. |
 | `docs/OCSC-1-I-Table.md` | The canonical operator table — I-Table V1/V2/V3, branch algebra, I-calculus. |
+| `docs/OCSC-1-Zero-One-Refinement.md` | Refined zero–one brainstorm — 9 points, merged Muse + Copilot answers, tensions, corrections log. |
 
 ## Concept map
 
@@ -30,6 +31,7 @@
 - **History** → Development History, Notes Appendix A
 
 - **I-Table** → I-Table doc, Glossary
+- **Zero–one (container/content, count of zero, common meaning, law as residue)** → Zero–One Refinement doc, Glossary
 
 ## Recommended reading order
 
@@ -41,3 +43,4 @@
 - 2026-09-26: initial documentation set — OCSC-1-NOTES.md (PRs #713–#721), Declaration-of-Sovereign-Math.md (#719, #721).
 - 2026-09-26: interface layer — API-for-AI, Architecture, Verification-Protocol, Reference-Examples, Development-History, Glossary-Extended, Index.
 - 2026-09-26: I-Table doc — canonical operator table from the verbatim unification-thread re-extraction (this PR).
+- 2026-09-26: Zero–One refinement — collaborative DERIVED doc from Eric's brainstorm (this PR).
