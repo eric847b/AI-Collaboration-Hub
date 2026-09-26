@@ -39,7 +39,9 @@ Grok's **first response in the thread was a refusal**: "I'm sorry, but this appe
 
 ## ⚠️ The "8 canonical axioms" — not found in either account
 
-Earlier summaries of this work (including the author's own notes) describe "8 canonical axioms," but **no numbered 8-axiom list exists in any extracted thread**. Exhaustive search of both Grok and Copilot histories on 2026-09-26 (dozens of query variants: OCSC-1, axiom, canonical, eight, n1/n2, Sovereign Math, etc.) found no such list, and the term "OCSC-1" appears only in the Grok thread. **Do not cite "8 axioms" without locating the actual source.** Remaining leads: the unextracted Copilot thread "Unification of Mathematical Operators in Sovereign Math" (Apr 20, 2026), the "OCSC-1 Deep Re…" project in the Grok sidebar, or a misremembering.
+Earlier summaries of this work (including the author's own notes) describe "8 canonical axioms," but **no numbered 8-axiom list exists in any extracted thread**. Exhaustive search of both Grok and Copilot histories on 2026-09-26 (dozens of query variants: OCSC-1, axiom, canonical, eight, n1/n2, Sovereign Math, etc.) found no such list, and the term "OCSC-1" appears only in the Grok thread. **Do not cite "8 axioms" without locating the actual source.** Remaining leads: the "OCSC-1 Deep Re…" project in the Grok sidebar, or a misremembering.
+
+Update 2026-09-26: the "OCSC-1 Deep Re…" project/chat **does not exist** in the Grok account (full history from Today back to Oct 31 2025 plus Library → Projects/Apps/Files/Media checked; zero user projects exist). The three axiom-mentioning chats were all opened and read — none contains a numbered list. The "8 canonical axioms" claim remains unsupported; do not state it as fact.
 
 ## Related threads — recovered 2026-09-26 (Copilot)
 
@@ -77,7 +79,7 @@ Provenance: no prior recorded statement of this doctrine exists in Eric's Grok o
 
 **The charter (2026-09-26):** at Eric's direction ("collaborate with copilot"), Muse drafted the founding-charter prompt and Copilot produced the canonical **Declaration of Sovereign Math** ([thread](https://copilot.microsoft.com/chats/7vjY7n7o4DWxXRwti6igM)): Preamble, Article I (givens: I-operator, 1 as the only number, segmentation, Sector Law, anchor laws Σ₃ₐ(I(1,2))=3 and Σ₃ᵦ(I(1,0))=1), Article II (the five articles of the Doctrine of Irreducible Declaration), Article III (substrate structure), Article IV (finality clause), signing clause — every line tagged DECLARED or DERIVED. Muse's refinement before it entered the record: (1) corrected Copilot's "L is the number of dividers" to **L = the segmentation count (sectors/parts)** per the Sector Law and Eric's doctrine; (2) moved Copilot's Execution Model (perception as write-operation, deterministic propagation, conflict nullification) to an appendix as **proposed, not declared** — it appears in none of Eric's threads and the charter's own non-repeatability clause bars undeclared content. Full charter in `ocsc1-notes/Declaration-of-Sovereign-Math.md`; transcript and correction notes in `ocsc1-notes/raw/14-declaration-charter-copilot.md`. Full transcript in `ocsc1-notes/raw/11-declaration-doctrine-copilot.md`.
 
-Spotted but out of scope (not extracted): Grok's "VectorFS Invariant 1/2=3" (May 9, 2026) and the "OCSC-1 Deep Re…" project in the Grok sidebar.
+Extracted 2026-09-26: Grok's "VectorFS Invariant 1/2=3" (May 9, 2026, [link](https://grok.com/c/aea9cf9d-665d-4f05-af59-931a732422e0)) uses 1/2=3 as a **software-architecture identity label** (1 = Whole Graph, 2 = Cuts, 3 = Emergent forms) for a filesystem project — same notation, different domain, not part of Sovereign Math. Side effect disclosed: opening the thread triggered Grok to finish a never-completed May 9 generation and auto-rename the chat to "VectorFS Invariant Calculation"; no message was sent, nothing modified manually. Transcript in `ocsc1-notes/raw/15-vectorfs-ocsc1-search.md`.
 
 ## How to use this note
 
