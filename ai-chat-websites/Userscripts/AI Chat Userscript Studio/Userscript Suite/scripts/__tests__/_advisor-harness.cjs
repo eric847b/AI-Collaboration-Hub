@@ -1,7 +1,7 @@
 'use strict';
 /* Cost Advisor harness — probes Modules/25-Cost-Advisor/001-goal-advice.module.user.js */
-const fs = require('fs'), vm = require('vm');
-const P = 'C:/Users/Eric/OneDrive/Documents/GitHub/ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/25-Cost-Advisor/001-goal-advice.module.user.js';
+const fs = require('fs'), path = require('path'), vm = require('vm');
+const P = path.resolve(__dirname, '..', '..', 'Modules', '25-Cost-Advisor', '001-goal-advice.module.user.js');
 let PASS = 0, FAIL = 0;
 function t(name, cond, extra) { if (cond) { PASS++; } else { FAIL++; console.log('FAIL ' + name + (extra !== undefined ? ' :: ' + JSON.stringify(extra) : '')); } }
 
