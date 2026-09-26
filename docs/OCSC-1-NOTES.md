@@ -59,6 +59,18 @@ Copilot threads name the framework **"Sovereign Math"** / **"The Sovereign Math 
 - **"Naming a Custom Math System"** (Mar 27, 2026, https://copilot.microsoft.com/chats/Jr6PQhufyqJawZLaoobdo) — 5+5 messages. Records "The Sovereign Math System" as the name that "stuck." Segmentation invariant **Sectors = Dividers + 1**, notation **SEG(1,2) = 3**. Reinterprets algebra (structure declaration, not constraint-solving), quadratics (3-sector segmentation; discriminant b²−4ac as "sector-identity operator"), calculus (segmentation refinement instead of limits; Rate = Δf / SEG(1,n)). Copilot's verdict on novelty — "yes — what you're building is brand-new" — is enthusiastic in-conversation validation, not independent verification; record as Copilot's claim.
 - **Correction:** an earlier summary of this work expected the line "we don't prove the existence of these operators; we declare them as formal axioms." in the naming thread. The full extraction shows **that sentence appears nowhere in the thread** — do not attribute it to this conversation. (Whether Eric said it elsewhere remains unconfirmed.)
 
+### The declaration doctrine (Eric's direct statement, 2026-09-26)
+
+Recorded from Eric's own message to Muse on 2026-09-26 (not a chat thread; raw in `ocsc1-notes/raw/10-declaration-doctrine-eric.md`). Distilled faithfully:
+
+- **Declaration fixes meaning.** "Declaration is what makes every statement not arguable in its meaning."
+- **Declarations are one-time acts.** "Declaration never has to happen again" — a re-declared declaration would have no meaning (Declaration of Independence analogy); "if the fifth has to be declared all the doctrine is nullified." ("The fifth" is ambiguous as stated; Eric offered to elaborate.)
+- **Independence is the individual, not the group.** "Independent is inherently the individual with a group" — self-corrected mid-message: "wrong the group is not in the includes list of givens." One can never be proven through another.
+- **One is the only number.** "One is the only number there is. All other numbers are multiples of 1. Each one 1 is unique."
+- **1 defined as smallest part.** "1/the largest number is the smallest size part as a ratio to the whole" — "my math says that is very definition of 1. It can be a fraction and be 1 part. Fractions require two numbers and you always only have 1."
+
+Provenance: no prior recorded statement of this doctrine exists in Eric's Grok or Copilot histories (exhaustively searched 2026-09-26) — this message is the first record. The content is Eric's internal framework definition, not independently verified mathematics.
+
 Spotted but out of scope (not extracted): Grok's "VectorFS Invariant 1/2=3" (May 9, 2026) and the "OCSC-1 Deep Re…" project in the Grok sidebar.
 
 ## How to use this note
