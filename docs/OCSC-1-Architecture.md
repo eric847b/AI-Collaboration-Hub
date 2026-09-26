@@ -41,7 +41,7 @@ How a collaborator processes a claim:
 
 ## 5. Cross-repo integration
 
-- This repo is the knowledge layer; other repos (AI Hub, Nexus Hub, Third Door OS, etc.) consume it read-only.
+- This repo is the knowledge layer; other repos (AI-Collaboration-Hub, nexus-infinity-hub, third-door-os, etc.) consume it read-only.
 - Reference by term + charter article, e.g. "per Charter Art. I §4."
 - New DECLARED lines require Eric's one-time declaration first, then recording here.
 - Raw transcripts stay in the author's workspace; the repo carries distilled, provenance-tagged records.
