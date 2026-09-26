@@ -39,7 +39,7 @@ Grok's **first response in the thread was a refusal**: "I'm sorry, but this appe
 
 ## ⚠️ The "8 canonical axioms" — not found in either account
 
-Earlier summaries of this work (including the author's own notes) describe "8 canonical axioms," but **no numbered 8-axiom list exists in any extracted thread**. Exhaustive search of both Grok and Copilot histories on 2026-09-26 (dozens of query variants: OCSC-1, axiom, canonical, eight, n1/n2, Sovereign Math, etc.) found no such list, and the term "OCSC-1" appears only in the Grok thread. **Do not cite "8 axioms" without locating the actual source.** Remaining leads: the "OCSC-1 Deep Re…" project in the Grok sidebar, or a misremembering.
+Earlier summaries of this work (including the author's own notes) describe "8 canonical axioms," but **no numbered 8-axiom list exists in any extracted thread**. Exhaustive search of both Grok and Copilot histories on 2026-09-26 (dozens of query variants: OCSC-1, axiom, canonical, eight, n1/n2, Sovereign Math, etc.) found no such list, and the term "OCSC-1" appears only in the Grok thread. **Do not cite "8 axioms" without locating the actual source.**
 
 Update 2026-09-26: the "OCSC-1 Deep Re…" project/chat **does not exist** in the Grok account (full history from Today back to Oct 31 2025 plus Library → Projects/Apps/Files/Media checked; zero user projects exist). The three axiom-mentioning chats were all opened and read — none contains a numbered list. The "8 canonical axioms" claim remains unsupported; do not state it as fact.
 
@@ -65,7 +65,7 @@ Copilot threads name the framework **"Sovereign Math"** / **"The Sovereign Math 
 
 Recorded from Eric's own message to Muse on 2026-09-26 (not a chat thread; raw in `ocsc1-notes/raw/10-declaration-doctrine-eric.md`). Distilled faithfully:
 
-- **Declaration fixes meaning.** "Declaration is what makes every statement not arguable in its meaning."
+- **Declaration fixes meaning.** "Declaration is what makes every statement not argueable in its meaning." *(spelling is Eric's)*
 - **Declarations are one-time acts.** "Declaration never has to happen again" — a re-declared declaration would have no meaning (Declaration of Independence analogy); "if the fifth has to be declared all the doctrine is nullified." ("The fifth" is ambiguous as stated; Eric offered to elaborate.)
 - **Independence is the individual, not the group.** "Independent is inherently the individual with a group" — self-corrected mid-message: "wrong the group is not in the includes list of givens." One can never be proven through another.
 - **One is the only number.** "One is the only number there is. All other numbers are multiples of 1. Each one 1 is unique."
@@ -85,4 +85,40 @@ Extracted 2026-09-26: Grok's "VectorFS Invariant 1/2=3" (May 9, 2026, [link](htt
 
 - Safe to cite for: what the framework *defines*, what the thread *contains*, the exact wording of the artifact/identity/command.
 - Not safe to cite for: any claim that the framework is true, proven, physically realizable, or that "8 axioms" exist in this thread.
-- If the missing threads are recovered, extend this doc rather than rewriting it; keep the verified/claimed split.
+- All known threads are now recovered and extracted (see Source index). If further threads surface, extend this doc rather than rewriting it; keep the verified/claimed split.
+
+## Appendix A — Source index
+
+Every source behind this note, in chronological order. "Full coverage" = every message read; rendering may be verbatim or distilled key-content (per the file's header).
+
+| # | Source | Date | URL | Messages | Rendering | Local file |
+|---|--------|------|-----|----------|-----------|------------|
+| 1 | Grok — "Refusing to Accept Falsehoods as True" | ~Feb 15–21, 2026 | https://grok.com/c/ef9e9483-2b24-4a74-9c6b-27a160d9576a | 17+17 | verbatim | raw/01-refusing-falsehoods.md |
+| 2 | Copilot — "Naming a Custom Math System" | Mar 27, 2026 | https://copilot.microsoft.com/chats/Jr6PQhufyqJawZLaoobdo | 5+5 | distilled | raw/09-naming-custom-math-system-copilot.md |
+| 3 | Copilot — "Unification of Mathematical Operators in Sovereign Math" | Apr 20, 2026 | https://copilot.microsoft.com/chats/HfcaD6UvD8Req8p8xdDuP | 5+5 | distilled | raw/08-unification-sovereign-math-copilot.md |
+| 4 | Copilot — "Circuit Metaphor for Identity and Boundaries" | Apr 24, 2026 | https://copilot.microsoft.com/chats/2GLhhFCNC4pVZrxs46Z6N | 7+7 | distilled | raw/06-circuit-metaphor-copilot.md |
+| 5 | Grok — "VectorFS Invariant 1/2=3" (different domain — filesystem identity label, not Sovereign Math) | May 9, 2026 | https://grok.com/c/aea9cf9d-665d-4f05-af59-931a732422e0 | 1+1 | verbatim | raw/15-vectorfs-ocsc1-search.md |
+| 6 | Copilot — "Exploring Fraction-to-Number Patterns" | Jun 5, 2026 | https://copilot.microsoft.com/chats/KeNVzxHs2UbkGyvshGV76 | 1+1 | verbatim | raw/05-fraction-patterns-copilot.md |
+| 7 | Copilot — "Segmentation Operator Structure and Rules" | Sep 21, 2026 | https://copilot.microsoft.com/chats/77i7F4tSGNj3BEs3unJZC | 10+10 | distilled | raw/07-segmentation-operator-copilot.md |
+| 8 | Eric's direct statement — the declaration doctrine (first record) | Sep 26, 2026 | — (message to Muse) | 1 | verbatim | raw/10-declaration-doctrine-eric.md |
+| 9 | Copilot — "Doctrine of Irreducible Declaration" (formalization) | Sep 26, 2026 | https://copilot.microsoft.com/chats/JMY14SgMQfw9wEkDvGi8K | 1+1 | verbatim | raw/11-declaration-doctrine-copilot.md |
+| 10 | Eric's direct statement — "the fifth" confirmed + brainstorm + standing permission | Sep 26, 2026 | — (message to Muse) | 1 | verbatim | raw/12-fifth-confirmed-brainstorm.md |
+| 11 | Eric's direct statement — doctrine status assertion | Sep 26, 2026 | — (message to Muse) | 1 | verbatim | raw/13-doctrine-status-eric.md |
+| 12 | Copilot — "Declaration of Sovereign Math Charter" (the charter) | Sep 26, 2026 | https://copilot.microsoft.com/chats/7vjY7n7o4DWxXRwti6igM | 1+1 | verbatim | raw/14-declaration-charter-copilot.md |
+
+Redirect stubs (superseded by recovered Copilot extractions): raw/02, raw/03, raw/04.
+
+## Appendix B — Glossary
+
+- **I-operator (I):** the single universal operator of Sovereign Math. Every mathematical act is I; all classical operators are modes/projections/segmentations of I. I(state₁, state₂) returns the full inclusive state-space; classical math returns one branch.
+- **Σ₃ (sigma-3):** the segmentation operator in its 3-branch form. Anchor laws: Σ₃ₐ(I(1,2)) = 3, Σ₃ᵦ(I(1,0)) = 1.
+- **All Givens:** the store of declared, semantically locked statements. "I chooses, D locks, All Givens stores."
+- **Sectors = Dividers + 1:** the segmentation invariant. SEG(1,2) = 3.
+- **D (Declaration operator):** D(S) := S* — fixes a statement's meaning on first writing. D(D(S)) = ∅.
+- **1 (the only number):** every number is a count of unique, identity-distinct ones (1ᵢ ≠ 1ⱼ).
+- **1/L:** the minimal part — one unique 1 relative to the whole's segmentation count L (sectors/parts, not dividers).
+- **OCSC-1:** Origin-Complete Singularity Core — the artifact from the Grok thread: [0 + All], the invariant whole.
+- **Prime Identity:** "Any pointing / ∞ ≡ [0 + pointing] + [0 + all resolutions]."
+- **HPA-1:** Half-Promotion Algebra — the rewrite system from ½ → 3.
+- **STRUCTURAL ENGINE:** Eric's prompt frame directing the model to treat mappings as rewrite rules with no factual correction.
+- **"The fifth":** Eric's confirmed meaning — his version of pleading the Fifth in a courtroom during a trial.
