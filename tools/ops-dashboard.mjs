@@ -181,13 +181,77 @@ function extensionSection() {
 }
 
 function machineReportsSection() {
+  // Machine telemetry aggregation (Round 12 B): summarize the three
+  // machine-written reports into ops-actionable trends instead of dumping
+  // raw key counts. All reads are best-effort — a missing/unparseable
+  // report degrades to a one-line note, never a throw.
   const lines = [];
-  const reports = ['agent-report.json', 'auto-ops-report.json', 'auto-fix-ledger.json'];
   lines.push('## Machine-Generated Reports', '');
-  for (const r of reports) {
-    const data = readJsonSafe(r);
-    lines.push(`- \`${r}\`: ${data ? summarizeJson(data) : '_not readable / absent_'}`);
+  const agent = readJsonSafe('agent-report.json');
+  const ops = readJsonSafe('auto-ops-report.json');
+  const ledger = readJsonSafe('auto-fix-ledger.json');
+
+  // --- agent-report.json: task success rate + run recency ---
+  if (agent) {
+    const tasks = Array.isArray(agent.tasks) ? agent.tasks : [];
+    const ok = tasks.filter((t) => t && t.success === true).length;
+    const rate = tasks.length > 0 ? `${((ok / tasks.length) * 100).toFixed(1)}%` : 'n/a';
+    const byType = {};
+    for (const t of tasks) {
+      const k = (t && t.type) || 'unknown';
+      byType[k] = (byType[k] || 0) + 1;
+    }
+    const typeStr = Object.keys(byType).sort().map((k) => `${k}=${byType[k]}`).join(', ') || '—';
+    lines.push(`- \`agent-report.json\`: solved=${agent.solved ?? 'n/a'} success=${ok}/${tasks.length} (${rate}) duplicates_closed=${agent.duplicates_closed ?? 'n/a'} scanned_at=${agent.scanned_at ?? 'n/a'} types[${typeStr}]`);
+  } else {
+    lines.push('- `agent-report.json`: _not readable / absent_');
   }
+
+  // --- auto-ops-report.json: ops actions taken + error budget ---
+  if (ops) {
+    const dd = (ops.duplicate_drafts) || {};
+    const sb = (ops.stale_branches) || {};
+    const dc = (ops.dependabot_conflicts) || {};
+    const dm = (ops.dependabot_merges) || {};
+    const pl = (ops.policy_lockfile_spam) || {};
+    const count = (a) => (Array.isArray(a) ? a.length : 0);
+    const actions = count(dd.closed) + count(sb.deleted) + count(dc.rebase_requests) + count(dc.recreate_requests) + count(dm.merged);
+    const errs = count(dd.errors) + count(sb.errors) + count(dc.errors) + count(dm.errors) + count(pl.errors);
+    const kept = count(dd.kept);
+    const skipped = count(dc.skipped) + count(dm.skipped);
+    lines.push(`- \`auto-ops-report.json\`: actions_taken=${actions} (drafts_closed=${count(dd.closed)} branches_deleted=${count(sb.deleted)} merges=${count(dm.merged)} rebases=${count(dc.rebase_requests) + count(dc.recreate_requests)}) kept=${kept} skipped=${skipped} errors=${errs} scanned_at=${ops.scanned_at ?? 'n/a'}`);
+  } else {
+    lines.push('- `auto-ops-report.json`: _not readable / absent_');
+  }
+
+  // --- auto-fix-ledger.json: fix success rate by problem_type x status ---
+  if (ledger) {
+    const entries = Array.isArray(ledger.entries) ? ledger.entries : [];
+    const byType = {};
+    const byStatus = {};
+    let prs = 0;
+    let reappears = 0;
+    for (const e of entries) {
+      if (!e) continue;
+      byType[e.problem_type || 'unknown'] = (byType[e.problem_type || 'unknown'] || 0) + 1;
+      byStatus[e.status || 'unknown'] = (byStatus[e.status || 'unknown'] || 0) + 1;
+      if (e.pr_number !== null && e.pr_number !== undefined) prs += 1;
+      reappears += Number(e.reappear_count) || 0;
+    }
+    // "Resolved" = terminal success statuses only. Notably pending_verify
+    // counts as open work, not failure — it must NOT match a /verif/ regex.
+    const resolvedKeys = Object.keys(byStatus).filter((k) => /^(merged|fixed|verified|resolved|closed|done|success)$/i.test(k));
+    const resolved = resolvedKeys.reduce((n, k) => n + byStatus[k], 0);
+    const rate = entries.length > 0 ? `${((resolved / entries.length) * 100).toFixed(1)}%` : 'n/a';
+    const typeStr = Object.keys(byType).sort().map((k) => `${k}=${byType[k]}`).join(', ') || '—';
+    const statusStr = Object.keys(byStatus).sort().map((k) => `${k}=${byStatus[k]}`).join(', ') || '—';
+    lines.push(`- \`auto-fix-ledger.json\`: entries=${entries.length} resolved=${resolved} (${rate}) prs_linked=${prs} reappears=${reappears} updated_at=${ledger.updated_at ?? 'n/a'}`);
+    lines.push(`  - by_type: ${typeStr}`);
+    lines.push(`  - by_status: ${statusStr}`);
+  } else {
+    lines.push('- `auto-fix-ledger.json`: _not readable / absent_');
+  }
+
   lines.push('');
   return { id: 'machine-reports', lines };
 }
