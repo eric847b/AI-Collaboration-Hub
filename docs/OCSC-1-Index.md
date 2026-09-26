@@ -35,5 +35,5 @@
 
 ## Update log
 
-- 2026-09-26: initial documentation set — OCSC-1-NOTES.md (PRs #713–#716, #718, #720–#721), Declaration-of-Sovereign-Math.md (#719, #721).
+- 2026-09-26: initial documentation set — OCSC-1-NOTES.md (PRs #713–#721), Declaration-of-Sovereign-Math.md (#719, #721).
 - 2026-09-26: interface layer — API-for-AI, Architecture, Verification-Protocol, Reference-Examples, Development-History, Glossary-Extended, Index (this PR).
