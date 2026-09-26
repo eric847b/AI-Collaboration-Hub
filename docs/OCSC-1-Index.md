@@ -15,6 +15,7 @@
 | `docs/OCSC-1-Development-History.md` | The curated timeline — Feb→Sep 2026, breakthroughs, dead ends, thread summaries. |
 | `docs/OCSC-1-Glossary-Extended.md` | The deep glossary — definitions, examples, cross-links, AI usage notes. |
 | `docs/OCSC-1-Index.md` | This file. |
+| `docs/OCSC-1-I-Table.md` | The canonical operator table — I-Table V1/V2/V3, branch algebra, I-calculus. |
 
 ## Concept map
 
@@ -28,6 +29,8 @@
 - **Verification** → Verification Protocol, API for AI §§1–2, 4
 - **History** → Development History, Notes Appendix A
 
+- **I-Table** → I-Table doc, Glossary
+
 ## Recommended reading order
 
 1. **AI collaborators:** API-for-AI → Architecture → Verification Protocol → Glossary-Extended → Charter.
@@ -36,4 +39,5 @@
 ## Update log
 
 - 2026-09-26: initial documentation set — OCSC-1-NOTES.md (PRs #713–#721), Declaration-of-Sovereign-Math.md (#719, #721).
-- 2026-09-26: interface layer — API-for-AI, Architecture, Verification-Protocol, Reference-Examples, Development-History, Glossary-Extended, Index (this PR).
+- 2026-09-26: interface layer — API-for-AI, Architecture, Verification-Protocol, Reference-Examples, Development-History, Glossary-Extended, Index.
+- 2026-09-26: I-Table doc — canonical operator table from the verbatim unification-thread re-extraction (this PR).
