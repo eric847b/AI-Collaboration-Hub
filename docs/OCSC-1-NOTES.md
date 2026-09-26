@@ -1,8 +1,8 @@
 # OCSC-1 Notes — the "Division is Addition" framework
 
-**Status:** knowledge capture from Eric's Grok chat history, written 2026-09-26. Not a proof, not an endorsement — a faithful record of what the threads contain, split into what's independently checkable and what's only claimed inside the framework.
+**Status:** knowledge capture from Eric's Grok and Copilot chat histories, written 2026-09-26. Not a proof, not an endorsement — a faithful record of what the threads contain, split into what's independently checkable and what's only claimed inside the framework.
 
-**Source:** "Refusing to Accept Falsehoods as True" (~Feb 15–21, 2026, https://grok.com/c/ef9e9483-2b24-4a74-9c6b-27a160d9576a) — full extraction, all 17 user messages + 17 Grok responses read verbatim. Raw extraction lives in the author's workspace (`ocsc1-notes/raw/`); this doc is the distilled note.
+**Sources:** Grok — "Refusing to Accept Falsehoods as True" (~Feb 15–21, 2026, https://grok.com/c/ef9e9483-2b24-4a74-9c6b-27a160d9576a), full extraction (17+17 messages). Copilot — "Exploring Fraction-to-Number Patterns" (Jun 5, 2026, https://copilot.microsoft.com/chats/KeNVzxHs2UbkGyvshGV76), "Circuit Metaphor for Identity and Boundaries" (Apr 24, 2026, https://copilot.microsoft.com/chats/2GLhhFCNC4pVZrxs46Z6N), "Segmentation Operator Structure and Rules" (Sep 21, 2026, https://copilot.microsoft.com/chats/77i7F4tSGNj3BEs3unJZC) — all fully extracted 2026-09-26. Raw extractions live in the author's workspace (`ocsc1-notes/raw/`); this doc is the distilled note.
 
 ## Provenance caveat (read first)
 
@@ -37,21 +37,24 @@ Grok's **first response in the thread was a refusal**: "I'm sorry, but this appe
 - **The Prime Identity as "the end of knowledge"** — asserted, not demonstrated.
 - **Personalization** ("you, Eric, are the living, active Origin Node"; "Toes in grass. Breath conductive." as an activation command) — the model playing the frame to its conclusion, not a finding.
 
-## ⚠️ The "8 canonical axioms" — not found
+## ⚠️ The "8 canonical axioms" — not found in either account
 
-Earlier summaries of this work (including the author's own notes) describe "8 canonical axioms," but the **full thread contains no numbered 8-axiom list**. Present instead: the 6 user-supplied STRUCTURAL ENGINE rules, the HPA-1 rules, the core rule, 0-handling rules, two addition modes, dynamics, energy/shrinkage rules, the OCSC-1 artifact, and the Prime Identity. **Do not cite "8 axioms" without locating the actual source** — it may come from a Copilot thread, a later session, or a misremembering. Flagged as an open provenance item.
+Earlier summaries of this work (including the author's own notes) describe "8 canonical axioms," but **no numbered 8-axiom list exists in any extracted thread**. Exhaustive search of both Grok and Copilot histories on 2026-09-26 (dozens of query variants: OCSC-1, axiom, canonical, eight, n1/n2, Sovereign Math, etc.) found no such list, and the term "OCSC-1" appears only in the Grok thread. **Do not cite "8 axioms" without locating the actual source.** Remaining leads: the unextracted Copilot thread "Unification of Mathematical Operators in Sovereign Math" (Apr 20, 2026), the "OCSC-1 Deep Re…" project in the Grok sidebar, or a misremembering.
 
-## Related threads — status as of 2026-09-26
+## Related threads — recovered 2026-09-26 (Copilot)
 
-Three math threads from earlier summaries were **not found in Grok's conversation history** (full history list + search, ~45 chats, checked 2026-09-26):
+The three math threads from earlier summaries were found in Eric's **Microsoft Copilot** history (not Grok) and fully extracted on 2026-09-26:
 
-- "Exploring Fraction-to-Number Patterns" (~Jun 5) — fraction→number mapping (2/2=4, 1/2=3, 1/3=4, 32/96≈0.333→128)
-- "Circuit Metaphor for Identity and Boundaries" (~Apr 24) — "/" as segmentation operator with merge/separate modes
-- "Segmentation Operator Structure and Rules" (~Sep 21) — positional number system (1 the only real number, 0 as location/origin, negatives as direction)
+- **"Exploring Fraction-to-Number Patterns"** (Jun 5, 2026, https://copilot.microsoft.com/chats/KeNVzxHs2UbkGyvshGV76) — 1 user message + 1 response. Eric's raw mappings: 2/2=4, 1/2=3, 1/3=4, 12+1=13 or 1/3, 6×2=12 ↔ 1/2, 32/96=0.333 or 128, then 1/4. Copilot was openly exploratory — "the mapping isn't fully pinned down yet… multiple ways to make those numbers 'fit' a pattern" — and asked for the intended rule before extending to 1/4. **The mapping was never pinned down in this thread; 1/4 was never resolved.** A seed, not a result.
+- **"Circuit Metaphor for Identity and Boundaries"** (Apr 24, 2026, https://copilot.microsoft.com/chats/2GLhhFCNC4pVZrxs46Z6N) — 7+7 messages. Dual-mode operator: (a/b)=(a+b) "merge mode" / (a/b)=(a−b) "separate mode" — "/" as segmentation operator. Unified as **a/b = (a+b, a−b)**, the "Sum–Difference Operator": one rule, two outputs, reversible/lossless (a=(S+D)/2, b=(S−D)/2). "3" defined as the emergent third identity **C = (a+b)±(a−b) = 2a or 2b** — "the third value that always appears when you split a system into union and contrast." Compression law: all variables reduce to quantities of a — **x = ka**. (Thread opens with an unrelated "gay ohms / straight ohms" wordplay riff before pivoting to the operator.)
+- **"Segmentation Operator Structure and Rules"** (Sep 21, 2026, https://copilot.microsoft.com/chats/77i7F4tSGNj3BEs3unJZC) — 10+10 messages. Parent-grouping invariant: 3 parts = 1.5 units = the same "1 total" — equality of *state*, not numerical value; "only on paper do both things exist," "only 1 can exist at a time" (before/after states of one object). 1 is the only real number (n = n 1's). 0 as movable origin — "0 is a number location and placeholder, but isn't a widget on a shelf"; "0 is a number on a return trip"; "0 is only an origin at the start." Negatives are positive counts in the opposite direction. **a:b state-pair notation**: 0 = 1:0, 1 = 1:1, 2 = 2:1 (count of 1's : origin offset). Self-correction captured: "saying zero isn't a number is sort of true but not not true in a return operation… it would effectively mean 4 was not a number by the same standard" — all numbers are movement-defined locations. Part-count ratios (4:5) compare multiplicity of 1's, not magnitude.
 
-These titles appear in the **2026-09-23 Copilot-history summary**, not in Grok's history — they are most likely **Microsoft Copilot threads**, deleted/renamed threads, or from another account. Not fabricated here; flagged for a future Copilot-history extraction.
+Copilot's framing across all three: validated **internal coherence only** ("your system", "your operator", "your ontology"); never claimed as proven classical mathematics.
 
-Spotted but out of scope (not extracted): "VectorFS Invariant 1/2=3" (May 9, 2026) and an "OCSC-1 Deep Re…" project in the Grok sidebar — both may hold related material.
+### Framework aliases
+Copilot threads name the framework **"Sovereign Math"** / **"The Sovereign Math System."** Two related Copilot threads were found but not yet extracted: "Unification of Mathematical Operators in Sovereign Math" (Apr 20, 2026) — reportedly defines a single operator **I** with Σ₃(I(1,2)) = 3 and adds a second anchor law **1/0 = 1** (Σ₃ᵦ) alongside 1/2 = 3 (Σ₃ₐ); and "Naming a Custom Math System" (Mar 27, 2026) — records Eric's own framing: "we don't prove the existence of these operators; we declare them as formal axioms." Both flagged for future extraction.
+
+Spotted but out of scope (not extracted): Grok's "VectorFS Invariant 1/2=3" (May 9, 2026) and the "OCSC-1 Deep Re…" project in the Grok sidebar.
 
 ## How to use this note
 
