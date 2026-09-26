@@ -167,6 +167,28 @@ function coverageSection() {
   return { id: 'coverage', lines };
 }
 
+function flakeSection() {
+  const lines = [];
+  const fmt = (v) => (v === null || v === undefined ? 'n/a' : `${Number(v).toFixed(1)}%`);
+  const ledger = readJsonSafe(path.join('docs', 'metrics', 'flake-history.json'));
+  const entries = ledger && Array.isArray(ledger.entries) ? ledger.entries : [];
+  if (entries.length === 0) {
+    lines.push('## Flaky Tests', '', '_Empty — record a run: `node tools/flake-tracker.cjs record --suite <name> --tests N --passed N`._', '');
+    return { id: 'flakes', lines };
+  }
+  const suites = [...new Set(entries.map((e) => e.suite))].sort();
+  const latest = entries[entries.length - 1];
+  lines.push(`## Flaky Tests (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
+  lines.push('| Suite | Tests | Passed | Retries | Flakes | Flake rate |');
+  lines.push('|-------|------:|-------:|--------:|-------:|-----------:|');
+  for (const s of suites) {
+    const last = [...entries].reverse().find((e) => e.suite === s);
+    lines.push(`| ${s} | ${last.tests} | ${last.passed} | ${last.retries} | ${last.flakes} | ${fmt(last.rate)} |`);
+  }
+  lines.push('', '_Full history: `docs/metrics/flake-report.md` (`node tools/flake-tracker.cjs markdown`)._', '');
+  return { id: 'flakes', lines };
+}
+
 function toolOutputSection(id, title, cmd) {
   return { id, lines: [`## ${title}`, '', '```text', runTool(cmd), '```', ''] };
 }
@@ -263,7 +285,7 @@ function machineReportsSection() {
 // stale so the failure is always actionable ("regenerate the dashboard").
 
 const MARKER_RE = /^<!-- ops-section:([a-z0-9-]+) ts:(\S+) -->$/;
-const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'parity', 'doclinks', 'extension', 'machine-reports'];
+const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports'];
 
 function parseFreshness(raw) {
   const stamps = new Map();
@@ -330,6 +352,7 @@ const sections = [
   toolingSection(),
   bundleSection(),
   coverageSection(),
+  flakeSection(),
   toolOutputSection('parity', 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check'),
   toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
   extensionSection(),

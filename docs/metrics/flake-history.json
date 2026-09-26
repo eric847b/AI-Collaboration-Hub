@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "timestamp": "2026-09-26T15:37:41.636Z",
+      "gitSha": "6d7f023",
+      "suite": "playwright:nexus",
+      "note": "baseline",
+      "tests": 8,
+      "passed": 8,
+      "failed": 0,
+      "retries": 1,
+      "flakes": 1,
+      "rate": 12.5
+    },
+    {
+      "timestamp": "2026-09-26T15:39:15.673Z",
+      "gitSha": "6d7f023",
+      "suite": "playwright:self-evolve",
+      "note": "baseline",
+      "tests": 8,
+      "passed": 8,
+      "failed": 0,
+      "retries": 0,
+      "flakes": 0,
+      "rate": 0
+    },
+    {
+      "timestamp": "2026-09-26T15:44:18.790Z",
+      "gitSha": "6d7f023",
+      "suite": "vitest:nexus",
+      "note": "vitest-run",
+      "tests": 13,
+      "passed": 13,
+      "failed": 0,
+      "retries": 0,
+      "flakes": 0,
+      "rate": 0
+    }
+  ]
+}

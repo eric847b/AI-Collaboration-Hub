@@ -48,6 +48,7 @@ const SMOKE = {
   'new-project.mjs': ['--self-test'],
   'bundle-trend.cjs': ['report', '--limit', '1'],
   'coverage-trend.cjs': ['report', '--limit', '1'],
+  'flake-tracker.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],
 };
 

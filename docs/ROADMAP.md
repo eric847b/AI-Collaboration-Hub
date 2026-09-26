@@ -68,7 +68,7 @@ Building on the now-complete CI foundation (Round 11 delivered cross-repo integr
 
 - [ ] **Telemetry endpoint configuration** — the runtime error-telemetry hook (`src/lib/telemetry.ts`) is built and inert without an endpoint. Configure `window.TELEMETRY_ENDPOINT` or `installTelemetry({ endpoint })` for production error reporting (needs an owner decision on the receiving backend).
 - [x] **Dashboard freshness guard** — delivered 2026-09-19: per-section `ts:` markers, idempotent regen (unchanged sections keep their timestamps), `--check` staleness mode; gate + verify-tools + cron workflow all consume it (see subsection L)
-- [ ] **Flaky-test tracker** — record Playwright/vitest retry occurrences across CI runs and surface a flake-rate trend in the OPS Dashboard.
+- [x] **Flaky-test tracker** — delivered 2026-09-26: `tools/flake-tracker.cjs` (record/report/markdown, mirrors bundle/coverage-trend.cjs; Playwright JSON `--from-playwright` ingestion via stats.flaky/unexpected, manual counts for vitest suites; ledger `docs/metrics/flake-history.json` + provider wired into `verify-tools.mjs` as `report --limit 1` smoke) + **Flaky Tests** OPS Dashboard section (per-suite tests/passed/retries/flakes/rate table + link to `docs/metrics/flake-report.md`); seeded baseline: playwright:nexus 8/8 flakes=1 (12.5%), playwright:self-evolve 8/8 flakes=0, vitest:nexus 13/13 flakes=0. Best-effort reads: empty ledger renders an _Empty_ placeholder, never throws.
 
 ### D. Developer Experience (Round 12)
 
