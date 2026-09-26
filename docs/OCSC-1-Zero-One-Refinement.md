@@ -23,7 +23,7 @@
 
 **Eric (cleaned):** Words or numbers mean the common meaning.
 **Refined:** Symbols retain their ordinary meaning unless explicitly overridden by a declared structural law. The framework modifies what symbols *refer to*, not the symbols themselves. Resolution of the central tension (both refinements flagged it): common meaning governs the *metalanguage* — how we talk about the system; the anchor laws (e.g. 1/2 = 3) are *declarations* inside the system, where "=" is the declared segmentation operator, not common equality. Rule: common meaning is the default; structural law overrides explicitly, only where declared. Every framework "=" should be marked as declared-operator use.
-**Open:** needs Eric's sign-off on the metalanguage/declaration split. If rejected, the tension stands as an open problem.
+**Status:** implemented as `PROPOSED` in `docs/OCSC-1-Notation-Standard.md` (2026-09-26, at Eric's direction to implement); becomes doctrine upon his declaration. If rejected, the tension stands as an open problem (Tension Map #1).
 
 ## 5. Numbers are dynamic on their own
 

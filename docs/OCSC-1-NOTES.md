@@ -93,6 +93,13 @@ Eric's new brainstorm, refined collaboratively and given independent answers by 
 - **Law = invariant residue:** what remains after everything passes through it; "unbreakable" true by definition; law-status is declared (D locks), matching the declaration doctrine.
 - Typos fixed without meaning change: there/their, eachothers, "cat possible" → "can possibly", etc. Verbatim brainstorm: `raw/15-zero-one-brainstorm-eric.md`; Muse's answers: `raw/16-zero-one-refinement-muse.md`; Copilot's verbatim: `raw/17-zero-one-refinement-copilot.md`.
 
+## Notation standard + tension map (2026-09-26)
+
+At Eric's direction ("implement all your ideas"), two proposals were built from the Zero–One refinement:
+
+- **`docs/OCSC-1-Notation-Standard.md`** (`PROPOSED` — becomes doctrine only if declared): three levels (L0 metalanguage / L1 declarations / L2 derivations); the `=` convention (`=` common equality at L0, `:=` declaration, `Σₓ(I(a,b)) = result` as D-locked declared result); no-bare-export rule (a Level-1 "=" may never be quoted as a Level-0 arithmetic claim); override rule (common meaning default, structural law overrides explicitly, tagged `DECLARED`); projection disambiguation (Πclass / Π₃ / Σall).
+- **`docs/OCSC-1-Tension-Map.md`** (`DERIVED`): all nine known tensions with status — resolved (identity/label, constants/variables, law as declared), proposed (common-meaning split → Notation Standard), held openly (zero-as-entity, "unbreakable" by definition), open (#8 unifying law for the two anchors, #9 emergence mechanism).
+
 ## How to use this note
 
 - Safe to cite for: what the framework *defines*, what the thread *contains*, the exact wording of the artifact/identity/command.
