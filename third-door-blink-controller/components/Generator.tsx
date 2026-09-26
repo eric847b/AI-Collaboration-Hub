@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { StyleSheet, View, Dimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -9,9 +9,19 @@ import Animated, {
   Easing,
   interpolate,
   withSequence,
-  withSpring
+  withSpring,
+  type AnimatedStyle,
+  type SharedValue
 } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Line } from 'react-native-svg';
+
+// react-native-svg v15 element prop types omit `style`, but the components forward
+// it at runtime. Widen the animated wrappers so animated styles typecheck.
+type AnimatedSvgComponent<P> = React.ComponentType<P & { style?: StyleProp<AnimatedStyle<ViewStyle>> }>;
+
+const AnimatedG = Animated.createAnimatedComponent(G) as unknown as AnimatedSvgComponent<React.ComponentProps<typeof G>>;
+const AnimatedCircle = Animated.createAnimatedComponent(Circle) as unknown as AnimatedSvgComponent<React.ComponentProps<typeof Circle>>;
+const AnimatedPath = Animated.createAnimatedComponent(Path) as unknown as AnimatedSvgComponent<React.ComponentProps<typeof Path>>;
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,6 +41,25 @@ const PALETTES = [
   { primary: '#7700ff', secondary: '#00ff77', emergent: '#ff0044' },
   { primary: '#ffffff', secondary: '#444444', emergent: '#888888' },
 ];
+
+function EmergentDot({ index, pulseValue, cx, cy, r, fill }: {
+  index: number;
+  pulseValue: SharedValue<number>;
+  cx: number;
+  cy: number;
+  r: number;
+  fill: string;
+}) {
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(pulseValue.value, [0, 0.5, 1], [0.2, 0.8, 0.2]),
+    transform: [
+      { scale: 1 + pulseValue.value * 0.5 },
+      { translateX: Math.sin(pulseValue.value * Math.PI + index) * 10 },
+      { translateY: Math.cos(pulseValue.value * Math.PI + index) * 10 },
+    ],
+  }));
+  return <AnimatedCircle cx={cx} cy={cy} r={r} fill={fill} style={dotStyle} />;
+}
 
 export function Generator({ state, level, mutationFactor, seed }: GeneratorProps) {
   const pulseValue = useSharedValue(0);
@@ -84,6 +113,15 @@ export function Generator({ state, level, mutationFactor, seed }: GeneratorProps
     };
   });
 
+  const auraStyle = useAnimatedStyle(() => ({
+    opacity: pulseValue.value * 0.5,
+    transform: [{ scale: 1 + pulseValue.value * 0.5 }],
+  }));
+
+  const reverseRingStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `-${rotationValue.value * 1.5}deg` }],
+  }));
+
   // Autonomous evolution visuals
   return (
     <Animated.View style={[styles.container, containerStyle]}>
@@ -95,10 +133,7 @@ export function Generator({ state, level, mutationFactor, seed }: GeneratorProps
             fill="none"
             stroke="rgba(0, 255, 255, 0.1)"
             strokeWidth={2}
-            style={useAnimatedStyle(() => ({
-              opacity: pulseValue.value * 0.5,
-              transform: [{ scale: 1 + pulseValue.value * 0.5 }],
-            }))}
+            style={auraStyle}
           />
 
           {/* Core Node */}
@@ -127,9 +162,7 @@ export function Generator({ state, level, mutationFactor, seed }: GeneratorProps
           )}
 
           {level >= 2 && (
-            <AnimatedG style={useAnimatedStyle(() => ({
-              transform: [{ rotate: `-${rotationValue.value * 1.5}deg` }],
-            }))}>
+            <AnimatedG style={reverseRingStyle}>
               {[60, 180, 300].map((angle, i) => (
                 <Circle
                   key={i}
@@ -150,20 +183,14 @@ export function Generator({ state, level, mutationFactor, seed }: GeneratorProps
                 const angle = (i * 15 * Math.PI) / 180;
                 const distance = 160 + (i % 3) * 20;
                 return (
-                  <AnimatedCircle
+                  <EmergentDot
                     key={i}
+                    index={i}
+                    pulseValue={pulseValue}
                     cx={Math.cos(angle) * (distance + mutationFactor * 50)}
                     cy={Math.sin(angle) * (distance + mutationFactor * 50)}
                     r={2 + (i % 4)}
                     fill={i % 2 === 0 ? "#00ff00" : "#ff00ff"}
-                    style={useAnimatedStyle(() => ({
-                      opacity: interpolate(pulseValue.value, [0, 0.5, 1], [0.2, 0.8, 0.2]),
-                      transform: [
-                        { scale: 1 + pulseValue.value * 0.5 },
-                        { translateX: Math.sin(pulseValue.value * Math.PI + i) * 10 },
-                        { translateY: Math.cos(pulseValue.value * Math.PI + i) * 10 },
-                      ],
-                    }))}
                   />
                 );
               })}
@@ -186,7 +213,11 @@ export function Generator({ state, level, mutationFactor, seed }: GeneratorProps
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
