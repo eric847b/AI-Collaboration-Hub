@@ -81,6 +81,18 @@ Provenance: no prior recorded statement of this doctrine exists in Eric's Grok o
 
 Extracted 2026-09-26: Grok's "VectorFS Invariant 1/2=3" (May 9, 2026, [link](https://grok.com/c/aea9cf9d-665d-4f05-af59-931a732422e0)) uses 1/2=3 as a **software-architecture identity label** (1 = Whole Graph, 2 = Cuts, 3 = Emergent forms) for a filesystem project — same notation, different domain, not part of Sovereign Math. Side effect disclosed: opening the thread triggered Grok to finish a never-completed May 9 generation and auto-rename the chat to "VectorFS Invariant Calculation"; no message was sent, nothing modified manually. Transcript in `ocsc1-notes/raw/15-vectorfs-ocsc1-search.md`.
 
+## Zero–One refinement (2026-09-26)
+
+Eric's new brainstorm, refined collaboratively and given independent answers by both Muse and Copilot — marked **DERIVED**, not declared doctrine. Full doc: `docs/OCSC-1-Zero-One-Refinement.md`.
+
+- **Container ≠ content:** one parent group of 0 is something; the group exists as one group regardless of its content.
+- **Zero is one zero, and the only zero:** the count of zeros is 1, not 0; zero is unique (converges with classical math — the additive identity is provably unique).
+- **A count of zero is still one count:** the act of measuring always yields one measurement.
+- **Common meaning is the default:** symbols keep ordinary meaning unless explicitly overridden by declared structural law — common meaning governs the metalanguage; declarations govern the operators. **Open:** needs Eric's sign-off on this split.
+- **Numbers are dynamic on their own** (realism — philosophical position); **1 is invariant** while the symbol "1" is an arbitrary pointer (identity vs. label); **constants/variables are the same type**, differing only in stability across transformations — interchangeable across frames, distinct within a frame.
+- **Law = invariant residue:** what remains after everything passes through it; "unbreakable" true by definition; law-status is declared (D locks), matching the declaration doctrine.
+- Typos fixed without meaning change: there/their, eachothers, "cat possible" → "can possibly", etc. Verbatim brainstorm: `raw/15-zero-one-brainstorm-eric.md`; Muse's answers: `raw/16-zero-one-refinement-muse.md`; Copilot's verbatim: `raw/17-zero-one-refinement-copilot.md`.
+
 ## How to use this note
 
 - Safe to cite for: what the framework *defines*, what the thread *contains*, the exact wording of the artifact/identity/command.
