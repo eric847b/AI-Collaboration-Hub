@@ -51,7 +51,7 @@
 
 These items require external services, accounts, or coordination with other repositories:
 
-- [ ] **GitHub Pages enablement for API docs** — repo Settings → Pages → GitHub Actions. Workflow already deploys best-effort; enabling the `github-pages` environment will make deployment succeed instead of soft-failing.
+- [x] **GitHub Pages enablement for API docs** — ENABLED 2026-09-27: Pages switched to `build_type=workflow` via `gh api` (site: https://eric847b.github.io/AI-Collaboration-Hub/). First deploy run green but `/` 404'd (site root had only raw `index.md`; deploy-pages serves raw files, no Jekyll) — `generate-docs.yml` now emits a root `docs/index.html` with existence-checked project links + `.nojekyll`, and the `index.md` links were fixed to include the `api/` prefix. Verified: Pages API live, deploy run `success`.
 - [ ] **Third-party security audit** — owned by `ai-chat-websites/next_year_roadmap.md`; coordinate with that repo's roadmap.
 - [ ] **ai-chat-websites community items** — Discord, video tutorials, store publishing, 80/90% coverage gates — tracked in that repo's `next_year_roadmap.md`.
 - [ ] **External uptime dashboards** — synthetic monitoring tool (`tools/e2e-smoke.mjs` with `--route` probes) is self-hosted and ready; the external-service piece (real uptime dashboards) remains 🌐.
