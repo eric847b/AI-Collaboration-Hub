@@ -2,7 +2,7 @@
 
 > **Complete reference for all tools, scripts, and automation in the AI Collaboration Hub workspace.**
 > 
-> **Last updated:** 2026-09-19 · **Gate status:** PASS (22/22) · **Completed rounds:** 10
+> **Last updated:** 2026-09-26 · **Gate status:** PASS (24/24) · **Completed rounds:** 11
 
 ---
 
@@ -252,7 +252,7 @@ node tools/sync-parity.mjs sync --mode=overwrite       # reconcile overwrite pai
 
 ---
 
-### `tools/sync-parity.mjs` — Fleet Mirror Parity
+### `tools/sync-parity.mjs` — Explicit-flag Contract & Mode Scoping
 
 **Purpose:** mapping-driven SHA-256 parity check + reconcile between standalone
 repos (source of truth) and their nested monorepo mirrors (`tools/parity-map.json`).
@@ -273,6 +273,49 @@ and `--strict` on `sync` all exit **2** with usage — previously a value like
 `check`. `missing-only` runs never overwrite existing nested files (durable rule 12).
 
 **Wired into:** `multi-os-gate.yml` (Windows, `check --strict`), `verify-tools.mjs` smoke
+
+---
+
+### `tools/telemetry-collector.mjs` — Self-Hosted Runtime Telemetry Sink
+
+**Purpose:** zero-dependency receiver + reporter for the runtime error-telemetry hook
+shipped in the Vite apps (`<app>/src/lib/telemetry.ts`). The hook is **inert until an
+endpoint is configured**, so pointing it at this collector is an opt-in, no-network,
+no-third-party step:
+
+```ts
+window.TELEMETRY_ENDPOINT = 'http://127.0.0.1:8787/v1/telemetry';
+```
+
+**Usage:**
+```powershell
+node tools/telemetry-collector.mjs serve                  # receive batches (127.0.0.1:8787/v1/telemetry)
+node tools/telemetry-collector.mjs serve --port 9000 --out .\tmp\t.jsonl
+node tools/telemetry-collector.mjs report --limit 20      # aggregate the sink
+node tools/telemetry-collector.mjs report --json          # machine-readable
+node tools/telemetry-collector.mjs prune --keep 5000      # trim to newest 5000 events
+node tools/telemetry-collector.mjs prune --keep 5000 --dry-run
+node tools/telemetry-collector.mjs --self-test            # offline contract tests
+node tools/telemetry-collector.mjs --help                 # flag contract
+```
+
+**Flags:** `serve` — `--port` (8787) `--host` (127.0.0.1) `--path` (/v1/telemetry)
+`--out` (tools/.tmp/telemetry/events.jsonl) `--max-body` (262144) `--max-entries` (200)
+`--max-events-per-min` (600) `--dedupe-window` (5 s) `--allow-origin` (repeatable; defaults
+to local Vite ports). `report` — `--out` `--limit` `--json`. `prune` — `--keep <n>`
+(required) `--out` `--dry-run` `--json`.
+
+**Safety contract:** validates/normalizes every batch (`{ appId, version, sentAt, entries[] }`),
+drops entries the hook could never emit instead of poisoning a batch, de-dupes identical
+events inside the window, and enforces a per-`appId` budget. The sink is written **only** by
+`serve` (append) and `prune` (temp-file + rename, atomic) — every other command is read-only,
+and no command reads stdin or prompts. `--self-test` must stand alone (exit 2 if combined
+with a command); a silently ignored flag is a usage error, matching the sync-parity contract.
+
+**Exit codes:** `0` ok · `1` self-test failure · `2` usage/setup error · `3` serve error.
+
+**Wired into:** `verify-tools.mjs` (`report --limit 1` smoke), `npm run tools:selftest`,
+`npm run telemetry:serve|report|prune|selftest`
 
 ---
 

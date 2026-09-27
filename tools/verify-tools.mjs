@@ -22,6 +22,7 @@
  *      - coverage-trend.cjs   -> report --limit 1 (read-only ledger read)
  *      - ops-dashboard.mjs    -> --check (read-only freshness validation;
  *                                generation itself rewrites its output file)
+ *      - telemetry-collector.mjs -> report --limit 1 (read-only sink summary)
  *      - load-test.mjs / e2e-smoke.mjs -> syntax-checked only (they spawn servers)
  *      - any other tool       -> syntax-checked only
  *
@@ -50,6 +51,7 @@ const SMOKE = {
   'coverage-trend.cjs': ['report', '--limit', '1'],
   'flake-tracker.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],
+  'telemetry-collector.mjs': ['report', '--limit', '1'],
 };
 
 function run(cmd, args) {

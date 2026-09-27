@@ -30,6 +30,7 @@ Multi-project monorepo (`github.com/eric847b/AI-Collaboration-Hub`). Projects **
 | `node tools/workflow-audit.mjs [--strict\|--check-baseline\|--update-baseline\|--self-test\|--list-rules]` | GitHub Actions security/hygiene audit — 12 rules (WF001–WF012: untrusted context/secret/dispatch input interpolated into shells, `curl\|bash`, overbroad `write-all`, privileged-trigger untrusted checkout, non-SHA action pins, missing permissions/timeout/concurrency, secret in workflow-level env). Ratchet ledger `docs/metrics/workflow-audit-baseline.json`: only GROWTH fails, accepted debt exits 0; `--strict` also fails on medium; `npm run workflow:audit`; also in `workspace-gate` + `verify-tools` |
 | `node tools/e2e-smoke.mjs --project <app>` | Serve a built Vite app and assert HTTP 200 per route (repeatable `--route <path>`, default `/`) |
 | `node tools/load-test.mjs --project <app>` | Load test with error-rate + p95 gates |
+| `node tools/telemetry-collector.mjs serve\|report\|prune\|--self-test` | Self-hosted, dependency-free receiver + reporter for the runtime telemetry hook (`<app>/src/lib/telemetry.ts` keeps itself inert until `window.TELEMETRY_ENDPOINT` is set). `serve` appends validated, de-duplicated batches to a local JSONL sink (default `tools/.tmp/telemetry/events.jsonl`); `report` aggregates by app/kind/path; `prune --keep <n>` rebuilds the sink atomically. Nothing leaves the machine; no command reads stdin; `--help` prints the flag contract. `npm run telemetry:serve\|report\|prune\|selftest` |
 
 ## Durable rules
 
