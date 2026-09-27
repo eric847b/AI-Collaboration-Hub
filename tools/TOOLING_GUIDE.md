@@ -157,15 +157,22 @@ npm run scan:staged                          # scan staged only
 
 **Purpose:** Bundle-size tracking + regression gate.
 
-**Interactive Mode:**
+**Project scoping (Round 12 re-scope):**
 
-Run without arguments to enter interactive mode:
+Every subcommand (`collect`, `check`, `report`, `markdown`, `checksum`, `verify`) accepts `--project <app>` and is limited to that one auto-discovered project. Explicit flag only — no bare second positional (it collided with flag values like `--limit 1`), no stdin prompts:
 
 ```powershell
-node tools/bundle-trend.cjs
+node tools/bundle-trend.cjs report --project nexus-infinity-hub --limit 5
+node tools/bundle-trend.cjs check --project self-evolve-dash --threshold 15
 ```
 
-This will prompt you to select a command and show examples. Helpful for new users!
+Unknown project → exit 2 with the known list; a valid project with no build
+output → exit 2 telling you to build it first. There is **no interactive mode**
+(the stdin-prompt prototype was rejected in Round 11 and re-scoped to flags).
+node tools/bundle-trend.cjs checksum --project self-evolve-dash
+```
+
+An unknown `--project` value exits 2 listing every known project.
 
 **Commands:**
 - `collect`: Snapshot every project's build output into `docs/metrics/bundle-history.json`
@@ -188,7 +195,6 @@ node tools/bundle-trend.cjs report        # print history
 node tools/bundle-trend.cjs markdown      # generate markdown report
 node tools/bundle-trend.cjs checksum      # create manifest
 node tools/bundle-trend.cjs verify        # verify against manifest
-node tools/bundle-trend.cjs               # interactive mode (prompts for command)
 npm run metrics:report                     # npm alias
 ```
 
@@ -215,6 +221,28 @@ npm run scaffold                                    # help
 
 ---
 
+### `tools/sync-parity.mjs` — Fleet Mirror Parity
+
+**Purpose:** Mapping-driven byte-level parity between standalone repos and
+their nested monorepo mirrors (`tools/parity-map.json`).
+
+**Scope flag (Round 12 re-scope):** both subcommands accept
+`--mode=overwrite|missing-only` (also `--mode <value>`) to restrict the run to
+pairs of that mode — no stdin prompts; an unknown value exits 2.
+
+```powershell
+node tools/sync-parity.mjs check                       # all pairs (41 files / 4 pairs)
+node tools/sync-parity.mjs check --strict              # exit 1 on any overwrite-mode DIFF
+node tools/sync-parity.mjs check --mode=missing-only   # only missing-only pairs
+node tools/sync-parity.mjs sync --mode=overwrite       # reconcile overwrite pairs only
+```
+
+**Exit codes:** `0` clean · `1` `--strict` drift · `2` bad flag/map.
+
+**Wired into:** `multi-os-gate.yml` (Windows, strict), `npm run parity`
+
+---
+
 ### Integration Testing Reference
 
 **Cross-Repo Integration Tests:** `docs/CROSS_REPO_INTEGRATION_TESTS.md` provides structured integration tests that go beyond `sync-parity.mjs` to verify functional parity of catalyst modules between standalone repositories and nested monorepo mirrors.
@@ -233,5 +261,10 @@ python .github/roi_catalyst.py --self-test  # TC-003 (standalone)
 python autonomous-github-agent/.github/roi_catalyst.py --self-test  # TC-003 (nested)
 actionlint .github/workflows/fleet-maintenance.yml  # TC-005
 ```
+
+**Mode scoping (Round 12 re-scope):** `check`/`sync` accept
+`--mode=overwrite|missing-only` (also `--mode overwrite`) to limit the run to
+pairs of that mode — `--mode=overwrite` is the strict parity slice CI cares
+about. An unknown mode exits 2. No stdin prompts anywhere.
 
 **See also:** `tools/sync-parity.mjs`, `docs/SYNC_CATALYST.md`, `tools/sync_fleet_catalysts.md`, `docs/TESTING_GUIDE.md`, `docs/TROUBLESHOOTING.md`

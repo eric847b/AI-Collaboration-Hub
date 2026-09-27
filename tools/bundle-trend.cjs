@@ -3,15 +3,20 @@
 /**
  * bundle-trend.cjs — workspace bundle-size ledger + regression gate.
  *
- *   node tools/bundle-trend.cjs collect  [--ledger docs/metrics/bundle-history.json] [--note "..."]
- *   node tools/bundle-trend.cjs check    [--ledger ...] [--threshold 10] [--webhook-url URL]
+ *   node tools/bundle-trend.cjs collect  [--ledger docs/metrics/bundle-history.json] [--note "..."] [--project <app>]
+ *   node tools/bundle-trend.cjs check    [--ledger ...] [--threshold 10] [--webhook-url URL] [--project <app>]
+ *   node tools/bundle-trend.cjs markdown [--ledger ...] [--out <file>] [--project <app>]
  *
  * Alerting: on regression, `check` emits GitHub Actions ::error:: annotations
  * when GITHUB_ACTIONS=true, and POSTs a best-effort webhook (never fails the
  * gate) when --webhook-url or BUNDLE_ALERT_WEBHOOK is set.
- *   node tools/bundle-trend.cjs report   [--ledger ...] [--limit 5]
+ *   node tools/bundle-trend.cjs report   [--ledger ...] [--limit 5] [--project <app>]
  *   node tools/bundle-trend.cjs checksum [--project nexus-infinity-hub]  (pre-build integrity manifest)
  *   node tools/bundle-trend.cjs verify   [--project nexus-infinity-hub]  (fail on drift vs manifest)
+ *
+ * Non-interactive by contract (Round 12 D re-scope): every input is an explicit
+ * flag (`--flag value` or `--flag=value`); unknown commands/flags/projects exit
+ * 2 with a usage message; `--help` prints usage and exits 0. No stdin prompts.
  *
  * The checksum/verify pair is the pre-build bundle-integrity gate: `checksum`
  * writes a SHA-256 manifest of every file in the app's build output dir(s)
@@ -37,10 +42,129 @@ const MAX_ENTRIES = 200;
 const CHECKSUM_MANIFEST = '.checksum-manifest.json';
 
 const argv = process.argv.slice(2);
-const cmd = argv.find((a) => !a.startsWith('--')) || 'report';
+
+// ── Non-interactive argv tokenizer (Round 12 D re-scope) ─────────────────────
+// Splits argv into flags + positionals up front so a flag VALUE (e.g. the `1`
+// in `--limit 1`) can never be mistaken for a subcommand, accepts both
+// `--flag value` and `--flag=value`, and rejects unknown flags outright
+// instead of silently ignoring typos. No stdin prompts, ever.
+const VALUE_FLAGS = new Set([
+  '--ledger',
+  '--note',
+  '--threshold',
+  '--webhook-url',
+  '--limit',
+  '--project',
+  '--out',
+]);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!VALUE_FLAGS.has(key)) {
+      console.error(`bundle-trend: unknown flag "${key}" — see \`node tools/bundle-trend.cjs --help\``);
+      process.exit(2);
+    }
+    let value;
+    if (eq >= 0) value = a.slice(eq + 1);
+    else if (i + 1 < argv.length) value = argv[(i += 1)];
+    else {
+      console.error(`bundle-trend: flag "${key}" requires a value — see \`node tools/bundle-trend.cjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = value;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'bundle-trend.cjs — workspace bundle-size ledger + regression gate (non-interactive)',
+      '',
+      'Usage: node tools/bundle-trend.cjs <command> [--flag value | --flag=value]',
+      '',
+      'Commands:',
+      '  collect   snapshot build outputs into the ledger',
+      '            flags: --ledger --note --project',
+      '  check     fail when a project grew more than --threshold % (default 10)',
+      '            flags: --ledger --threshold --webhook-url --project',
+      '  report    print recent ledger entries',
+      '            flags: --ledger --limit --project',
+      '  markdown  write docs/metrics/bundle-report.md',
+      '            flags: --ledger --out --project',
+      '  checksum  write .checksum-manifest.json over build outputs (pre-build gate)',
+      '            flags: --project',
+      '  verify    fail when build outputs drift from the manifest',
+      '            flags: --project',
+      '',
+      '  --help    print this text and exit 0',
+      '',
+      '--project scopes a run to ONE auto-discovered project (unknown project exits 2',
+      'with the known list). Unknown commands/flags exit 2. There is no interactive',
+      'mode: every input is an explicit flag.',
+    ].join('\n'),
+  );
+}
+
+if (flags['--help'] || (positionals[0] === 'help' && positionals.length === 1)) {
+  usage();
+  process.exit(0);
+}
+
+const cmd = positionals[0] || 'report';
+const CMD_FLAGS = {
+  collect: ['--ledger', '--note', '--project'],
+  check: ['--ledger', '--threshold', '--webhook-url', '--project'],
+  report: ['--ledger', '--limit', '--project'],
+  markdown: ['--ledger', '--out', '--project'],
+  checksum: ['--project'],
+  verify: ['--project'],
+};
+if (positionals.length > 1) {
+  console.error(`bundle-trend: unexpected argument "${positionals[1]}" — commands take flags only (see --help)`);
+  process.exit(2);
+}
+if (!CMD_FLAGS[cmd]) {
+  console.error(`bundle-trend: unknown command "${cmd}" — use collect | check | report | markdown | checksum | verify (or --help)`);
+  process.exit(2);
+}
+for (const key of Object.keys(flags)) {
+  if (key === '--help') continue;
+  if (!CMD_FLAGS[cmd].includes(key)) {
+    console.error(`bundle-trend: flag "${key}" is not valid for command "${cmd}" (allowed: ${CMD_FLAGS[cmd].join(' ')}) — see --help`);
+    process.exit(2);
+  }
+}
+
 function opt(name, def) {
-  const i = argv.indexOf(name);
-  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
+  return Object.prototype.hasOwnProperty.call(flags, name) ? flags[name] : def;
+}
+
+// Re-scoped explicit scoping (Round 12 D): `--project <app>` limits
+// collect/check/report/markdown/checksum/verify to one auto-discovered
+// project. No stdin prompts, no bare second positional (it collides with
+// flag values like `--limit 1`).
+function projectScope() {
+  return opt('--project', '');
+}
+
+function assertScope(scope) {
+  if (!scope) return '';
+  const known = listProjects();
+  if (!known.includes(scope)) {
+    console.error(`bundle-trend: unknown project "${scope}" — known: ${known.join(', ') || '(none)'}`);
+    process.exit(2);
+  }
+  return scope;
 }
 
 function ledgerPath() {
@@ -91,10 +215,16 @@ function measureProject(name) {
 }
 
 function measureAll() {
+  const scope = assertScope(projectScope());
   const out = {};
   for (const name of listProjects()) {
+    if (scope && name !== scope) continue;
     const m = measureProject(name);
     if (m) out[name] = m;
+  }
+  if (scope && !out[scope]) {
+    console.error(`bundle-trend: project "${scope}" has no build output — build it first.`);
+    process.exit(2);
   }
   return out;
 }
@@ -253,6 +383,7 @@ function emitAlerts(regressions, threshold) {
 function report() {
   const ledger = loadLedger(ledgerPath());
   const limit = Number(opt('--limit', '5'));
+  const scope = assertScope(projectScope());
   const entries = ledger.entries.slice(-limit);
   if (entries.length === 0) {
     console.log('bundle-trend: ledger is empty. Run `collect` after building projects.');
@@ -260,7 +391,7 @@ function report() {
   }
   for (const entry of entries) {
     console.log(`\n${entry.timestamp}  (${entry.gitSha}${entry.note ? `, ${entry.note}` : ''})`);
-    const names = Object.keys(entry.projects || {}).sort();
+    const names = Object.keys(entry.projects || {}).sort().filter((n) => !scope || n === scope);
     for (const name of names) {
       console.log(`  ${name.padEnd(34)} ${human(entry.projects[name].bytes).padStart(10)}  (${entry.projects[name].files} files)`);
     }
@@ -273,13 +404,16 @@ function markdown() {
   const outArg = opt('--out', '');
   const outPath = path.isAbsolute(outArg) ? outArg : path.join(ROOT, outArg || path.join('docs', 'metrics', 'bundle-report.md'));
   const ledger = loadLedger(file);
+  const scope = assertScope(projectScope());
   const entries = ledger.entries.slice(-5).reverse();
   if (entries.length === 0) {
     console.log('bundle-trend: ledger is empty; nothing to render. Run `collect` after building projects.');
     return 0;
   }
   const latest = entries[0];
-  const names = Object.keys(latest.projects || {}).sort();
+  const names = Object.keys(latest.projects || {})
+    .sort()
+    .filter((n) => !scope || n === scope);
   const lines = [];
   lines.push('# Bundle Size Report');
   lines.push('');
@@ -321,7 +455,7 @@ function outDirsFor(projectRoot) {
 }
 
 function checksumTargets() {
-  const wanted = opt('--project', '');
+  const wanted = assertScope(opt('--project', ''));
   const names = wanted
     ? [wanted]
     : listProjects().filter((n) => outDirsFor(path.join(ROOT, n)).length > 0);
@@ -457,8 +591,10 @@ function verify() {
 }
 
 const handlers = { collect, check, report, markdown, checksum, verify };
+// Command validity was already enforced by the CMD_FLAGS gate above — this is
+// a defensive backstop only.
 if (!handlers[cmd]) {
-  console.error(`bundle-trend: unknown command "${cmd}" — use collect | check | report | markdown | checksum | verify`);
+  console.error(`bundle-trend: unknown command "${cmd}" — use collect | check | report | markdown | checksum | verify (or --help)`);
   process.exit(2);
 }
 process.exit(handlers[cmd]());

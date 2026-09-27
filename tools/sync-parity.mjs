@@ -4,8 +4,13 @@
  * sync-parity.mjs — reusable, mapping-driven fleet mirror parity tool.
  * Replaces the one-off manual SHA256 sweeps documented in docs/SYNC_CATALYST.md.
  *
- *   node tools/sync-parity.mjs check  [--map tools/parity-map.json] [--strict]
- *   node tools/sync-parity.mjs sync   [--map tools/parity-map.json]
+ *   node tools/sync-parity.mjs check  [--map tools/parity-map.json] [--strict] [--mode=overwrite|missing-only]
+ *   node tools/sync-parity.mjs sync   [--map tools/parity-map.json] [--mode=overwrite|missing-only]
+ *   node tools/sync-parity.mjs --help
+ *
+ * Non-interactive by contract (Round 12 D re-scope): every input is an explicit
+ * flag (`--flag value` or `--flag=value`); unknown commands/flags/modes exit 2
+ * with usage instead of silently degrading to `check`. No stdin prompts.
  *
  * check : report per-file status (parity / DIFF / MISSING) for every pair; exit 0 normally,
  *         exit 1 with --strict when any overwrite-mode file is not at parity.
@@ -22,13 +27,101 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
-const cmd = argv.find((a) => !a.startsWith('--')) || 'check';
-const opt = (name, def) => {
-  const i = argv.indexOf(name);
-  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
-};
-const strict = argv.includes('--strict');
+
+// ── Non-interactive argv tokenizer (Round 12 D re-scope) ─────────────────────
+// Flags and positionals are split up front so a flag VALUE (e.g. the
+// `missing-only` in `--mode missing-only`) can never be mistaken for the
+// subcommand. Accepts `--flag value` and `--flag=value`; unknown flags and
+// unknown commands exit 2 with usage instead of silently degrading to `check`.
+// No stdin prompts, ever.
+const VALUE_FLAGS = new Set(['--map', '--mode']);
+const BOOL_FLAGS = new Set(['--strict']);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (VALUE_FLAGS.has(key)) {
+      let value;
+      if (eq >= 0) value = a.slice(eq + 1);
+      else if (i + 1 < argv.length) value = argv[(i += 1)];
+      else {
+        console.error(`sync-parity: flag "${key}" requires a value — see \`node tools/sync-parity.mjs --help\``);
+        process.exit(2);
+      }
+      flags[key] = value;
+    } else if (BOOL_FLAGS.has(key)) {
+      if (eq >= 0) {
+        console.error(`sync-parity: flag "${key}" takes no value — see \`node tools/sync-parity.mjs --help\``);
+        process.exit(2);
+      }
+      flags[key] = true;
+    } else {
+      console.error(`sync-parity: unknown flag "${key}" — see \`node tools/sync-parity.mjs --help\``);
+      process.exit(2);
+    }
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'sync-parity.mjs — mapping-driven fleet mirror parity (non-interactive)',
+      '',
+      'Usage: node tools/sync-parity.mjs <check|sync> [--map <file>] [--mode=overwrite|missing-only] [--strict]',
+      '',
+      '  check   report per-file status (parity / DIFF / MISSING) for every mapped pair',
+      '          --strict: exit 1 when any overwrite-mode file is not at parity',
+      '  sync    apply the map — overwrite mode copies differing+missing files (standalone',
+      '          wins); missing-only mode NEVER overwrites existing nested files',
+      '',
+      'Flags:',
+      '  --map   parity map path (default tools/parity-map.json)      [check + sync]',
+      '  --mode  limit the run to pairs of one mode                  [check + sync]',
+      '  --strict  fail on overwrite-mode drift                      [check only]',
+      '  --help   print this text and exit 0',
+      '',
+      'Default command: check. Every input is an explicit flag — there is no',
+      'interactive mode; unknown commands/flags/modes exit 2 with this usage.',
+    ].join('\n'),
+  );
+}
+
+if (flags['--help'] || (positionals[0] === 'help' && positionals.length === 1)) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length > 1) {
+  console.error(`sync-parity: unexpected argument "${positionals[1]}" — commands take flags only (see --help)`);
+  process.exit(2);
+}
+const cmd = positionals[0] || 'check';
+if (!['check', 'sync'].includes(cmd)) {
+  console.error(`sync-parity: unknown command "${cmd}" — use check | sync (or --help)`);
+  process.exit(2);
+}
+if (flags['--strict'] && cmd !== 'check') {
+  console.error('sync-parity: --strict applies to `check` only (see --help)');
+  process.exit(2);
+}
+const strict = !!flags['--strict'];
+const opt = (name, def) => (Object.prototype.hasOwnProperty.call(flags, name) ? flags[name] : def);
 const mapFile = path.isAbsolute(opt('--map', '')) ? opt('--map', '') : path.join(ROOT, opt('--map', 'tools/parity-map.json'));
+// Re-scoped explicit mode (Round 12 D): `--mode=overwrite|missing-only`
+// limits the run to pairs of that mode. No stdin prompts.
+const modeScope = opt('--mode', '');
+if (modeScope && modeScope !== 'overwrite' && modeScope !== 'missing-only') {
+  console.error(`sync-parity: unknown --mode "${modeScope}" — use overwrite|missing-only`);
+  process.exit(2);
+}
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -122,6 +215,7 @@ function printPair(name, mode, rows) {
 const map = loadMap();
 let violations = 0;
 for (const pair of map.pairs) {
+  if (modeScope && pair.mode !== modeScope) continue;
   if (!['overwrite', 'missing-only'].includes(pair.mode)) {
     console.error(`sync-parity: pair "${pair.name}" has unknown mode "${pair.mode}"`);
     process.exit(2);

@@ -58,6 +58,9 @@ Thumbs.db
 # Temp
 tmp/
 tmp-*.json
+tools/.tmp/
+**/.vscode/*
+!/.vscode/extensions.json
 temp/.git_disabled/
 
 # Local machine data (never commit)

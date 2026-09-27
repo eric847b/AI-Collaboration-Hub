@@ -54,8 +54,8 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/workspace-gate.ps1` (v3) | THE quality gate — live actionlint, lockfiles, engines, hooks, Python reqs |
 | `tools/run-quality.ps1` | 11-step catalyst series |
 | `tools/bootstrap.ps1` | install all Node + Python deps |
-| `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`); B1 alerting: `::error::` annotations on regression + optional webhook (`BUNDLE_ALERT_WEBHOOK`, step-scoped in `performance-monitoring.yml`) — 2026-09-14 |
-| `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode) — 41 files / 4 pairs at parity (2026-09-14) |
+| `tools/bundle-trend.cjs` | bundle-size ledger + regression gate (`collect`/`check`/`report`/`markdown`); B1 alerting: `::error::` annotations on regression + optional webhook (`BUNDLE_ALERT_WEBHOOK`, step-scoped in `performance-monitoring.yml`); `--project <app>` scopes any subcommand to one auto-discovered project (unknown → exit 2) — 2026-09-14, scoping 2026-09-26 |
+| `tools/sync-parity.mjs` + `tools/parity-map.json` | mapping-driven fleet mirror parity (`check`/`sync`, strict mode); `--mode=overwrite\|missing-only` scopes a run to one pair mode (unknown → exit 2) — 41 files / 4 pairs at parity (2026-09-14, mode scoping 2026-09-26) |
 | `tools/cross-repo-tests.mjs` | end-to-end fleet integration tests: SHA256 parity + hash verification of the standalone catalysts, module self-test entries, workflow validation (TC-001–TC-005) — 5/5 (2026-09-19) |
 | `tools/check-doc-links.mjs` | relative-link health for all Markdown — 165 files / 47 links / 0 broken (2026-09-19) |
 | `tools/ops-dashboard.mjs` | OPS Dashboard → `docs/metrics/OPS-DASHBOARD.md` (workflows, tooling, bundle ledger, coverage trends, parity, links, machine telemetry) — `npm run dashboard`; C2 freshness guard: per-section `ts:` markers, idempotent regen, `--refresh` (force-bump timestamps for stale-but-unchanged dashboards, used by cron), `--check` staleness mode (consumed by gate, verify-tools + cron); warn-only PS 5.1-safe gate step — 2026-09-14, freshness 2026-09-19; machine telemetry aggregation 2026-09-26 (agent success rate + ops actions/error budget + auto-fix resolved rate with by_type/by_status) |
@@ -90,4 +90,5 @@ Status: PASS
 
 **Completed rounds:** 11 (Rounds 1-11 all ✅ as of 2026-09-19)
 **Current focus:** Round 12+ — see `docs/ROADMAP.md` section 2 for prioritized open work
+**Round 12 progress (2026-09-26):** B1 alerts ✅ · C2 freshness ✅ · coverage trend ✅ · telemetry aggregation ✅ · flake tracker ✅ · template generator ✅ · CLI re-scope (bundle-trend `--project`, sync-parity `--mode`) ✅. Open: Node-26 local alignment, telemetry endpoint decision. Known pre-existing drift: `extension-check` reports 18 ladder failures on committed ai-chat-websites sources (owned by the extension's active session — do not "fix" from this repo).
 
