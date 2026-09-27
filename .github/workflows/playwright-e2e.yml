@@ -94,6 +94,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Seed visual baselines (dispatch mode=seed only)
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'seed'
+        env:
+          SEED_VISUAL: '1' # bypass the no-baselines skip in visual specs so --update-snapshots writes them
         run: npm run test:visual --prefix ${{ matrix.project }} -- --update-snapshots
       - name: Open PR with seeded baselines (dispatch mode=seed only)
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'seed'
@@ -108,7 +110,8 @@ jobs:
             echo "seed produced no snapshot dir: $SNAPDIR"
             exit 1
           fi
-          git add "$SNAPDIR"
+          # snapshot dir is gitignored by design; force-add: seeding is the one flow that commits baselines
+          git add -f "$SNAPDIR"
           if git diff --cached --quiet; then
             echo "baselines unchanged"
             exit 0
