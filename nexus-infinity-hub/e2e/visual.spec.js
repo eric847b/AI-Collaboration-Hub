@@ -12,7 +12,7 @@ const hasBaselines = existsSync(join(snapshotDir, 'home-linux.png'));
 // (fonts/rendering differ per OS — baselines must match the checker).
 test('home page visual baseline', async ({ page }) => {
   test.skip(
-    !hasBaselines,
+    !hasBaselines && !process.env.SEED_VISUAL,
     'No visual baselines yet — run playwright-e2e.yml with mode=seed once',
   );
   await page.goto('/');
