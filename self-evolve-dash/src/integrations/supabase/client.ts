@@ -23,17 +23,32 @@ const OFFLINE_MESSAGE =
 /**
  * Minimal no-op stand-in for the Supabase client, used only when the env
  * vars are missing. Every chained query builder is awaitable and resolves to
- * { data: null, error }, so existing `const { data, error } = await
+ * { data: null, error: Error }, so existing `const { data, error } = await
  * supabase.from(...).select()` call sites keep working and fall through to
  * their local/error paths. Realtime channel calls (.channel().on().subscribe(),
- * removeChannel) are harmless no-ops.
+ * removeChannel) are harmless no-ops. The shared terminal object is frozen so
+ * no call site can mutate shared state, and `error` is a real Error (not a
+ * plain { message } object) so retry helpers short-circuit instead of burning
+ * retries in demo mode.
  */
 function createOfflineClient(): SupabaseClient<Database> {
-  const terminal = { data: null, error: { message: OFFLINE_MESSAGE } };
+  const terminal = Object.freeze({
+    data: null,
+    error: new Error(OFFLINE_MESSAGE),
+  });
   const stub: any = new Proxy(function () {}, {
     get(_target: unknown, prop: string | symbol) {
       if (prop === 'then') {
-        return (resolve: (value: unknown) => void) => resolve(terminal);
+        // Thenable: accept both handlers like a real promise. The offline
+        // stub always resolves; the reject parameter is declared (not
+        // silently dropped) so `.then(onFulfilled, onRejected)` behaves.
+        return (
+          resolve: (value: unknown) => void,
+          reject: (reason?: unknown) => void
+        ) => {
+          void reject;
+          resolve(terminal);
+        };
       }
       if (prop === 'toString') return () => '[SupabaseOfflineClient]';
       if (prop === Symbol.toPrimitive) return () => '';
