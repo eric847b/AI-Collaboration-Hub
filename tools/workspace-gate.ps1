@@ -111,7 +111,7 @@ if ($pkgRaw -match '"node"\s*:\s*">=\s*(\d+)') {
     $v = (& node -v) -replace '^v', ''
     $runtimeMajor = [int]($v.Split('.')[0])
     if ($runtimeMajor -ge $requiredMajor) { Ok "node v$v satisfies >= $requiredMajor" }
-    else { Warn "node v$v < engines requirement >= $requiredMajor (npm not engine-strict; informational)" }
+    else { Warn "node v$v < engines requirement >= $requiredMajor (accepted local delta - see docs/STATUS.md 'Node runtime delta'; npm is not engine-strict)" }
 } else { Warn 'no engines.node range declared in root package.json' }
 
 # ---- Pre-commit hook integrity ---------------------------------------

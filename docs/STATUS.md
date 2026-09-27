@@ -74,7 +74,13 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `.devcontainer/` | Node 26 + Python 3.12 universal image, `setup.sh` post-create |
 
 ### Known caveats
-- `engines` wants **Node ≥26**; local runtime may be v24.x → gate emits an informational warning only.
+- **Node runtime delta (accepted, permanent until the machine is upgraded):** `engines`
+  and CI require **Node ≥26** (pinned by `.nvmrc` and `.node-version`, both `26`), while this
+  machine's default runtime is **v24.14.0** with no version manager (nvm/fnm/volta) installed.
+  The gate emits an informational warning only — it is documented accepted debt, **not** an
+  error to "fix" by editing `engines` (CI would then regress to the older runtime). Revisit by
+  installing Node 26 (or a version manager that honours the two pin files), after which the
+  warning disappears on its own.
 - API-docs Pages deploy soft-fails when the `github-pages` environment is not enabled (artifacts still ship).
 - `SECURITY_DASHBOARD.md` is machine-generated (autonomous agent telemetry); all-zero means no runs yet — not an error.
 - Other agent sessions edit this monorepo concurrently — never stage their unstaged files.
@@ -82,13 +88,13 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 ## Last gate run
 
 ```
-| 2026-09-19 — tools/workspace-gate.ps1 v3 (now includes the Workflow Audit step)
+| 2026-09-26 — tools/workspace-gate.ps1 v3 (Workflow Audit + dashboard-freshness steps included)
 Passed=24  Failed=0  Warnings=1
-  warn: node v24.14.0 < engines requirement >= 26 (npm not engine-strict; informational)
+  warn: node v24.14.0 < engines requirement >= 26 (accepted local delta - see docs/STATUS.md 'Node runtime delta'; npm is not engine-strict)
 Status: PASS
 ```
 
 **Completed rounds:** 11 (Rounds 1-11 all ✅ as of 2026-09-19)
 **Current focus:** Round 12+ — see `docs/ROADMAP.md` section 2 for prioritized open work
-**Round 12 progress (2026-09-26):** B1 alerts ✅ · C2 freshness ✅ · coverage trend ✅ · telemetry aggregation ✅ · flake tracker ✅ · template generator ✅ · CLI re-scope (bundle-trend `--project`, sync-parity `--mode`) ✅. Open: Node-26 local alignment, telemetry endpoint decision. `extension-check` now 34/34 green on working-tree sources (routing-ladder validation + `LADDER_PROVIDERS` parity landed in `background.js`/`options.html` 2026-09-26); verify-tools 17/17 green.
+**Round 12 progress (2026-09-26):** B1 alerts ✅ · C2 freshness ✅ · coverage trend ✅ · telemetry aggregation ✅ · flake tracker ✅ · template generator ✅ · CLI re-scope (bundle-trend `--project`, sync-parity `--mode`) ✅. Open: telemetry endpoint owner decision (needs external endpoint choice). Node-26 local alignment DECIDED: accepted v24/26 delta documented permanently (ROADMAP section 2, revisit triggers listed; pinned machine-readably via `.nvmrc` + new `.node-version`, and the gate warning now names the accepted delta + links this page). `extension-check` now 34/34 green on working-tree sources (routing-ladder validation + `LADDER_PROVIDERS` parity landed in `background.js`/`options.html` 2026-09-26); verify-tools 17/17 green.
 
