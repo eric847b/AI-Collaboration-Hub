@@ -12,10 +12,12 @@
     }
     .form-group { margin-bottom: 16px; }
     label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
-    input, select {
+    input, select, textarea {
       width: 100%; padding: 10px; border-radius: 6px;
       background: #16213e; border: 1px solid #333; color: #e0e0e0;
     }
+    textarea { font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; }
+    input[type="checkbox"] { width: auto; }
     button {
       padding: 10px 20px; border-radius: 6px;
       background: #0f3460; color: #fff; border: none; cursor: pointer;
@@ -42,26 +44,97 @@
     <label>Base URL (optional, for Ollama/custom)</label>
     <input type="text" id="base-url" placeholder="http://localhost:11434" />
   </div>
+  <div class="form-group">
+    <label style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="routing-enabled" />
+      Custom routing ladder for "auto" generations (cheapest capable tier first)
+    </label>
+    <label>Routing ladder JSON — array of { provider, model, capability: 1-5 }</label>
+    <textarea id="routing-ladder" rows="8" placeholder='[{"provider":"ollama","model":"llama3","capability":1}]'></textarea>
+    <div id="ladder-status" style="margin-top:6px;font-size:13px"></div>
+  </div>
   <button onclick="saveOptions()">Save</button>
   <div id="status" style="margin-top:10px;font-size:13px"></div>
   <script>
+    // Client-side mirror of the background.js allow-list (extension-check enforces parity).
+    const LADDER_PROVIDERS = ['anthropic', 'gemini', 'ollama', 'openai'];
+
+    const DEFAULT_ROUTING_LADDER = [
+      { provider: 'ollama',    model: 'llama3',                      capability: 1 },
+      { provider: 'gemini',    model: 'gemini-1.5-flash',            capability: 2 },
+      { provider: 'openai',    model: 'gpt-4o-mini',                 capability: 3 },
+      { provider: 'gemini',    model: 'gemini-1.5-pro',              capability: 4 },
+      { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022',  capability: 5 },
+      { provider: 'openai',    model: 'gpt-4o',                      capability: 5 }
+    ];
+
+    /** Validate ladder JSON text; mirrors background.js validateLadder(). */
+    function validateLadderClient(ladderText) {
+      let ladder;
+      try {
+        ladder = JSON.parse(ladderText);
+      } catch (e) {
+        return { valid: false, errors: ['Invalid JSON: ' + e.message] };
+      }
+      const errors = [];
+      if (!Array.isArray(ladder) || ladder.length === 0) {
+        return { valid: false, errors: ['Ladder must be a non-empty array of tiers.'] };
+      }
+      ladder.forEach((tier, i) => {
+        if (!tier || typeof tier !== 'object') { errors.push(`Tier ${i}: must be an object.`); return; }
+        if (!LADDER_PROVIDERS.includes(String(tier.provider || '').toLowerCase())) {
+          errors.push(`Tier ${i}: provider must be one of ${LADDER_PROVIDERS.join(', ')}.`);
+        }
+        if (typeof tier.model !== 'string' || !tier.model.trim()) {
+          errors.push(`Tier ${i}: model must be a non-empty string.`);
+        }
+        if (typeof tier.capability !== 'number' || tier.capability < 1 || tier.capability > 5) {
+          errors.push(`Tier ${i}: capability must be a number from 1 to 5.`);
+        }
+      });
+      return { valid: errors.length === 0, errors };
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
-      const result = await chrome.storage.local.get(['apiKey', 'apiProvider', 'apiBaseUrl']);
+      const result = await chrome.storage.local.get([
+        'apiKey', 'apiProvider', 'apiBaseUrl', 'routingLadder', 'routingLadderEnabled'
+      ]);
       if (result.apiProvider) document.getElementById('default-provider').value = result.apiProvider;
       if (result.apiKey) document.getElementById('api-key').value = result.apiKey;
       if (result.apiBaseUrl) document.getElementById('base-url').value = result.apiBaseUrl;
+      document.getElementById('routing-enabled').checked = !!result.routingLadderEnabled;
+      const ladder = Array.isArray(result.routingLadder) && result.routingLadder.length
+        ? result.routingLadder
+        : DEFAULT_ROUTING_LADDER;
+      document.getElementById('routing-ladder').value = JSON.stringify(ladder, null, 2);
     });
+
     async function saveOptions() {
+      const ladderText = document.getElementById('routing-ladder').value;
+      const routingEnabled = document.getElementById('routing-enabled').checked;
+      const ladderStatus = document.getElementById('ladder-status');
+      const validation = validateLadderClient(ladderText);
+      if (routingEnabled && !validation.valid) {
+        ladderStatus.textContent = 'Ladder invalid — not saved: ' + validation.errors.join(' ');
+        ladderStatus.style.color = '#ff6b6b';
+        return;
+      }
       const config = {
         apiKey: document.getElementById('api-key').value,
         apiProvider: document.getElementById('default-provider').value,
-        apiBaseUrl: document.getElementById('base-url').value
+        apiBaseUrl: document.getElementById('base-url').value,
+        routingLadderEnabled: routingEnabled,
+        routingLadder: validation.valid ? JSON.parse(ladderText) : null
       };
       await chrome.storage.local.set(config);
+      ladderStatus.textContent = validation.valid
+        ? 'Routing ladder valid and saved.'
+        : 'Ladder text ignored (invalid) while disabled.';
+      ladderStatus.style.color = validation.valid ? '#53d769' : '#f0c674';
       const status = document.getElementById('status');
       status.textContent = 'Settings saved!';
       status.style.color = '#53d769';
-      setTimeout(() => status.textContent = '', 2000);
+      setTimeout(() => { status.textContent = ''; ladderStatus.textContent = ''; }, 2000);
     }
   </script>
 </body>

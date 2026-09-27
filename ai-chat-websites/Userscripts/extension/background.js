@@ -61,6 +61,46 @@ const MODEL_LADDER = [
   { provider: 'openai',   model: 'gpt-4o',                    capability: 5 }
 ];
 
+/** Providers a routing-ladder tier may target (kept in parity with options.html). */
+const LADDER_PROVIDERS = ['anthropic', 'gemini', 'ollama', 'openai'];
+
+/** Validate a (user-supplied) routing ladder: non-empty array of valid tiers. */
+function validateLadder(ladder) {
+  const errors = [];
+  if (!Array.isArray(ladder) || ladder.length === 0) {
+    return { valid: false, errors: ['Ladder must be a non-empty array of tiers.'] };
+  }
+  ladder.forEach((tier, i) => {
+    if (!tier || typeof tier !== 'object') {
+      errors.push(`Tier ${i}: must be an object.`);
+      return;
+    }
+    if (!LADDER_PROVIDERS.includes(String(tier.provider || '').toLowerCase())) {
+      errors.push(`Tier ${i}: provider must be one of ${LADDER_PROVIDERS.join(', ')}.`);
+    }
+    if (typeof tier.model !== 'string' || !tier.model.trim()) {
+      errors.push(`Tier ${i}: model must be a non-empty string.`);
+    }
+    if (typeof tier.capability !== 'number' || tier.capability < 1 || tier.capability > 5) {
+      errors.push(`Tier ${i}: capability must be a number from 1 to 5.`);
+    }
+  });
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Load the custom routing ladder from storage. Calls back with
+ * (ladder, enabled); falls back to the built-in MODEL_LADDER when the
+ * custom ladder is switched off or fails validation.
+ */
+function getRoutingLadder(callback) {
+  chrome.storage.local.get(['routingLadder', 'routingLadderEnabled'], (result) => {
+    const enabled = !!result.routingLadderEnabled;
+    const check = enabled ? validateLadder(result.routingLadder) : { valid: false, errors: [] };
+    callback(enabled && check.valid ? result.routingLadder : MODEL_LADDER, enabled && check.valid);
+  });
+}
+
 /** Heuristic difficulty score (1-5) from the prompt content. */
 function scoreCapability(prompt) {
   const text = (prompt || '').toLowerCase();
@@ -79,48 +119,58 @@ function scoreCapability(prompt) {
 }
 
 /** The cheapest ladder tier capable of the prompt's difficulty. */
-function routedTier(prompt) {
+function routedTier(prompt, ladder) {
+  const tiers = Array.isArray(ladder) && ladder.length ? ladder : MODEL_LADDER;
   const need = scoreCapability(prompt);
-  return MODEL_LADDER.find(t => t.capability >= need) || MODEL_LADDER[MODEL_LADDER.length - 1];
+  return tiers.find(t => t.capability >= need) || tiers[tiers.length - 1];
 }
 
 /** Try the graded tier; escalate to higher tiers when a call fails. */
-function orchestrate(prompt, options, sendResponse) {
-  const startIndex = MODEL_LADDER.indexOf(routedTier(prompt));
-  let failures = 0;
-  const startTime = Date.now();
+function runLadder(prompt, options, sendResponse) {
+  getRoutingLadder((ladder) => {
+    const startIndex = Math.max(0, ladder.indexOf(routedTier(prompt, ladder)));
+    let failures = 0;
+    const startTime = Date.now();
 
-  const tryTier = (index) => {
-    if (index >= MODEL_LADDER.length) {
-      sendResponse({ error: 'All model tiers failed. Check your provider API keys.' });
-      return;
-    }
-    const tier = MODEL_LADDER[index];
-    const tierOptions = Object.assign({}, options, { model: tier.model });
-    routeToProvider(tier.provider, prompt, tierOptions, (result) => {
-      if (result && result.success) {
-        const latencyMs = Date.now() - startTime;
-        const content = result.response?.choices?.[0]?.message?.content ||
-                        result.response?.content?.[0]?.text ||
-                        JSON.stringify(result.response);
-        sendResponse(Object.assign({}, result, {
-          routedProvider: tier.provider,
-          routedModel: tier.model,
-          route: tier.provider + '/' + tier.model,
-          latencyMs,
-          tokenCount: Math.ceil((prompt.length + (content?.length || 0)) / 4),
-          estimatedCost: calculateCost(tier.provider, prompt.length, content?.length || 0)
-        }));
-      } else if (failures < 2) {
-        failures += 1;
-        tryTier(index + 1);
-      } else {
-        sendResponse(result || { error: 'Generation failed after escalation.' });
+    const tryTier = (index) => {
+      if (index >= ladder.length) {
+        sendResponse({ error: 'All model tiers failed. Check your provider API keys.' });
+        return;
       }
-    });
-  };
+      const tier = ladder[index];
+      const tierOptions = Object.assign({}, options, { model: tier.model });
+      routeToProvider(tier.provider, prompt, tierOptions, (result) => {
+        if (result && result.success) {
+          const latencyMs = Date.now() - startTime;
+          const content = result.response?.choices?.[0]?.message?.content ||
+                          result.response?.content?.[0]?.text ||
+                          result.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
+                          result.response?.response ||
+                          JSON.stringify(result.response);
+          sendResponse(Object.assign({}, result, {
+            routedProvider: tier.provider,
+            routedModel: tier.model,
+            route: tier.provider + '/' + tier.model,
+            latencyMs,
+            tokenCount: Math.ceil((prompt.length + (content?.length || 0)) / 4),
+            estimatedCost: calculateCost(tier.provider, prompt.length, content?.length || 0)
+          }));
+        } else if (failures < 2) {
+          failures += 1;
+          tryTier(index + 1);
+        } else {
+          sendResponse(result || { error: 'Generation failed after escalation.' });
+        }
+      });
+    };
 
-  tryTier(Math.max(0, startIndex));
+    tryTier(startIndex);
+  });
+}
+
+/** Back-compat entry point: auto-mode routing (custom ladder when enabled). */
+function orchestrate(prompt, options, sendResponse) {
+  runLadder(prompt, options, sendResponse);
 }
 
 /** Rough cost estimate per provider (USD). */

@@ -90,5 +90,5 @@ Status: PASS
 
 **Completed rounds:** 11 (Rounds 1-11 all ✅ as of 2026-09-19)
 **Current focus:** Round 12+ — see `docs/ROADMAP.md` section 2 for prioritized open work
-**Round 12 progress (2026-09-26):** B1 alerts ✅ · C2 freshness ✅ · coverage trend ✅ · telemetry aggregation ✅ · flake tracker ✅ · template generator ✅ · CLI re-scope (bundle-trend `--project`, sync-parity `--mode`) ✅. Open: Node-26 local alignment, telemetry endpoint decision. Known pre-existing drift: `extension-check` reports 18 ladder failures on committed ai-chat-websites sources (owned by the extension's active session — do not "fix" from this repo).
+**Round 12 progress (2026-09-26):** B1 alerts ✅ · C2 freshness ✅ · coverage trend ✅ · telemetry aggregation ✅ · flake tracker ✅ · template generator ✅ · CLI re-scope (bundle-trend `--project`, sync-parity `--mode`) ✅. Open: Node-26 local alignment, telemetry endpoint decision. `extension-check` now 34/34 green on working-tree sources (routing-ladder validation + `LADDER_PROVIDERS` parity landed in `background.js`/`options.html` 2026-09-26); verify-tools 17/17 green.
 

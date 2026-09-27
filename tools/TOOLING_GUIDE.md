@@ -169,10 +169,19 @@ node tools/bundle-trend.cjs check --project self-evolve-dash --threshold 15
 Unknown project → exit 2 with the known list; a valid project with no build
 output → exit 2 telling you to build it first. There is **no interactive mode**
 (the stdin-prompt prototype was rejected in Round 11 and re-scoped to flags).
+
+```powershell
 node tools/bundle-trend.cjs checksum --project self-evolve-dash
+node tools/bundle-trend.cjs markdown --project self-evolve-dash --out docs/metrics/bundle-report.md
+node tools/bundle-trend.cjs --help          # full per-command flag contract
 ```
 
-An unknown `--project` value exits 2 listing every known project.
+**Explicit-flag contract (Round 12 D):** both `--flag value` and `--flag=value`
+work; flag values are tokenized separately from subcommands so `--limit 1` can
+never be read as a command. An unknown command, an unknown flag, a flag used on
+a command that does not accept it (e.g. `--out` on `collect`), a flag with no
+value, or a stray bare positional all exit **2** pointing at `--help`. Nothing
+is silently ignored, and nothing ever reads stdin.
 
 **Commands:**
 - `collect`: Snapshot every project's build output into `docs/metrics/bundle-history.json`
@@ -240,6 +249,30 @@ node tools/sync-parity.mjs sync --mode=overwrite       # reconcile overwrite pai
 **Exit codes:** `0` clean · `1` `--strict` drift · `2` bad flag/map.
 
 **Wired into:** `multi-os-gate.yml` (Windows, strict), `npm run parity`
+
+---
+
+### `tools/sync-parity.mjs` — Fleet Mirror Parity
+
+**Purpose:** mapping-driven SHA-256 parity check + reconcile between standalone
+repos (source of truth) and their nested monorepo mirrors (`tools/parity-map.json`).
+
+**Usage:**
+```powershell
+node tools/sync-parity.mjs check --strict                  # CI gate (overwrite-mode drift fails)
+node tools/sync-parity.mjs check --mode missing-only       # inspect only missing-only pairs
+node tools/sync-parity.mjs sync  --mode=overwrite          # reconcile one mode
+node tools/sync-parity.mjs --help                          # flag contract
+```
+
+**Explicit-flag contract (Round 12 D):** `check` (default) and `sync` are the only
+commands; `--map`, `--mode=overwrite|missing-only` take values, `--strict` is a
+boolean valid on `check` only. Unknown commands/flags/modes, extra positionals,
+and `--strict` on `sync` all exit **2** with usage — previously a value like
+`--mode overwrite` was mistaken for the subcommand and silently degraded to
+`check`. `missing-only` runs never overwrite existing nested files (durable rule 12).
+
+**Wired into:** `multi-os-gate.yml` (Windows, `check --strict`), `verify-tools.mjs` smoke
 
 ---
 
