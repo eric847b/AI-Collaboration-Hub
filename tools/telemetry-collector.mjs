@@ -951,6 +951,19 @@ async function runSelfTestIO(state, lines, check) {
     let result = collector.ingest(payload, { origin: 'http://localhost:5173' });
     check('io.firstAccepted', result.status === 202 && result.payload.accepted === 1, JSON.stringify(result.payload));
 
+    // --- hook parity guard: extract TelemetryKind from canonical hook -------
+    const hookSrcPath = path.join(ROOT, 'nexus-infinity-hub', 'src', 'lib', 'telemetry.ts');
+    if (fs.existsSync(hookSrcPath)) {
+      const hookSrc = fs.readFileSync(hookSrcPath, 'utf8');
+      const match = hookSrc.match(/export\s+type\s+TelemetryKind\s*=\s*([^;]+);/);
+      check('parity.hookHasKindUnion', Boolean(match));
+      if (match) {
+        const kinds = Array.from(match[1].matchAll(/['"]([^'"]+)['"]/g)).map((m) => m[1]);
+        check('parity.kindsMatchAllowed', kinds.length === KINDS.size && kinds.every((k) => KINDS.has(k)), JSON.stringify({ hook: kinds, allowed: Array.from(KINDS) }));
+      }
+      check('parity.hookDocumentsEnvEndpoint', hookSrc.includes('VITE_TELEMETRY_ENDPOINT'));
+    }
+
     clock += 1000;
     result = collector.ingest(payload);
     check(

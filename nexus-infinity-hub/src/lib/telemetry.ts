@@ -5,10 +5,10 @@
  * (window.onerror), unhandled promise rejections, and `console.error` calls
  * (React render errors reach this via ErrorBoundary). Entries live in a
  * bounded in-memory ring buffer, persist to localStorage (best-effort) and,
- * ONLY when an endpoint is configured via `installTelemetry({ endpoint })`
- * or `window.TELEMETRY_ENDPOINT`, batch-flush as JSON through
- * sendBeacon/fetch-keepalive. Without an endpoint the hook stays fully
- * local: it never touches the network.
+ * ONLY when an endpoint is configured via `installTelemetry({ endpoint })`,
+ * `window.TELEMETRY_ENDPOINT` or the build-time `VITE_TELEMETRY_ENDPOINT` env var,
+ * batch-flush as JSON through sendBeacon/fetch-keepalive. Without an endpoint the
+ * hook stays fully local: it never touches the network.
  *
  * Privacy: entries contain kind/message/stack/path only, length-capped; no
  * cookies, form values, or other page content are captured.
@@ -27,7 +27,10 @@ export interface TelemetryEntry {
 export interface TelemetryOptions {
   appId: string;
   version?: string;
-  /** POST target for batched flushes. Default: `window.TELEMETRY_ENDPOINT`, else local-only. */
+  /**
+   * POST target for batched flushes. Default order: explicit option ->
+   * `window.TELEMETRY_ENDPOINT` -> build-time `VITE_TELEMETRY_ENDPOINT` -> local-only.
+   */
   endpoint?: string | null;
   /** Ring-buffer size (default 50). */
   capacity?: number;
@@ -73,6 +76,7 @@ const DEFAULT_STORAGE_KEY = "telemetry:errors";
 const DEFAULT_BATCH_AFTER = 10;
 const MESSAGE_CAP = 300;
 const STACK_CAP = 1200;
+const ENV_ENDPOINT_KEY = "VITE_TELEMETRY_ENDPOINT";
 
 declare global {
   interface Window {
@@ -99,6 +103,35 @@ let transport: ((url: string, body: string) => void) | null = null;
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+/**
+ * Build-time endpoint from `import.meta.env.VITE_TELEMETRY_ENDPOINT` (Vite
+ * inlines `VITE_`-prefixed vars). Resolved defensively so the hook stays
+ * dependency-free and inert outside a Vite build (Node / Vitest).
+ */
+function envEndpoint(): string | null {
+  try {
+    const meta = import.meta as unknown as { env?: Record<string, unknown> };
+    const raw = meta.env ? meta.env[ENV_ENDPOINT_KEY] : undefined;
+    return typeof raw === "string" && raw.length > 0 ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Endpoint precedence: explicit option -> window.TELEMETRY_ENDPOINT -> build-time env -> local-only. */
+function resolveEndpoint(explicit: string | null | undefined): string | null {
+  if (explicit !== undefined) return explicit === "" ? null : explicit;
+  try {
+    if (typeof window !== "undefined") {
+      const fromWindow = window.TELEMETRY_ENDPOINT;
+      if (typeof fromWindow === "string" && fromWindow.length > 0) return fromWindow;
+    }
+  } catch {
+    /* window access can throw in exotic sandboxes */
+  }
+  return envEndpoint();
 }
 
 function currentPage(): string {
@@ -264,12 +297,7 @@ export function installTelemetry(options: TelemetryOptions): TelemetryDisposer {
   capacity = options.capacity && options.capacity > 0 ? options.capacity : DEFAULT_CAPACITY;
   storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
   batchAfter = options.batchAfter && options.batchAfter > 0 ? options.batchAfter : DEFAULT_BATCH_AFTER;
-  endpoint =
-    options.endpoint !== undefined
-      ? options.endpoint
-      : typeof window !== "undefined"
-        ? (window.TELEMETRY_ENDPOINT ?? null)
-        : null;
+  endpoint = resolveEndpoint(options.endpoint);
   transport = options.transport !== undefined ? options.transport : defaultTransport;
 
   // Restore persisted entries from a previous session; they are not re-sent.

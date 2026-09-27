@@ -162,4 +162,27 @@ describe("telemetry", () => {
     expect(entry.kind).toBe("manual");
     expect(entry.stack).toContain("Error: cause");
   });
+
+  it("respects explicit null/empty endpoint to force local-only even if window set", () => {
+    (window as unknown as { TELEMETRY_ENDPOINT?: string }).TELEMETRY_ENDPOINT = "http://window.host/ep";
+    try {
+      installTelemetry({ appId: "test-app", endpoint: null });
+      expect(getTelemetrySnapshot().endpoint).toBeNull();
+      resetTelemetryForTests();
+      installTelemetry({ appId: "test-app", endpoint: "" });
+      expect(getTelemetrySnapshot().endpoint).toBeNull();
+    } finally {
+      delete (window as unknown as { TELEMETRY_ENDPOINT?: string }).TELEMETRY_ENDPOINT;
+    }
+  });
+
+  it("falls back to window.TELEMETRY_ENDPOINT when no explicit endpoint option is given", () => {
+    (window as unknown as { TELEMETRY_ENDPOINT?: string }).TELEMETRY_ENDPOINT = "http://window.host/ep";
+    try {
+      installTelemetry({ appId: "test-app" });
+      expect(getTelemetrySnapshot().endpoint).toBe("http://window.host/ep");
+    } finally {
+      delete (window as unknown as { TELEMETRY_ENDPOINT?: string }).TELEMETRY_ENDPOINT;
+    }
+  });
 });
