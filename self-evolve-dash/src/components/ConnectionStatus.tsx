@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { checkBackendHealth } from "@/lib/connectionUtils";
 import { hybridDataManager } from "@/lib/hybridDataManager";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
 
 type ConnectionMode = 'online' | 'offline' | 'checking';
 
@@ -77,7 +78,9 @@ export const ConnectionStatus = () => {
     );
   }
 
-  // Offline mode - present as a feature, not an error
+  // Offline mode - present as a feature, not an error.
+  // When Supabase was never configured, say so explicitly (demo mode).
+  const demoMode = !isSupabaseConfigured;
   return (
     <Card className="p-4 border-accent/30 bg-accent/5">
       <div className="flex items-center justify-between">
@@ -87,14 +90,18 @@ export const ConnectionStatus = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-accent">Offline Mode Active</span>
+              <span className="font-medium text-accent">
+                {demoMode ? "Demo Mode" : "Offline Mode Active"}
+              </span>
               <Badge variant="outline" className="text-xs border-accent/30 text-accent">
                 <Zap className="h-3 w-3 mr-1" />
                 Zero Latency
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              All features work locally • Data persists in browser
+              {demoMode
+                ? "Supabase not configured • All features work locally • Data persists in browser"
+                : "All features work locally • Data persists in browser"}
             </p>
           </div>
         </div>
