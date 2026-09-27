@@ -100,21 +100,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          SNAPDIR="${{ matrix.project }}/e2e/visual.spec.js-snapshots"
           BRANCH="chore/seed-visual-baselines-${{ matrix.project }}"
           git config user.name "workspace-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${{ matrix.project }}/e2e/visual.spec.js-snapshots"
+          if [ ! -d "$SNAPDIR" ]; then
+            echo "seed produced no snapshot dir: $SNAPDIR"
+            exit 1
+          fi
+          git add "$SNAPDIR"
           if git diff --cached --quiet; then
             echo "baselines unchanged"
             exit 0
           fi
           git checkout -B "$BRANCH"
           git commit -m "chore(visual): seed baselines for ${{ matrix.project }} [skip ci]"
-          git push -u origin "$BRANCH"
-          gh pr create --base main --head "$BRANCH" \
-            --title "chore(visual): seed baselines for ${{ matrix.project }}" \
-            --body "Seeded via playwright-e2e.yml mode=seed. Review the snapshot images, then merge." \
-          || echo "seed PR already exists"
+          git push -f -u origin "$BRANCH"
+          if [ "$(gh pr list --head "$BRANCH" --base main --json number --jq 'length')" = "0" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore(visual): seed baselines for ${{ matrix.project }}" \
+              --body "Seeded via playwright-e2e.yml mode=seed. Review the snapshot images, then merge."
+          else
+            echo "seed PR already exists"
+          fi
 
       - name: Visual check (skips gracefully until baselines exist)
         if: github.event_name != 'workflow_dispatch' || inputs.mode == 'check'
