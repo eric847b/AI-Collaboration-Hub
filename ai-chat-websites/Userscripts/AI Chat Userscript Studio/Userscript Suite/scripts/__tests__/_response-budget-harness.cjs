@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Regression harness for 904-response-budgeter.module.user.js
+/* Regression harness for 004-response-budgeter.module.user.js
    Runs the module in a vm sandbox with mock window/document/localStorage.
    Zero network, zero real DOM. Exits 1 on any failure. */
 'use strict';
@@ -8,7 +8,7 @@ const path = require('path');
 const vm = require('vm');
 
 const FILE = path.resolve(__dirname, '..', '..', 'Modules', '21-Quota-Saving',
-  '904-response-budgeter.module.user.js');
+  '004-response-budgeter.module.user.js');
 const SRC = fs.readFileSync(FILE, 'utf8');
 
 let pass = 0, fail = 0;
@@ -48,7 +48,7 @@ function makeEnv(seedStore, field) {
     console: { log() {}, warn() {} }
   };
   vm.createContext(env);
-  vm.runInContext(SRC, env, { filename: '904-response-budgeter.user.js' });
+  vm.runInContext(SRC, env, { filename: '004-response-budgeter.user.js' });
   env.__store = store;
   return env;
 }

@@ -35,6 +35,17 @@ export default function App() {
     }
   }, [permission]);
 
+  const processBlinks = (count: number) => {
+    if (count === 1) {
+      setSystemState('dormant');
+      setFeedback('System Dormant');
+    } else if (count >= 2) {
+      setSystemState('active');
+      setLevel(prev => (prev < 3 ? (prev + 1) as EvolutionLevel : 3));
+      setFeedback('Generating Next State...');
+    }
+  };
+
   const triggerBlink = useCallback(() => {
     const now = Date.now();
     
@@ -51,17 +62,6 @@ export default function App() {
       setBlinkCount(0);
     }, 400); // Window for double blink
   }, [blinkCount]);
-
-  const processBlinks = (count: number) => {
-    if (count === 1) {
-      setSystemState('dormant');
-      setFeedback('System Dormant');
-    } else if (count >= 2) {
-      setSystemState('active');
-      setLevel(prev => (prev < 3 ? (prev + 1) as EvolutionLevel : 3));
-      setFeedback('Generating Next State...');
-    }
-  };
 
   const startLongBlink = () => {
     setIsLongBlinking(true);
@@ -87,13 +87,15 @@ export default function App() {
 
   if (!permission.granted) {
     return (
-      <Container style={styles.container} alignItems="center" justifyContent="center">
-        <H1 textAlign="center">Camera Access Required</H1>
-        <SizableText textAlign="center" marginVertical="$4">
-          The Third Door experience requires your camera to detect blink patterns.
-        </SizableText>
-        <Button onPress={requestPermission}>Enable Camera</Button>
-      </Container>
+      <View style={[styles.container, styles.centered]}>
+        <Container>
+          <H1 textAlign="center">Camera Access Required</H1>
+          <SizableText textAlign="center" marginVertical="$4">
+            The Third Door experience requires your camera to detect blink patterns.
+          </SizableText>
+          <Button onPress={requestPermission}>Enable Camera</Button>
+        </Container>
+      </View>
     );
   }
 
@@ -189,6 +191,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   overlay: {
     flex: 1,
