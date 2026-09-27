@@ -63,5 +63,5 @@
 
 - Brainstorm: Eric, 2026-09-26, main chat (iOS). Verbatim: `ocsc1-notes/raw/15-zero-one-brainstorm-eric.md`.
 - Muse's independent answers: `ocsc1-notes/raw/16-zero-one-refinement-muse.md`.
-- Copilot's refinement + tension map: "Refining Eric's Sovereign Math Points," 2026-09-26, https://copilot.microsoft.com/chats/MUvGVTiEnNUkSjT26ePSv. Verbatim: `ocsc1-notes/raw/17-zero-one-refinement-copilot.md`.
+- Copilot's refinement + tension map: "Refining Eric's Sovereign Math Points," 2026-09-26, https://copilot.microsoft.com/chats/MUvGVTiEnNUkSjT26ePSv. Transcribed responses; prompts reconstructed — see the provenance note in `ocsc1-notes/raw/17-zero-one-refinement-copilot.md` (corrected 2026-09-27; not a verbatim transcript).
 - Copilot offered follow-ups (formalized version, axiomatic foundation, contradiction-map, canonical glossary) — not yet taken up.
