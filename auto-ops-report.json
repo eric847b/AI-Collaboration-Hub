@@ -1,17 +1,14 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T22:16:51Z",
+  "scanned_at": "2026-09-28T12:17:18Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
     "closed": [],
-    "kept": [
-      679,
-      678
-    ],
+    "kept": [],
     "errors": []
   },
   "policy_lockfile_spam": {
@@ -25,12 +22,77 @@
   "dependabot_conflicts": {
     "rebase_requests": [],
     "recreate_requests": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 745,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 744,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 743,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 742,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 741,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 740,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 739,
+        "reason": "not-patch-conflict-policy"
+      }
+    ],
     "errors": []
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 739,
+        "reason": "not-patch",
+        "title": "chore(deps): update flake8 requirement from >=7.3.0 to >=7.4.1 in /singularity-operator"
+      },
+      {
+        "number": 740,
+        "reason": "not-patch",
+        "title": "chore(deps): update flake8 requirement from >=7.3.0 to >=7.4.1"
+      },
+      {
+        "number": 741,
+        "reason": "not-patch",
+        "title": "chore(deps): bump the npm-chat group in /ai-chat-websites with 8 updates"
+      },
+      {
+        "number": 742,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps): bump the npm-nexus group in /nexus-infinity-hub with 11 updates"
+      },
+      {
+        "number": 743,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps): bump the npm-blink-controller group in /third-door-blink-controller with 11 updates"
+      },
+      {
+        "number": 744,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps-dev): bump typescript from 5.9.3 to 7.0.2 in /nexus-infinity-hub"
+      },
+      {
+        "number": 745,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps): bump the npm-dash group in /self-evolve-dash with 10 updates"
+      }
+    ],
     "errors": []
   }
 }
