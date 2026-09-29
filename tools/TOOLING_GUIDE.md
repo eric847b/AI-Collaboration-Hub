@@ -330,7 +330,8 @@ node tools/telemetry-export.mjs snippet                     # show the browser s
 node tools/telemetry-export.mjs serve                       # loopback bridge on 127.0.0.1:8788
 node tools/telemetry-export.mjs push --dump dump.json       # offline: a saved dump file
 node tools/telemetry-export.mjs dump --out out.json         # dev-tool: JSONL -> batch dump
-node tools/telemetry-export.mjs --self-test                 # 21 offline contract checks
+node tools/telemetry-export.mjs sync-fleet --into <dir>     # batch-ship the whole sink to a fleet git inbox
+node tools/telemetry-export.mjs --self-test                 # 30 offline contract checks
 npm run telemetry:export                                    # start the bridge
 ```
 
@@ -344,7 +345,13 @@ batch or dump shape straight from disk (no server needed); `dump` reverses it fo
 **Safety contract:** the bridge binds `127.0.0.1` only (`--host` is rejected, not merely
 defaulted); CORS allows only the local Vite origins (repeatable `--allow-origin`); every
 batch passes the collector's validator unchanged. No third-party endpoints — the whole
-pipeline stays on the machine (or your own fleet later).
+pipeline stays on the machine (or your own fleet later). `sync-fleet` is the
+fleet transport for ephemeral GitHub Actions runners (a persistent endpoint is
+infeasible there): it groups the sink into one collector batch per app and
+writes `telemetry-<stamp>-<n>events.json` into `--into` — which must live
+OUTSIDE this repo (typically the autonomous-github-agent clone) — with optional
+local `--commit`; it NEVER pushes (resilient-git's job) and repeat shipments
+are safe because the collector dedupes on re-ingest.
 
 **Wired into:** `verify-tools.mjs` (`--self-test` smoke), `npm run tools:selftest`,
 `npm run telemetry:export`; sink content surfaces in the OPS dashboard's

@@ -25,11 +25,18 @@
  *       save), ingested once, result printed. No network at all.
  *   node tools/telemetry-export.mjs snippet [--port <n>] [--app <id>]
  *       Print the one-liner to paste into the app's devtools console.
+ *   node tools/telemetry-export.mjs sync-fleet --into <dir> [--app <id>] [--commit]
+ *       Batch channel for the ephemeral GitHub Actions fleet: groups the whole
+ *       collector sink into one {appId, entries[]} batch per app and writes
+ *       telemetry-<stamp>-<n>events.json into --into (a directory OUTSIDE this
+ *       repo — typically the autonomous-github-agent clone). --commit records
+ *       the file there locally; the push is ALWAYS left to resilient-git.
  *   node tools/telemetry-export.mjs --self-test | --help
  *
  * Safety: loopback bind is not configurable; CORS defaults to the local Vite
  * origins, extendable with --allow-origin. Entries keep the hook's own caps;
  * anything the hook could not have produced is rejected by the collector.
+ * sync-fleet never touches the network and refuses in-repo --into targets.
  */
 
 import fs from 'node:fs';
@@ -37,6 +44,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { PayloadError, createCollector, parseArgs } from './telemetry-collector.mjs';
@@ -68,6 +76,8 @@ function usage() {
     '  node tools/telemetry-export.mjs serve [--port <n>] [--out <file>] [--app <id>]',
     `      [--max-body <bytes>] [--allow-origin <origin>]...   (default port ${DEFAULT_PORT})`,
     '  node tools/telemetry-export.mjs push --file <dump.json> [--out <file>] [--app <id>] [--json]',
+    '  node tools/telemetry-export.mjs sync-fleet --into <dir> [--out <sink>] [--app <id>] [--commit] [--json]',
+    '      (ship the whole sink to a fleet inbox as batch files; push stays with resilient-git)',
     '  node tools/telemetry-export.mjs snippet [--port <n>] [--app <id>] [--storage-key <key>]',
     '  node tools/telemetry-export.mjs --self-test | --help',
     '',
@@ -94,11 +104,15 @@ export function parseExportArgs(argv) {
   const opts = parseArgs(['serve']);
   const rest = argv.slice();
   const mode = rest.shift() ?? 'serve';
-  opts.mode = ['serve', 'push', 'snippet'].includes(mode) ? mode : null;
+  opts.mode = ['serve', 'push', 'snippet', 'sync-fleet'].includes(mode) ? mode : null;
   opts.port = DEFAULT_PORT;
   opts.allowOrigin = [...DEFAULT_ALLOW];
   opts.app = null;
   opts.file = null;
+  opts.into = null;
+  opts.commit = false;
+  opts.into = null;
+  opts.commit = false;
   opts.json = false;
   opts.storageKey = 'telemetry:errors';
   for (let i = 0; i < rest.length; i += 1) {
@@ -114,6 +128,8 @@ export function parseExportArgs(argv) {
       case '--out': opts.out = next(); break;
       case '--app': opts.app = next(); break;
       case '--file': opts.file = next(); break;
+      case '--into': opts.into = next(); break;
+      case '--commit': opts.commit = true; break;
       case '--allow-origin': opts.allowOrigin.push(next()); break;
       case '--storage-key': opts.storageKey = next(); break;
       case '--max-body': opts.maxBody = intIn(next(), 1024, 64 * 1024 * 1024, flag); break;
@@ -129,6 +145,8 @@ export function parseExportArgs(argv) {
   }
   if (!opts.mode) throw new ExportError(`unknown command: ${mode} (try --help)`);
   if (opts.mode === 'push' && !opts.file) throw new ExportError('push requires --file <dump.json>');
+  if (opts.mode === 'sync-fleet' && !opts.into) throw new ExportError('sync-fleet requires --into <fleet inbox dir>');
+  if (opts.mode === 'sync-fleet' && !opts.into) throw new ExportError('sync-fleet requires --into <fleet inbox dir>');
   return opts;
 }
 
@@ -284,6 +302,79 @@ export function runPush(options) {
   return result.status === 202 ? 0 : 1;
 }
 
+/**
+ * Group sink events into re-ingestible collector batches, one per appId.
+ * Malformed lines are skipped (a corrupt sink line must never block a ship);
+ * entries keep exactly the keys the hook emits so the fleet's own collector
+ * copy validates them unchanged. --app narrows the shipment to one app.
+ */
+export function buildFleetBatches(sinkText, { app = null } = {}) {
+  const byApp = new Map();
+  for (const line of String(sinkText || '').split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let e;
+    try { e = JSON.parse(line); } catch { continue; }
+    if (!e || typeof e !== 'object') continue;
+    const appId = typeof e.appId === 'string' && e.appId.length > 0 ? e.appId : APP_ID_FALLBACK;
+    if (app && appId !== app) continue;
+    if (!byApp.has(appId)) byApp.set(appId, []);
+    const ent = {
+      ts: typeof e.ts === 'string' ? e.ts : (typeof e.receivedAt === 'string' ? e.receivedAt : new Date(0).toISOString()),
+      kind: e.kind || 'error',
+      message: typeof e.message === 'string' ? e.message : String(e.message ?? ''),
+      path: e.path || '/',
+    };
+    if (typeof e.stack === 'string' && e.stack) ent.stack = e.stack;
+    byApp.get(appId).push(ent);
+  }
+  return [...byApp.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([appId, entries]) => ({ appId, version: null, sentAt: new Date().toISOString(), entries }));
+}
+
+/**
+ * Ship the sink to a fleet inbox as JSON batch files (array of batches).
+ * GitHub Actions runners are ephemeral, so the fleet channel is git, not HTTP:
+ * files land in --into (typically the autonomous-github-agent clone); --commit
+ * records them locally there, and the PUSH is always left to resilient-git.
+ */
+export function runSyncFleet(options) {
+  const sink = path.isAbsolute(options.out) ? options.out : path.resolve(ROOT, options.out);
+  const into = path.resolve(options.into);
+  if (!fs.existsSync(into) || !fs.statSync(into).isDirectory()) {
+    throw new ExportError(`--into is not an existing directory: ${into}`);
+  }
+  const rel = path.relative(ROOT, into);
+  if (rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)) {
+    throw new ExportError('--into must live outside this repo (telemetry batches belong to the fleet clone, not here)');
+  }
+  const batches = buildFleetBatches(fs.existsSync(sink) ? fs.readFileSync(sink, 'utf8') : '', { app: options.app });
+  const total = batches.reduce((n, b) => n + b.entries.length, 0);
+  if (total === 0) {
+    if (options.json) console.log(JSON.stringify({ shipped: 0, batches: 0, into }));
+    else console.log('telemetry-export sync-fleet: sink has no events — nothing to ship');
+    return 0;
+  }
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const file = path.join(into, `telemetry-${stamp}-${total}events.json`);
+  fs.writeFileSync(file, `${JSON.stringify(batches, null, 2)}\n`, 'utf8');
+  if (options.commit) {
+    if (!fs.existsSync(path.join(into, '.git'))) {
+      throw new ExportError(`--commit needs a git repo at --into: ${into} (file was written; commit manually or drop --commit)`);
+    }
+    const relFile = path.relative(into, file);
+    execFileSync('git', ['-C', into, 'add', '--', relFile], { stdio: 'pipe' });
+    execFileSync('git', ['-C', into, 'commit', '-m', `telemetry: batch ${stamp} (${total} events, ${batches.length} app${batches.length === 1 ? '' : 's'})`], { stdio: 'pipe' });
+  }
+  if (options.json) console.log(JSON.stringify({ shipped: total, batches: batches.length, file, committed: options.commit }));
+  else {
+    console.log(`telemetry-export sync-fleet: wrote ${batches.length} batch(es), ${total} event(s) -> ${file}`);
+    if (options.commit) console.log('  committed locally in the target repo');
+    console.log('  push is intentionally NOT done here — run resilient-git.ps1 sync in the target repo');
+  }
+  return 0;
+}
+
 
 // ---- self-test -------------------------------------------------------------
 
@@ -374,6 +465,44 @@ export async function runSelfTest() {
   const pushRequiresFile = (() => { try { parseExportArgs(['push']); return false; } catch (e) { return e instanceof ExportError; } })();
   check('push without --file refused', pushRequiresFile);
 
+  // -- sync-fleet ----------------------------------------------------------
+  const noInto = (() => { try { parseExportArgs(['sync-fleet']); return false; } catch (e) { return e instanceof ExportError; } })();
+  check('sync-fleet without --into refused', noInto);
+  const fleetParse = parseExportArgs(['sync-fleet', '--into', 'X', '--commit']);
+  check('sync-fleet parses --into/--commit', fleetParse.mode === 'sync-fleet' && fleetParse.into === 'X' && fleetParse.commit === true);
+  const insideReject = (() => { try { runSyncFleet({ out: path.join(tmp, 's.jsonl'), into: path.join(ROOT, 'docs'), app: null, commit: false }); return false; } catch (e) { return e instanceof ExportError; } })();
+  check('--into inside this repo refused', insideReject);
+  const missingInto = (() => { try { runSyncFleet({ out: path.join(tmp, 's.jsonl'), into: path.join(tmp, 'ghost'), app: null, commit: false }); return false; } catch (e) { return e instanceof ExportError; } })();
+  check('--into missing dir refused', missingInto);
+  const fleetSink = path.join(tmp, 'sink-fixture.jsonl');
+  fs.writeFileSync(fleetSink, [
+    JSON.stringify({ appId: 'nexus', kind: 'error', message: 'boom', path: '/a', ts: '2026-01-01T00:00:00.000Z' }),
+    'NOT-JSON-CORRUPT-LINE',
+    JSON.stringify({ appId: 'dash', kind: 'console', message: 'meh', path: '/', receivedAt: '2026-01-02T00:00:00.000Z' }),
+  ].join('\n'));
+  const inbox = fs.mkdtempSync(path.join(os.tmpdir(), 'fleetbox-'));
+  const shipCode = runSyncFleet({ out: fleetSink, into: inbox, app: null, commit: false, json: true });
+  const shipped = fs.readdirSync(inbox);
+  const batches = JSON.parse(fs.readFileSync(path.join(inbox, shipped[0]), 'utf8'));
+  check('sync-fleet ships 2 batches / 2 events, corrupt line skipped',
+    shipCode === 0 && shipped.length === 1 && batches.length === 2 && batches.reduce((n, b) => n + b.entries.length, 0) === 2);
+  check('fleet batches re-ingest clean through the collector', collector.ingest(JSON.stringify(batches[0]), {}).status === 202);
+  const noOp = runSyncFleet({ out: path.join(tmp, 'absent-sink.jsonl'), into: inbox, app: null, commit: false, json: true });
+  check('no-events sink is a clean no-op', noOp === 0 && fs.readdirSync(inbox).length === 1);
+  const commitNoRepo = (() => { try { runSyncFleet({ out: fleetSink, into: inbox, app: null, commit: true, json: true }); return false; } catch (e) { return e instanceof ExportError; } })();
+  check('--commit without a git repo refused', commitNoRepo);
+  const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleetrepo-'));
+  execFileSync('git', ['init', '-q', repoDir], { stdio: 'pipe' });
+  for (const k of ['GIT_AUTHOR_NAME', 'GIT_COMMITTER_NAME']) process.env[k] = 'telemetry-selftest';
+  for (const k of ['GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_EMAIL']) process.env[k] = 'selftest@local';
+  const commitLanded = (() => {
+    runSyncFleet({ out: fleetSink, into: repoDir, app: 'nexus', commit: true, json: true });
+    return execFileSync('git', ['-C', repoDir, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim() === '1';
+  })();
+  check('--commit records the batch in the target repo', commitLanded);
+  fs.rmSync(inbox, { recursive: true, force: true });
+  fs.rmSync(repoDir, { recursive: true, force: true });
+
   fs.rmSync(tmp, { recursive: true, force: true });
   const passed = results.filter(([, ok]) => ok).length;
   for (const [name, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}`);
@@ -405,6 +534,7 @@ async function main() {
     return 0;
   }
   if (options.mode === 'push') return runPush(options);
+  if (options.mode === 'sync-fleet') return runSyncFleet(options);
   await startExportServer(options);
   return 0; // keep the event loop alive; Ctrl+C to stop
 }
