@@ -172,12 +172,13 @@ def swarm(prompts, **kwargs):
 
 
 def load_ledger_file(path):
-    """Load persisted ledger counts from JSON file; returns {} when missing."""
+    """Load persisted ledger counts from JSON file; returns {} when missing
+    or corrupt."""
     try:
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
         return data.get("counts", data) if isinstance(data, dict) else {}
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
