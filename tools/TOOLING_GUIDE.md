@@ -317,6 +317,41 @@ with a command); a silently ignored flag is a usage error, matching the sync-par
 **Wired into:** `verify-tools.mjs` (`report --limit 1` smoke), `npm run tools:selftest`,
 `npm run telemetry:serve|report|prune|selftest`
 
+### `tools/telemetry-export.mjs` — Loopback Bridge: Browser → Collector
+
+**Purpose:** the missing half of the self-hosted telemetry story. The apps'
+`src/lib/telemetry.ts` hook buffers error events in `localStorage` while no endpoint is
+configured; this bridge ships that buffer to the collector without touching app code and
+without any third party. It **reuses `telemetry-collector.mjs` wholesale** (validation,
+rate-limit, dedupe, sink schema) and adds only translation + a loopback HTTP surface.
+
+```powershell
+node tools/telemetry-export.mjs snippet                     # show the browser snippet
+node tools/telemetry-export.mjs serve                       # loopback bridge on 127.0.0.1:8788
+node tools/telemetry-export.mjs push --dump dump.json       # offline: a saved dump file
+node tools/telemetry-export.mjs dump --out out.json         # dev-tool: JSONL -> batch dump
+node tools/telemetry-export.mjs --self-test                 # 21 offline contract checks
+npm run telemetry:export                                    # start the bridge
+```
+
+**Flow:** paste `snippet()`'s code into the app console (or a bookmarklet) → it reads the
+hook's localStorage key, translates the entry array into one collector-shaped batch
+(`{ appId, version, sentAt, entries[] }`), and POSTs to the bridge → the bridge calls the
+collector's `handleIngest()` (never reimplementing its rules), which enforces limits,
+de-dupes and appends to the same JSONL sink the collector owns. `push` accepts the same
+batch or dump shape straight from disk (no server needed); `dump` reverses it for inspection.
+
+**Safety contract:** the bridge binds `127.0.0.1` only (`--host` is rejected, not merely
+defaulted); CORS allows only the local Vite origins (repeatable `--allow-origin`); every
+batch passes the collector's validator unchanged. No third-party endpoints — the whole
+pipeline stays on the machine (or your own fleet later).
+
+**Wired into:** `verify-tools.mjs` (`--self-test` smoke), `npm run tools:selftest`,
+`npm run telemetry:export`; sink content surfaces in the OPS dashboard's
+`## Runtime Error Telemetry` section (`ops-section:telemetry`).
+
+**Exit codes:** `0` ok · `1` self-test failure · `2` usage/setup error · `3` serve error.
+
 ---
 
 ### Integration Testing Reference

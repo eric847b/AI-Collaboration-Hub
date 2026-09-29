@@ -52,6 +52,7 @@ const SMOKE = {
   'flake-tracker.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],
   'telemetry-collector.mjs': ['report', '--limit', '1'],
+  'telemetry-export.mjs': ['--self-test'],
 };
 
 function run(cmd, args) {

@@ -285,7 +285,7 @@ function machineReportsSection() {
 // stale so the failure is always actionable ("regenerate the dashboard").
 
 const MARKER_RE = /^<!-- ops-section:([a-z0-9-]+) ts:(\S+) -->$/;
-const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports'];
+const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports', 'telemetry'];
 
 function parseFreshness(raw) {
   const stamps = new Map();
@@ -347,6 +347,57 @@ if (argv.includes('--check')) {
   process.exit(0);
 }
 
+function telemetrySinkSection() {
+  // Runtime error-telemetry sink (Round 12): the loopback collector
+  // (tools/telemetry-collector.mjs serve / telemetry-export.mjs) appends
+  // validated browser errors to a local JSONL ledger. Summarize it here so the
+  // chosen "self-hosted, aggregate into the OPS dashboard" path closes end to
+  // end. Best-effort: absent/unreadable/degenerate sinks degrade to one note.
+  const lines = [];
+  lines.push('## Runtime Error Telemetry', '');
+  const sink = path.join(ROOT, 'tools', '.tmp', 'telemetry', 'events.jsonl');
+  if (!fs.existsSync(sink)) {
+    lines.push('_sink absent — start the collector with `npm run telemetry:serve` (events land here once apps export via `node tools/telemetry-export.mjs`)_', '');
+    return { id: 'telemetry', lines };
+  }
+  let events = [];
+  try {
+    events = fs.readFileSync(sink, 'utf8').split(/\r?\n/).filter((l) => l.trim().length > 0)
+      .map((l) => JSON.parse(l));
+  } catch {
+    lines.push('_sink unreadable — check `tools/.tmp/telemetry/events.jsonl`_', '');
+    return { id: 'telemetry', lines };
+  }
+  if (events.length === 0) {
+    lines.push('_sink empty — nothing exported yet_', '');
+    return { id: 'telemetry', lines };
+  }
+  const byApp = {};
+  const byKind = {};
+  const byMsg = {};
+  let last = null;
+  for (const e of events) {
+    if (!e) continue;
+    byApp[e.appId || 'unknown'] = (byApp[e.appId || 'unknown'] || 0) + 1;
+    byKind[e.kind || 'unknown'] = (byKind[e.kind || 'unknown'] || 0) + 1;
+    const key = `${e.appId || 'unknown'}: ${String(e.message || '').slice(0, 80)}`;
+    byMsg[key] = (byMsg[key] || 0) + 1;
+    const ts = e.receivedAt || e.ts;
+    if (typeof ts === 'string' && (last === null || ts > last)) last = ts;
+  }
+  const fmt = (obj) => {
+    const parts = Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k}=${v}`);
+    return parts.length > 0 ? parts.join(', ') : '—';
+  };
+  lines.push(`- events=${events.length} apps[${fmt(byApp)}] kinds[${fmt(byKind)}] last=${last ?? 'n/a'}`);
+  lines.push('', 'Top messages:', '');
+  for (const [k, v] of Object.entries(byMsg).sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    lines.push(`- ${v}x \`${k.replace(/`/g, '')}\``);
+  }
+  lines.push('');
+  return { id: 'telemetry', lines };
+}
+
 const sections = [
   workflowsSection(),
   toolingSection(),
@@ -357,6 +408,7 @@ const sections = [
   toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
   extensionSection(),
   machineReportsSection(),
+  telemetrySinkSection(),
 ];
 
 const existingRaw = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
