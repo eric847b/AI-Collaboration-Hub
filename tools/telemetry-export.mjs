@@ -111,8 +111,6 @@ export function parseExportArgs(argv) {
   opts.file = null;
   opts.into = null;
   opts.commit = false;
-  opts.into = null;
-  opts.commit = false;
   opts.json = false;
   opts.storageKey = 'telemetry:errors';
   for (let i = 0; i < rest.length; i += 1) {
@@ -145,7 +143,6 @@ export function parseExportArgs(argv) {
   }
   if (!opts.mode) throw new ExportError(`unknown command: ${mode} (try --help)`);
   if (opts.mode === 'push' && !opts.file) throw new ExportError('push requires --file <dump.json>');
-  if (opts.mode === 'sync-fleet' && !opts.into) throw new ExportError('sync-fleet requires --into <fleet inbox dir>');
   if (opts.mode === 'sync-fleet' && !opts.into) throw new ExportError('sync-fleet requires --into <fleet inbox dir>');
   return opts;
 }
