@@ -76,6 +76,8 @@ function usage() {
     '  node tools/telemetry-export.mjs serve [--port <n>] [--out <file>] [--app <id>]',
     `      [--max-body <bytes>] [--allow-origin <origin>]...   (default port ${DEFAULT_PORT})`,
     '  node tools/telemetry-export.mjs push --file <dump.json> [--out <file>] [--app <id>] [--json]',
+    '  node tools/telemetry-export.mjs dump --into <dumpfile> [--out <sink>] [--app <id>] [--json]',
+    '      (JSONL sink -> re-ingestible batch dump; feed it back via push --file)',
     '  node tools/telemetry-export.mjs sync-fleet --into <dir> [--out <sink>] [--app <id>] [--commit] [--json]',
     '      (ship the whole sink to a fleet inbox as batch files; push stays with resilient-git)',
     '  node tools/telemetry-export.mjs snippet [--port <n>] [--app <id>] [--storage-key <key>]',
@@ -104,7 +106,7 @@ export function parseExportArgs(argv) {
   const opts = parseArgs(['serve']);
   const rest = argv.slice();
   const mode = rest.shift() ?? 'serve';
-  opts.mode = ['serve', 'push', 'snippet', 'sync-fleet'].includes(mode) ? mode : null;
+  opts.mode = ['serve', 'push', 'snippet', 'dump', 'sync-fleet'].includes(mode) ? mode : null;
   opts.port = DEFAULT_PORT;
   opts.allowOrigin = [...DEFAULT_ALLOW];
   opts.app = null;
@@ -144,6 +146,7 @@ export function parseExportArgs(argv) {
   if (!opts.mode) throw new ExportError(`unknown command: ${mode} (try --help)`);
   if (opts.mode === 'push' && !opts.file) throw new ExportError('push requires --file <dump.json>');
   if (opts.mode === 'sync-fleet' && !opts.into) throw new ExportError('sync-fleet requires --into <fleet inbox dir>');
+  if (opts.mode === 'dump' && !opts.into) throw new ExportError('dump requires --into <dumpfile>');
   return opts;
 }
 
@@ -281,6 +284,31 @@ export function startExportServer(options) {
 /** Shared push core: file text -> wrap -> ingest. Returns the ingest result. */
 export function pushDump(text, options) {
   const collector = createCollector(options);
+  // A dump file (or a sync-fleet batch file) is an ARRAY of {appId, entries[]}
+  // batches — ingest each through the same collector so validation, rate-limit
+  // and dedupe span the whole file exactly as they would per HTTP POST.
+  let raw = null;
+  try { raw = JSON.parse(text); } catch { /* wrapDump reports the canonical error */ }
+  const isBatchList = Array.isArray(raw) && raw.length > 0
+    && raw.every((b) => b && typeof b === 'object' && !Array.isArray(b)
+      && Array.isArray(b.entries) && typeof b.appId === 'string' && b.appId.length > 0);
+  if (isBatchList) {
+    let status = 202;
+    const payload = { ok: true, batches: raw.length, accepted: 0, duplicates: 0, dropped: 0 };
+    for (const batch of raw) {
+      const r = collector.ingest(JSON.stringify(batch), { origin: 'file-export' });
+      if (r.status !== 202) {
+        status = r.status;
+        payload.ok = false;
+        payload.error = r.payload && r.payload.error;
+        break;
+      }
+      payload.accepted += r.payload.accepted ?? 0;
+      payload.duplicates += r.payload.duplicates ?? 0;
+      payload.dropped += r.payload.dropped ?? 0;
+    }
+    return { result: { status, payload }, sink: collector.outPath };
+  }
   const wrapped = wrapDump(text, { app: options.app });
   const result = collector.ingest(wrapped, { origin: 'file-export' });
   return { result, sink: collector.outPath };
@@ -368,6 +396,31 @@ export function runSyncFleet(options) {
     console.log(`telemetry-export sync-fleet: wrote ${batches.length} batch(es), ${total} event(s) -> ${file}`);
     if (options.commit) console.log('  committed locally in the target repo');
     console.log('  push is intentionally NOT done here — run resilient-git.ps1 sync in the target repo');
+  }
+  return 0;
+}
+
+/**
+ * Export the sink as a re-ingestible batch dump (array of {appId, version,
+ * sentAt, entries[]} batches — the same shape sync-fleet ships and push now
+ * accepts via --file). Reuses buildFleetBatches so dump/push/sync-fleet share
+ * one batch contract; corrupt sink lines are skipped, never fatal. `--out`
+ * stays the collector's sink everywhere; `--into` is the dump destination.
+ */
+export function runDump(options) {
+  const sink = path.isAbsolute(options.out) ? options.out : path.resolve(ROOT, options.out);
+  const into = path.resolve(options.into);
+  if (into === sink) throw new ExportError('dump --into must differ from the sink (--out)');
+  const text = fs.existsSync(sink) ? fs.readFileSync(sink, 'utf8') : '';
+  const batches = buildFleetBatches(text, { app: options.app });
+  fs.mkdirSync(path.dirname(into), { recursive: true });
+  fs.writeFileSync(into, `${JSON.stringify(batches, null, 2)}\n`, 'utf8');
+  const events = batches.reduce((n, b) => n + b.entries.length, 0);
+  if (options.json) console.log(JSON.stringify({ out: into, apps: batches.length, events, sink }));
+  else {
+    console.log(`telemetry-export dump: ${events} event(s) in ${batches.length} batch(es) -> ${into}`);
+    console.log(`  sink    : ${sink}`);
+    console.log(`  reingest: node tools/telemetry-export.mjs push --file ${into}`);
   }
   return 0;
 }
@@ -497,6 +550,22 @@ export async function runSelfTest() {
     return execFileSync('git', ['-C', repoDir, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim() === '1';
   })();
   check('--commit records the batch in the target repo', commitLanded);
+
+  // -- dump (sink -> batch file -> push round-trip) ----------------------------
+  const dumpNoInto = (() => { try { parseExportArgs(['dump']); return false; } catch (e) { return e instanceof ExportError; } })();
+  check('dump without --into refused', dumpNoInto);
+  const dumpFile = path.join(tmp, 'dump.json');
+  const dumpCode = runDump({ out: fleetSink, into: dumpFile, app: null, json: true });
+  const dumpBatches = JSON.parse(fs.readFileSync(dumpFile, 'utf8'));
+  check('dump emits sync-fleet-shaped batches (corrupt line skipped)',
+    dumpCode === 0 && dumpBatches.length === 2 && dumpBatches.reduce((n, b) => n + b.entries.length, 0) === 2);
+  const dumpPush = pushDump(fs.readFileSync(dumpFile, 'utf8'), { ...baseOpts, out: path.join(tmp, 'dump-push.jsonl') });
+  check('push --file accepts a dump file (both batches ingested)',
+    dumpPush.result.status === 202 && dumpPush.result.payload.batches === 2 && dumpPush.result.payload.accepted === 2);
+  const sinkClobber = (() => { try { runDump({ out: fleetSink, into: fleetSink, app: null, json: true }); return false; } catch (e) { return e instanceof ExportError; } })();
+  check('dump --into refused when it would overwrite the sink', sinkClobber);
+  const emptyDump = runDump({ out: path.join(tmp, 'absent-sink.jsonl'), into: path.join(tmp, 'empty-dump.json'), app: null, json: true });
+  check('empty sink dumps a clean [] file', emptyDump === 0 && JSON.parse(fs.readFileSync(path.join(tmp, 'empty-dump.json'), 'utf8')).length === 0);
   fs.rmSync(inbox, { recursive: true, force: true });
   fs.rmSync(repoDir, { recursive: true, force: true });
 
@@ -531,6 +600,7 @@ async function main() {
     return 0;
   }
   if (options.mode === 'push') return runPush(options);
+  if (options.mode === 'dump') return runDump(options);
   if (options.mode === 'sync-fleet') return runSyncFleet(options);
   await startExportServer(options);
   return 0; // keep the event loop alive; Ctrl+C to stop

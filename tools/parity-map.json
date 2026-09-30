@@ -18,7 +18,11 @@
         ".github/cross_repo_coordinator.py",
         ".github/fleet_maintenance.py",
         ".github/workflows/fleet-maintenance.yml",
-        "docs/completed_catalyst_dataset.md"
+        "docs/completed_catalyst_dataset.md",
+        ".github/agent_telemetry_intake.mjs",
+        ".github/telemetry_collector.mjs",
+        ".github/workflows/telemetry-intake.yml",
+        "telemetry/README.md"
       ]
     },
     {
@@ -26,21 +30,28 @@
       "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/singularity-operator",
       "nestedRoot": "singularity-operator",
       "mode": "overwrite",
-      "includeDirs": ["singularity_operator"]
+      "includeDirs": [
+        "singularity_operator"
+      ]
     },
     {
       "name": "collabhub-modules mirror",
       "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/collabhub-modules",
       "nestedRoot": "collabhub-modules",
       "mode": "missing-only",
-      "exclude": ["package.json", "README.md"]
+      "exclude": [
+        "package.json",
+        "README.md"
+      ]
     },
     {
       "name": "modular-hub-modernization mirror",
       "standaloneRoot": "C:/Users/Eric/Documents/Cline/Repos/modular-hub-modernization",
       "nestedRoot": "modular-hub-modernization",
       "mode": "missing-only",
-      "exclude": ["README.md"]
+      "exclude": [
+        "README.md"
+      ]
     }
   ]
 }

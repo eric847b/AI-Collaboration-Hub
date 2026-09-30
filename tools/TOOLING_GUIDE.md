@@ -329,7 +329,7 @@ rate-limit, dedupe, sink schema) and adds only translation + a loopback HTTP sur
 node tools/telemetry-export.mjs snippet                     # show the browser snippet
 node tools/telemetry-export.mjs serve                       # loopback bridge on 127.0.0.1:8788
 node tools/telemetry-export.mjs push --dump dump.json       # offline: a saved dump file
-node tools/telemetry-export.mjs dump --out out.json         # dev-tool: JSONL -> batch dump
+node tools/telemetry-export.mjs dump --into out.json         # dev-tool: JSONL -> batch dump
 node tools/telemetry-export.mjs sync-fleet --into <dir>     # batch-ship the whole sink to a fleet git inbox
 node tools/telemetry-export.mjs --self-test                 # 30 offline contract checks
 npm run telemetry:export                                    # start the bridge
@@ -351,7 +351,16 @@ infeasible there): it groups the sink into one collector batch per app and
 writes `telemetry-<stamp>-<n>events.json` into `--into` — which must live
 OUTSIDE this repo (typically the autonomous-github-agent clone) — with optional
 local `--commit`; it NEVER pushes (resilient-git's job) and repeat shipments
-are safe because the collector dedupes on re-ingest.
+are safe because the collector dedupes on re-ingest. The loop is closed
+fleet-side: `autonomous-github-agent`'s `.github/workflows/telemetry-intake.yml`
+runs its `.github/agent_telemetry_intake.mjs`, which ingests every inbox batch
+through the byte-mirrored `.github/telemetry_collector.mjs` (validator,
+rate-limit, dedupe and JSONL sink reused, never reimplemented — parity-gated
+by `tools/parity-map.json`, now 15/15), archives accepted shipments to
+`telemetry/ingested/`, parks rejects with a `.reason.txt`, and commits the
+result back with the workflow's `GITHUB_TOKEN`. `dump --into <file>` is the
+local inspection counterpart: it writes the same batch shape so `push --file`
+can round-trip a dump back through the collector.
 
 **Wired into:** `verify-tools.mjs` (`--self-test` smoke), `npm run tools:selftest`,
 `npm run telemetry:export`; sink content surfaces in the OPS dashboard's
