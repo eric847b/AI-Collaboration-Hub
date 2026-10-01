@@ -59,6 +59,8 @@ jobs:
         run: node tools/sync-parity.mjs check --strict
       - name: Tool CLI contract - every tool answers --help and rejects unknown flags
         run: node tools/verify-tools.mjs --check-cli --quiet
+      - name: Tool self-tests - guard matrix and classifier logic
+        run: node tools/verify-tools.mjs --self-test
       - name: OPS dashboard smoke (both OS)
         run: node tools/ops-dashboard.mjs --out docs/metrics/OPS-DASHBOARD.md
       - name: Upload OPS dashboard
