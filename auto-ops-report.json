@@ -1,7 +1,7 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T22:16:51Z",
+  "scanned_at": "2026-10-01T06:12:54Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
@@ -9,8 +9,7 @@
   "duplicate_drafts": {
     "closed": [],
     "kept": [
-      679,
-      678
+      805
     ],
     "errors": []
   },
@@ -25,12 +24,23 @@
   "dependabot_conflicts": {
     "rebase_requests": [],
     "recreate_requests": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 791,
+        "reason": "not-patch-conflict-policy"
+      }
+    ],
     "errors": []
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 791,
+        "reason": "not-patch",
+        "title": "chore(deps): bump axios from 1.18.1 to 1.20.0 in /ai-chat-websites"
+      }
+    ],
     "errors": []
   }
 }
