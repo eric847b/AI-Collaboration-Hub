@@ -71,6 +71,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 | `tools/fix-security-alerts.cjs` | Dependabot-alert lockfile patching pipeline (moved from root 2026-09-14) |
 | `tools/review-repos.ps1`, `tools/analyze-freedom.ps1` | inventory + freedom-goal reports |
 | `.husky/pre-commit` | `secret-scan.mjs --staged` unconditionally FIRST (index-only, instant on empty staged set), then dependency-free `.husky/js-gate.mjs` on staged js/mjs/cjs; lintable-file fast path + empty-set guard (no npx) — 2026-09-15 |
+| `.github/workflows/multi-os-gate.yml` | both-OS (ubuntu + windows) spot-check on PRs touching `tools/**` + weekly: doc-link health, extension, secret scan + `--check-ci`, handoff schema, fleet parity (Windows), **`--check-cli` 19/19 CLI contract**, **`verify-tools --self-test` 47 checks**, and the **full tool self-test suite** (secret-scan, handoff-check, workflow-audit, telemetry-collector, telemetry-export — ~13 s, read-only, tree byte-identical after a run), then `npm run gate` (hard on Windows, informational on Linux) — self-tests in CI since 2026-10-01 |
 | `.vscode/tasks.json` | gate / quality / bootstrap / bundle-trend / tools:verify tasks (rebuilt 2026-09-14) |
 | `.vscode/launch.json` | Node + Vite debug configs (added 2026-09-14) |
 | `.devcontainer/` | Node 26 + Python 3.12 universal image, `setup.sh` post-create |

@@ -61,6 +61,20 @@ jobs:
         run: node tools/verify-tools.mjs --check-cli --quiet
       - name: Tool self-tests - guard matrix and classifier logic
         run: node tools/verify-tools.mjs --self-test
+      # The remaining self-test suite, all read-only (fixtures live in a temp dir;
+      # verified to leave the working tree byte-identical). These previously gated
+      # only via the local `npm run tools:selftest` chain, so a regression in any
+      # of them could merge silently. Kept on BOTH OS runners on purpose:
+      # handoff-check's UTF-8 BOM tolerance and secret-scan's line decoding are
+      # exactly the class of defect that only appears on one platform (PowerShell
+      # writes BOMs on Windows). ~13s total against a 25-minute job budget.
+      - name: Tool self-tests - detectors, schema validator, telemetry pipeline
+        run: |
+          node tools/secret-scan.mjs --self-test
+          node tools/handoff-check.mjs --self-test
+          node tools/workflow-audit.mjs --self-test
+          node tools/telemetry-collector.mjs --self-test
+          node tools/telemetry-export.mjs --self-test
       - name: OPS dashboard smoke (both OS)
         run: node tools/ops-dashboard.mjs --out docs/metrics/OPS-DASHBOARD.md
       - name: Upload OPS dashboard
