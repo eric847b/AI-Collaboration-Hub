@@ -185,10 +185,35 @@ therefore classifies it as `warn` (advisory) instead of `fail`.
 | Triage which failure you actually have | `node tools/verify-tools.mjs --json` - inspect `rows[].reason` and `summary.warn` |
 | Confirm it is structural, not staleness | `node tools/ops-dashboard.mjs --check` - `dashboard-output-missing` and `dashboard-markers-missing` are hard failures, the `STALE` lines are not |
 
-**Guard rails already in place:** `--self-test` unit-tests exactly this
+**Guard rails already in place:** `--self-test` (47 checks) unit-tests exactly this
 classification (stale warns; missing artifact/markers fail; exit-code algebra
-under `--strict`), and the smoke matrix is asserted free of mutating probes, so
-no probe can sync, collect, or rewrite state.
+under `--strict`; the summary tally), asserts the smoke matrix free of mutating
+probes (no probe can sync, collect, or rewrite state), and drives four
+*zero-probe end-to-end CLI paths* — including this `--only typo` guard — so the
+runner's print/exit tail is covered too, not just the pure helpers.
+
+### verify-tools prints `no-tools-matched` (or exits 2)
+
+**Symptom:** `node tools/verify-tools.mjs --only verfy-tools.mjs` (typo) prints
+`FAIL  no-tools-matched: --only 'verfy-tools.mjs' matched no tools/*.{mjs,cjs}`,
+then `0 tools, 0 green, 0 warn, 1 failed`, and exits 1. Or the run stops before
+any probe with `--max-age-hours expects a non-negative number` and exits 2.
+
+**Why (v2.1 no-silent-green guards):** a selector that matched nothing used to run
+zero probes and exit 0 — a green run that verified nothing, the same class of
+false verdict the tiered `warn` fix removed. An empty `tools/` directory is
+reported as `no-tools-discovered` (same exit). A non-numeric `--max-age-hours`
+would be forwarded to the dashboard probe as garbage, so it is rejected as a
+runner setup error (exit 2) *before* any probe runs.
+
+**Fix:**
+
+| Situation | Command |
+|-----------|---------|
+| Confirm the basename | `node tools/verify-tools.mjs --list` |
+| Probe several tools at once | `node tools/verify-tools.mjs --only a.mjs,b.mjs` |
+| Force staleness on purpose | `node tools/verify-tools.mjs --only ops-dashboard.mjs --max-age-hours 0` (`0` is valid; negative or non-numeric is not) |
+| Read the machine report | `node tools/verify-tools.mjs --json` — `guard`, `selector`, `summary.tools`/`summary.failed`/`summary.exitCode` |
 
 ---
 

@@ -15,12 +15,20 @@
  * committed dashboard was >24h old (observed live 2026-10-01: 10 sections at
  * 45.9h while every tool was actually healthy).
  *
+ * v2.1 (2026-10-01): no silent greens. `--only <typo>` used to select zero tools,
+ * print "0 tools, 0 failed" and exit 0 — a false pass of exactly the class v2
+ * fixed. An unmatched selector is now a hard `fail` (`no-tools-matched`, exit 1),
+ * an empty tools/ directory is `no-tools-discovered` (same exit), and a
+ * non-numeric `--max-age-hours` is a runner setup error (exit 2) instead of being
+ * forwarded to the dashboard probe as garbage.
+ *
  *   node tools/verify-tools.mjs                      # syntax + smoke of every tool
  *   node tools/verify-tools.mjs --strict             # warns also fail (parity DIFF, stale dashboard)
  *   node tools/verify-tools.mjs --json               # machine-readable report (schema 1)
  *   node tools/verify-tools.mjs --quiet              # only problems + one summary line
  *   node tools/verify-tools.mjs --list               # print the smoke matrix, run nothing
  *   node tools/verify-tools.mjs --self-test          # unit-test classifier/arg logic, run nothing
+ *   node tools/verify-tools.mjs --only ops-dashboard.mjs   # triage one probe
  *   node tools/verify-tools.mjs --max-age-hours 48   # forwarded to ops-dashboard --check
  *
  * Steps per tool in tools/*.mjs|*.cjs (auto-discovered, sorted):
@@ -29,7 +37,8 @@
  *      smoke would spawn servers or write artifacts stay syntax-checked only.
  *
  * Exit codes: 0 all green (warns allowed unless --strict) · 1 failures (or warns
- * under --strict) · 2 runner setup error.
+ * under --strict; an unmatched `--only` selector counts as a failure) · 2 runner
+ * setup error (cannot list tools/, invalid `--max-age-hours`).
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -121,6 +130,26 @@ function exitCodeFor({ failed, warned }, strictMode = strict) {
   return 0;
 }
 
+/**
+ * Single source of truth for the run tally, derived from the rows themselves so
+ * the printed line, the JSON summary and the exit code can never disagree.
+ * `toolsAttempted` counts probes actually run - the synthetic guard row is a
+ * failure notice, not a tool.
+ */
+function summarize(rows, toolsAttempted = rows.length, strictMode = strict) {
+  const at = (level) => rows.filter((r) => r.level === level).length;
+  const failed = at('fail');
+  const warned = at('warn');
+  return {
+    tools: toolsAttempted,
+    ok: at('ok'),
+    warn: warned,
+    failed,
+    strict: strictMode,
+    exitCode: exitCodeFor({ failed, warned }, strictMode),
+  };
+}
+
 function clean(out, limit = 900) {
   const text = String(out ?? '').replace(/\r/g, '').trim();
   return text.length > limit ? `${text.slice(0, limit)}…` : text;
@@ -137,6 +166,43 @@ function selectTools(all, selector) {
     .filter(Boolean);
   if (wanted.length === 0) return all.slice();
   return all.filter((t) => wanted.includes(t));
+}
+
+/**
+ * v2.1 false-green guard: verify-tools must never exit 0 having run zero tools.
+ * Two ways that happens — `--only typo.mjs` matches nothing, or tools/ yields no
+ * `.mjs`/`.cjs` at all (wrong cwd, empty checkout). Both return a synthetic
+ * failing row; a non-empty `selected` list returns null.
+ */
+function selectionGuard(selected, selector) {
+  if (selected.length > 0) return null;
+  const wanted = String(selector || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const matchedNothing = wanted.length > 0;
+  return {
+    tool: '(selector)',
+    syntax: '-',
+    smoke: '-',
+    level: 'fail',
+    reason: matchedNothing ? 'no-tools-matched' : 'no-tools-discovered',
+    detail: matchedNothing
+      ? `--only '${wanted.join(', ')}' matched no tools/*.{mjs,cjs} - check the spelling (node tools/verify-tools.mjs --list)`
+      : 'no tools/*.{mjs,cjs} discovered - wrong working directory, or tools/ is empty?',
+  };
+}
+
+/**
+ * `--max-age-hours` reaches ops-dashboard through child argv, so anything that is
+ * not a non-negative finite number is a setup error (exit 2), never a probe.
+ * Empty string = "use the probe's own default".
+ */
+function invalidMaxAge(value) {
+  const v = String(value ?? '').trim();
+  if (v === '') return false;
+  const n = Number(v);
+  return !Number.isFinite(n) || n < 0;
 }
 
 
@@ -178,6 +244,20 @@ function runSelfTest() {
   check('fail exits 1', exitCodeFor({ failed: 1, warned: 0 }), 1);
   check('fail dominates --strict', exitCodeFor({ failed: 1, warned: 5 }, true), 1);
 
+  // summary derivation: rows are the single source of truth for the tally
+  check(
+    'summary counts every level',
+    (() => {
+      const s = summarize([{ level: 'ok' }, { level: 'warn' }, { level: 'fail' }], 3);
+      return [s.tools, s.ok, s.warn, s.failed, s.exitCode];
+    })(),
+    [3, 1, 1, 1, 1]
+  );
+  check('summary ignores guard rows in the tool count', summarize([{ level: 'fail' }], 0).tools, 0);
+  check('summary exit follows strict', summarize([{ level: 'warn' }], 1, true).exitCode, 1);
+  check('summary stays green without failures', summarize([{ level: 'ok' }, { level: 'ok' }], 2).exitCode, 0);
+  check('summary flags strict mode', summarize([], 0, true).strict, true);
+
   // argument plumbing
   check('parity default args', smokeArgsFor('sync-parity.mjs', { strictMode: false }), ['check']);
   check('parity strict args', smokeArgsFor('sync-parity.mjs', { strictMode: true }), ['check', '--strict']);
@@ -204,6 +284,46 @@ function runSelfTest() {
     selectTools(all, '');
     return all.length;
   })(), 2);
+
+  // false-green guard: running zero tools must never look like a clean run
+  check('unmatched selector is a failure', selectionGuard([], 'zz.mjs')?.level ?? null, 'fail');
+  check('unmatched selector reason slug', selectionGuard([], 'zz.mjs').reason, 'no-tools-matched');
+  check('unmatched selector names the typo', selectionGuard([], 'zz.mjs').detail.includes("'zz.mjs'"), true);
+  check('matched selector is not guarded', selectionGuard(['a.mjs'], 'a.mjs'), null);
+  check('partial match is not guarded', selectionGuard(['a.mjs'], 'a.mjs,zz.mjs'), null);
+  check('a non-empty selection is never guarded', selectionGuard(['a.mjs'], ''), null);
+  check('empty tools dir is a failure', selectionGuard([], '').reason, 'no-tools-discovered');
+  check('guard row is not ok-level', selectionGuard([], '').level === 'ok', false);
+
+  // setup validation: --max-age-hours must be a non-negative finite number
+  check('empty max-age is allowed', invalidMaxAge(''), false);
+  check('numeric max-age is allowed', invalidMaxAge('48'), false);
+  check('zero max-age is allowed', invalidMaxAge('0'), false);
+  check('non-numeric max-age is rejected', invalidMaxAge('soon'), true);
+  check('negative max-age is rejected', invalidMaxAge('-3'), true);
+  check('infinite max-age is rejected', invalidMaxAge('Infinity'), true);
+
+  // end-to-end CLI paths that run ZERO probes (fast, so the self-test stays cheap).
+  // These cover the tail of the runner - printing and exit - which unit checks on
+  // pure helpers cannot reach (a removed counter variable once crashed there).
+  const cli = (args) => {
+    try {
+      const out = execFileSync(process.execPath, [fileURLToPath(import.meta.url), ...args], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 60000,
+      });
+      return { code: 0, out };
+    } catch (e) {
+      return { code: e.status ?? null, out: ((e.stdout || '') + (e.stderr || '')).trim() };
+    }
+  };
+  const guardRun = cli(['--only', 'zz-no-such-tool.mjs', '--quiet']);
+  check('cli rejects an unmatched selector', guardRun.code, 1);
+  check('cli prints the summary after the guard', /1 failed\./.test(guardRun.out), true);
+  check('cli names the guard reason', guardRun.out.includes('no-tools-matched'), true);
+  check('cli rejects a bad --max-age-hours', cli(['--max-age-hours', 'soon']).code, 2);
 
   // matrix safety: side-effect free, no self-recursion, arrays only
   const offenders = [];
@@ -237,8 +357,10 @@ function usage() {
       '  --quiet           print only problems + a one-line summary',
       '  --list            print the smoke matrix and exit',
       '  --self-test       unit-test classification/arg logic and exit',
-      '  --only            restrict the run to specific tool basenames (comma-separated)',
-      '  --max-age-hours   forwarded to ops-dashboard.mjs --check (default: tool default 24)',
+      '  --only            restrict the run to specific tool basenames (comma-separated; an',
+      '                    unmatched name fails the run instead of reporting a clean zero)',
+      '  --max-age-hours   forwarded to ops-dashboard.mjs --check (default: tool default 24;',
+      '                    must be a non-negative number or the run exits 2)',
     ].join('\n')
   );
 }
@@ -248,6 +370,10 @@ if (has('--help') || has('-h')) {
   process.exit(0);
 }
 if (has('--self-test')) runSelfTest();
+if (invalidMaxAge(maxAgeHours)) {
+  console.error(`verify-tools: --max-age-hours expects a non-negative number, got '${maxAgeHours}'`);
+  process.exit(2);
+}
 if (has('--list')) {
   for (const [tool, args] of Object.entries(SMOKE)) console.log(`${tool}${args.length ? ` ${args.join(' ')}` : ''}`);
   console.log(`${Object.keys(SMOKE).length} smoke probes; every other tool is syntax-checked only`);
@@ -283,14 +409,20 @@ try {
   process.exit(2);
 }
 
-let failed = 0;
-let warned = 0;
 const rows = [];
-for (const tool of selectTools(tools, onlyArg)) {
+
+// v2.1: a selector matching nothing is a failure, never a clean zero-tool run.
+const selected = selectTools(tools, onlyArg);
+const guard = selectionGuard(selected, onlyArg);
+if (guard) {
+  rows.push(guard);
+  console.error(`FAIL  ${guard.reason}: ${guard.detail}`);
+}
+
+for (const tool of selected) {
   const abs = path.join(TOOLS_DIR, tool);
   const syntax = run(process.execPath, ['--check', abs]);
   if (!syntax.ok) {
-    failed += 1;
     rows.push({ tool, syntax: 'FAIL', smoke: '-', level: 'fail', reason: 'syntax-error', detail: clean(syntax.out) });
     console.error(`FAIL  ${tool}  syntax (syntax-error):\n${syntax.out}\n`);
     continue;
@@ -311,10 +443,8 @@ for (const tool of selectTools(tools, onlyArg)) {
     detail: verdict.level === 'ok' ? '' : clean(smoke.out),
   });
   if (verdict.level === 'fail') {
-    failed += 1;
     console.error(`FAIL  ${tool} ${smokeArgs.join(' ')} (${verdict.reason}):\n${smoke.out}\n`);
   } else if (verdict.level === 'warn') {
-    warned += 1;
     console.error(`WARN  ${tool} ${smokeArgs.join(' ')} (${verdict.reason}) - advisory, not a code fault`);
     console.error(
       verdict.reason === 'dashboard-stale'
@@ -324,34 +454,39 @@ for (const tool of selectTools(tools, onlyArg)) {
   }
 }
 
-const summary = {
-  tools: rows.length,
-  ok: rows.filter((r) => r.level === 'ok').length,
-  warn: warned,
-  failed,
-  strict,
-  exitCode: exitCodeFor({ failed, warned }),
-};
+const summary = summarize(rows, selected.length);
 
 if (asJson) {
   console.log(
-    JSON.stringify({ schema: 1, generatedAt: new Date().toISOString(), root: ROOT, rows, summary }, null, 2)
+    JSON.stringify(
+      {
+        schema: 1,
+        generatedAt: new Date().toISOString(),
+        root: ROOT,
+        selector: onlyArg || null,
+        maxAgeHours: maxAgeHours || null,
+        guard: guard ? guard.reason : null,
+        rows,
+        summary,
+      },
+      null,
+      2
+    )
   );
-} else if (!quiet) {
-  console.log('\n# tools verification');
-  console.log('| Tool | Syntax | Smoke | Level |');
-  console.log('|------|--------|-------|-------|');
-  for (const r of rows) console.log(`| ${r.tool} | ${r.syntax} | ${r.smoke} | ${r.level} |`);
-  console.log(
-    `\nverify-tools: ${summary.tools} tools, ${summary.ok} green, ${warned} warn, ${failed} failed${strict ? ' (--strict)' : ''}.`
-  );
-  if (warned > 0 && !strict) {
-    console.log('verify-tools: warns are advisory ops signals - pass --strict to make them fatal.');
-  }
 } else {
-  console.log(
-    `verify-tools: ${summary.tools} tools, ${summary.ok} green, ${warned} warn, ${failed} failed${strict ? ' (--strict)' : ''}.`
-  );
+  const line = `verify-tools: ${summary.tools} tools, ${summary.ok} green, ${summary.warn} warn, ${summary.failed} failed${summary.strict ? ' (--strict)' : ''}.`;
+  if (!quiet) {
+    console.log('\n# tools verification');
+    console.log('| Tool | Syntax | Smoke | Level |');
+    console.log('|------|--------|-------|-------|');
+    for (const r of rows) console.log(`| ${r.tool} | ${r.syntax} | ${r.smoke} | ${r.level} |`);
+    console.log(`\n${line}`);
+    if (summary.warn > 0 && !summary.strict) {
+      console.log('verify-tools: warns are advisory ops signals - pass --strict to make them fatal.');
+    }
+  } else {
+    console.log(line);
+  }
 }
 
 process.exit(summary.exitCode);
