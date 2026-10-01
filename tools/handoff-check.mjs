@@ -22,7 +22,10 @@
  *     degrades to "skipped (machine-local)" with exit 0, keeping CI green (durable rule #5).
  *   - Freshness: `handoff-result.json` must not be OLDER than `current-handoff.md`, otherwise
  *     the handoff was refreshed but the result was forgotten - exactly the failure rule #10
- *     exists to prevent.
+ *     exists to prevent. A validation entry may also declare `expectedExitCode` when the
+ *     recorded non-zero exit is INTENTIONAL (a guard/negative-path probe): a matching value
+ *     is accepted and surfaced via `--verbose`, while a mismatch warns - an "expected
+ *     failure" that stopped failing is precisely the silent regression a handoff must expose.
  *   - `--self-test` builds valid + deliberately-broken fixtures in a temp dir and asserts each
  *     defect is caught, so a green run is evidence rather than an assumption.
  *   - Dependency-free (node builtins only) so it runs in CI and in the pre-commit hook.
@@ -62,6 +65,10 @@ if (has('--help') || has('-h')) {
       '  --verbose       print per-field detail',
       '  --file <path>   validate a specific handoff-result document',
       '  --self-test     prove every validator fires on synthetic fixtures',
+      '',
+      'validation entries are { command, exitCode }; add expectedExitCode when the',
+      'non-zero exit is INTENTIONAL (guard / negative-path probe). A match is accepted',
+      '(reported via --verbose), a mismatch warns.',
       '  -h, --help      this text',
       '',
       'exit codes: 0 ok | 1 problems | 2 setup error',
@@ -168,9 +175,20 @@ function validate(doc) {
       if (typeof v.command !== 'string' || v.command.trim() === '') {
         errors.push(`validation[${i}].command must be a non-empty string`);
       }
+      if ('expectedExitCode' in v && !Number.isInteger(v.expectedExitCode)) {
+        errors.push(`validation[${i}].expectedExitCode must be an integer`);
+      }
       if (!Number.isInteger(v.exitCode)) {
         errors.push(`validation[${i}].exitCode must be an integer`);
-      } else if (v.exitCode !== 0) {
+      } else if (v.exitCode === 0) {
+        // green run - nothing to report
+      } else if (Number.isInteger(v.expectedExitCode) && v.expectedExitCode === v.exitCode) {
+        info.push(`validation[${i}] records an INTENTIONAL failure (exit ${v.exitCode}): ${v.command}`);
+      } else if (Number.isInteger(v.expectedExitCode)) {
+        warnings.push(
+          `validation[${i}] expected exit ${v.expectedExitCode} but recorded exit ${v.exitCode}: ${v.command}`,
+        );
+      } else {
         warnings.push(`validation[${i}] recorded a FAILING command (exit ${v.exitCode}): ${v.command}`);
       }
     });
@@ -355,6 +373,44 @@ const DEFECT_CASES = [
     kind: 'warnings',
     needle: 'recorded a FAILING command',
     mutate: (d) => ({ ...d, validation: [{ command: 'npm run gate', exitCode: 1 }] }),
+  },
+  {
+    id: 'validation-intentional-failure-accepted',
+    kind: 'info',
+    needle: 'records an INTENTIONAL failure',
+    mutate: (d) => ({
+      ...d,
+      validation: [
+        { command: 'node tools/verify-tools.mjs --only typo.mjs --quiet', exitCode: 1, expectedExitCode: 1 },
+      ],
+    }),
+  },
+  {
+    id: 'validation-intentional-failure-not-warned',
+    kind: 'info-none',
+    needle: 'recorded a FAILING command',
+    mutate: (d) => ({
+      ...d,
+      validation: [{ command: 'node tools/x.mjs --bad', exitCode: 2, expectedExitCode: 2 }],
+    }),
+  },
+  {
+    id: 'validation-expected-exit-mismatch',
+    kind: 'warnings',
+    needle: 'expected exit 1 but recorded exit 2',
+    mutate: (d) => ({
+      ...d,
+      validation: [{ command: 'node tools/x.mjs --bad', exitCode: 2, expectedExitCode: 1 }],
+    }),
+  },
+  {
+    id: 'validation-expected-exit-not-integer',
+    kind: 'errors',
+    needle: 'validation[0].expectedExitCode must be an integer',
+    mutate: (d) => ({
+      ...d,
+      validation: [{ command: 'node tools/x.mjs', exitCode: 1, expectedExitCode: '1' }],
+    }),
   },
   {
     id: 'needs-decision-but-completed',

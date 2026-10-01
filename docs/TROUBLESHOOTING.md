@@ -217,6 +217,41 @@ runner setup error (exit 2) *before* any probe runs.
 
 ---
 
+### handoff-check `--strict` fails on a handoff that records a guard probe
+
+**Symptom:** `node tools/handoff-check.mjs --strict` exits 1 with
+`validation[N] recorded a FAILING command (exit 1): node tools/verify-tools.mjs --only typo.mjs --quiet`
+even though that non-zero exit is exactly what the probe is *supposed* to prove.
+
+**Why (v2.2 `expectedExitCode`):** every recorded non-zero `exitCode` used to be a
+warning under any mode, so the only way to keep `--strict` green was to delete the
+negative-path evidence — the check was quietly rewarding a less honest handoff.
+
+**Fix:** declare the exit you intend to observe on the entry —
+
+```json
+{
+  "command": "node tools/verify-tools.mjs --only typo.mjs --quiet (guard: FAIL no-tools-matched, exit 1)",
+  "exitCode": 1,
+  "expectedExitCode": 1
+}
+```
+
+| recorded `exitCode` | declared `expectedExitCode` | verdict |
+|---|---|---|
+| `0` | — | silent (green) |
+| non-zero | equal | accepted — `--verbose` prints it as an INTENTIONAL failure |
+| non-zero | different | warning: `expected exit X but recorded exit Y` |
+| non-zero | absent | warning, exactly as before |
+| any | non-integer (e.g. `"1"`) | error: `validation[N].expectedExitCode must be an integer` |
+
+**Do not "fix" this by deleting the row.** A mismatch is the point of the feature:
+it means the guard's behaviour drifted (a probe that used to exit 1 now exits 2),
+which is real information. Run `node tools/handoff-check.mjs --verbose` to see the
+accepted intentional failures alongside the green ones.
+
+---
+
 ## General Issues
 
 ### Git Push Rejected

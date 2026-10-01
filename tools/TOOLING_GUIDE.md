@@ -159,6 +159,50 @@ npm run scan:staged                          # scan staged only
 
 ---
 
+### `tools/handoff-check.mjs` — Session Handoff Contract
+
+**Purpose:** Validate `.renitor/handoff-result.json` against the documented schema
+(durable rule 10) — required keys, `schema` version, `status` vocabulary, `summary`
+length, absolute-ish `changedPaths`, validation-proof + lifecycle coherence,
+unknown-key rejection — plus handoff **freshness** (default 24h). Tolerates the
+PS 5.1 UTF-8 BOM writing trap and degrades to `skipped (machine-local)` when
+`.renitor/` is absent (it is gitignored), so CI stays green on a fresh clone.
+
+**Flags:** `--file <path>` · `--strict` (warnings become failures) · `--json` ·
+`--quiet` (findings only — hooks / CI) · `--verbose` (per-field detail, including
+accepted intentional failures) · `--self-test` (24 defect fixtures + 4 freshness
+cases + 3 loader cases) · `-h/--help`
+
+**Truthful evidence for intentional non-zero exits (v2.2, 2026-10-01):** an entry
+is `{ command, exitCode }`; add an integer `expectedExitCode` when the non-zero
+exit is *by design* (a guard or negative-path probe — e.g. `--only <typo>` → 1,
+`--max-age-hours soon` → 2):
+
+| recorded | declared | verdict |
+|---|---|---|
+| `0` | — | silent (green) |
+| non-zero | equal | **accepted** — `--verbose` prints it as an INTENTIONAL failure |
+| non-zero | different | **warning** (`expected exit X but recorded exit Y`) |
+| non-zero | absent | warning (unchanged behaviour) |
+| any | non-integer | **error** |
+
+So the handoff can record *both* green and deliberately-red probes without either
+hiding them or tripping its own strict check.
+
+**Usage:**
+```powershell
+node tools/handoff-check.mjs --quiet      # hooks / CI (findings only)
+node tools/handoff-check.mjs --strict     # warnings become failures (exit 1)
+node tools/handoff-check.mjs --verbose    # per-field detail + accepted failures
+node tools/handoff-check.mjs --self-test  # prove every validator fires
+npm run check:handoff                     # npm alias
+```
+
+**Wired into:** `multi-os-gate.yml` (Handoff schema check, `--quiet`), the
+`verify-tools.mjs` smoke matrix (`--quiet`), `npm run check:handoff`
+
+---
+
 ### `tools/bundle-trend.cjs` — Bundle Size Ledger
 
 **Purpose:** Bundle-size tracking + regression gate.
