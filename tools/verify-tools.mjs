@@ -446,16 +446,27 @@ if (invalidMaxAge(maxAgeHours)) {
  * BEFORE any work, so a conformant tool never scans, scaffolds or spawns here.
  */
 async function checkCliContract() {
-  let tools;
+  // Node tools that live OUTSIDE tools/ and are therefore not found by the
+  // directory scan. They are held to the same contract and must be listed
+  // explicitly — that scan's blind spot is exactly how .husky/js-gate.mjs
+  // shipped a `--help` that exited 0 printing nothing while ignoring every flag.
+  // Explicit and short on purpose: an entry here is a standing claim that this
+  // out-of-tree file exposes a CLI, so adding one should be a deliberate act.
+  const EXTRA_TOOLS = ['.husky/js-gate.mjs'];
+
+  let scanned;
   try {
-    tools = fs
+    scanned = fs
       .readdirSync(TOOLS_DIR)
       .filter((f) => /\.(mjs|cjs)$/.test(f))
-      .sort();
+      .sort()
+      .map((f) => `tools/${f}`);
   } catch (e) {
     console.error(`verify-tools: cannot list tools/ — ${e.message}`);
     process.exit(2);
   }
+  // Repo-relative paths throughout, so an entry can live anywhere (tools/ or not).
+  const tools = [...scanned, ...EXTRA_TOOLS];
 
   // Probes run CONCURRENTLY (bounded pool). Sequentially this was 38 serial
   // Node cold-starts, which dominated the gate on a loaded machine; the probes
@@ -468,7 +479,7 @@ async function checkCliContract() {
     new Promise((resolve) => {
       execFile(
         process.execPath,
-        [path.join(TOOLS_DIR, tool), ...args],
+        [path.join(ROOT, tool), ...args],
         { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: PROBE_TIMEOUT_MS },
         (err, stdout, stderr) => {
           // No error => the tool exited 0, i.e. it ACCEPTED the unknown flag.

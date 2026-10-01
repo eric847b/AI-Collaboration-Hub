@@ -10,6 +10,48 @@ import { dirname, join, parse, sep } from 'node:path';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 
+// ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
+// This tool takes NO flags: its input is a newline-separated file list on stdin.
+// It previously ignored argv entirely, so `--help` exited 0 printing NOTHING
+// and any typo'd flag was silently swallowed — the exact silent-ignore failure
+// class the CLI contract exists to prevent, sitting in the pre-commit gate
+// itself. Parsed BEFORE the stdin read so --help never blocks waiting on input.
+const argv = process.argv.slice(2);
+
+function usage() {
+  console.log(
+    [
+      'js-gate.mjs - pre-commit JS syntax gate (single process, zero dependencies)',
+      '',
+      'Usage: printf \'%s\\n\' <files> | node .husky/js-gate.mjs',
+      '',
+      'Reads one file path per line from STDIN (space-safe) and syntax-checks each:',
+      '  - classic scripts (.js/.cjs) in-process via vm.Script (BOM-tolerant;',
+      '    `import` identifiers neutralized in *.user.js)',
+      '  - ESM (.mjs, or .js in a type:module tree) via one `node --check` spawn',
+      '',
+      'Flags: none. Any argument is a usage error.',
+      '  --help, -h   print this text and exit 0',
+      '',
+      'Exit codes: 0 = all files parsed, 1 = at least one syntax error.',
+      'Unknown flags and unexpected arguments exit 2.',
+    ].join('\n')
+  );
+}
+
+for (const a of argv) {
+  if (a === '--help' || a === '-h') {
+    usage();
+    process.exit(0);
+  }
+  if (a.startsWith('-')) {
+    console.error(`[pre-commit] js-gate: unknown flag "${a}" - see \`node .husky/js-gate.mjs --help\``);
+    process.exit(2);
+  }
+  console.error(`[pre-commit] js-gate: unexpected argument "${a}" - input arrives on STDIN, not argv (see --help)`);
+  process.exit(2);
+}
+
 const files = [];
 for await (const line of createInterface({ input: process.stdin })) {
   const t = line.trim();
