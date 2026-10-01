@@ -103,6 +103,20 @@ if (Test-Path 'tools/dependabot-check.mjs') {
     else { Fail "dependabot coverage gaps:`n$dcOut" }
 } else { Warn 'tools/dependabot-check.mjs absent - dependabot coverage skipped' }
 
+# ---- Tool CLI contract (Round 12 D) ---------------------------------
+# tools/verify-tools.mjs --check-cli asserts every tools/*.mjs|*.cjs answers
+# `--help` with exit 0 and REJECTS an unknown flag with a non-zero usage exit.
+# This is a FAILURE, not a warning: a tool that silently ignores a typo'd flag
+# (--stric, --dryrun, --stagd, --jsno) still reports a confident exit 0, so the
+# mistake is invisible until it ships a wrong answer. Cheap by construction -
+# an unknown flag must be rejected before any tool does real work.
+Log "`nTool CLI Contract:" Yellow
+if (Test-Path 'tools/verify-tools.mjs') {
+    $cliOut = & node 'tools/verify-tools.mjs' --check-cli --quiet 2>&1 | Out-String
+    if ($LASTEXITCODE -eq 0) { Ok 'all tools honor the --help / reject-unknown contract' }
+    else { Fail "tools do not honor the CLI flag contract:`n$cliOut" }
+} else { Warn 'tools/verify-tools.mjs absent - CLI contract check skipped' }
+
 # ---- Node engines vs runtime ----------------------------------------
 Log "`nNode Engines Check:" Yellow
 $pkgRaw = Get-Content 'package.json' -Raw

@@ -33,7 +33,7 @@
     "telemetry:report": "node tools/telemetry-collector.mjs report",
     "telemetry:prune": "node tools/telemetry-collector.mjs prune --keep 5000 --dry-run",
     "telemetry:selftest": "node tools/telemetry-collector.mjs --self-test",
-    "tools:selftest": "node tools/secret-scan.mjs --self-test && node tools/handoff-check.mjs --self-test && node tools/workflow-audit.mjs --self-test && node tools/verify-tools.mjs --self-test && node tools/telemetry-collector.mjs --self-test && node tools/telemetry-export.mjs --self-test",
+    "tools:selftest": "node tools/secret-scan.mjs --self-test && node tools/handoff-check.mjs --self-test && node tools/workflow-audit.mjs --self-test && node tools/verify-tools.mjs --self-test && node tools/verify-tools.mjs --check-cli --quiet && node tools/telemetry-collector.mjs --self-test && node tools/telemetry-export.mjs --self-test",
     "prepare": "git config core.hooksPath .husky"
   },
   "version": "1.0.0",

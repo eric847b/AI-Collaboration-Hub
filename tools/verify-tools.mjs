@@ -40,7 +40,7 @@
  * under --strict; an unmatched `--only` selector counts as a failure) · 2 runner
  * setup error (cannot list tools/, invalid `--max-age-hours`).
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -445,7 +445,7 @@ if (invalidMaxAge(maxAgeHours)) {
  * Both probes are cheap and side-effect free: an unknown flag must be rejected
  * BEFORE any work, so a conformant tool never scans, scaffolds or spawns here.
  */
-function checkCliContract() {
+async function checkCliContract() {
   let tools;
   try {
     tools = fs
@@ -457,38 +457,57 @@ function checkCliContract() {
     process.exit(2);
   }
 
+  // Probes run CONCURRENTLY (bounded pool). Sequentially this was 38 serial
+  // Node cold-starts, which dominated the gate on a loaded machine; the probes
+  // are independent read-only processes, so there is nothing to serialize. A
+  // bounded pool keeps the burst small enough not to starve the rest of the box.
+  const PROBE_TIMEOUT_MS = 10000;
+  const PROBE_CONCURRENCY = 6;
+
   const probe = (tool, args) =>
-    execFileSync(process.execPath, [path.join(TOOLS_DIR, tool), ...args], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 60000,
+    new Promise((resolve) => {
+      execFile(
+        process.execPath,
+        [path.join(TOOLS_DIR, tool), ...args],
+        { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: PROBE_TIMEOUT_MS },
+        (err, stdout, stderr) => {
+          // No error => the tool exited 0, i.e. it ACCEPTED the unknown flag.
+          if (!err) return resolve(0);
+          // Non-zero exit is a rejection and perfectly normal here. execFile
+          // reports it as an Error carrying `.code` (and `.status`), NOT
+          // reliably `.status` — reading only `.status` yielded null for a
+          // clean exit-2 and made every tool look broken.
+          const code = err.code ?? err.status;
+          if (typeof code === 'number') return resolve(code);
+          // Killed by the timeout, or died on a signal: a hang, still a failure.
+          return resolve(`signal:${err.signal ?? 'unknown'}`);
+        }
+      );
     });
 
-  const rows = [];
+  const rows = new Array(tools.length);
+  let cursor = 0;
   let failed = 0;
-  for (const tool of tools) {
-    let helpCode;
-    let badCode;
-    try {
-      probe(tool, ['--help']);
-      helpCode = 0;
-    } catch (e) {
-      // A hang or a signal is also a contract failure; surface it as such.
-      helpCode = e.status ?? `signal:${e.signal}`;
+  const worker = async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= tools.length) return;
+      const tool = tools[i];
+      const [helpCode, badCode] = await Promise.all([
+        probe(tool, ['--help']),
+        // Accepted (0) means a silently-ignored typo — the bug this catches.
+        probe(tool, ['--definitely-not-a-flag']),
+      ]);
+      const helpOk = helpCode === 0;
+      const badOk = typeof badCode === 'number' && badCode !== 0;
+      const ok = helpOk && badOk;
+      if (!ok) failed += 1;
+      rows[i] = { tool, help: helpCode, unknown: badCode, ok };
     }
-    try {
-      probe(tool, ['--definitely-not-a-flag']);
-      badCode = 0; // accepted the unknown flag → silent-ignore bug
-    } catch (e) {
-      badCode = e.status ?? `signal:${e.signal}`;
-    }
-    const helpOk = helpCode === 0;
-    const badOk = typeof badCode === 'number' && badCode !== 0;
-    const ok = helpOk && badOk;
-    if (!ok) failed += 1;
-    rows.push({ tool, help: helpCode, unknown: badCode, ok });
-  }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(PROBE_CONCURRENCY, tools.length) }, () => worker())
+  );
 
   if (asJson) {
     console.log(JSON.stringify({ schema: 1, mode: 'check-cli', rows, failed }, null, 2));
@@ -508,7 +527,9 @@ function checkCliContract() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-if (has('--check-cli')) checkCliContract();
+// Awaited: the probe pool is async, and an un-awaited call would let the
+// module finish (and the process exit) before any probe had reported.
+if (has('--check-cli')) await checkCliContract();
 if (has('--list')) {
   for (const [tool, args] of Object.entries(SMOKE)) console.log(`${tool}${args.length ? ` ${args.join(' ')}` : ''}`);
   console.log(`${Object.keys(SMOKE).length} smoke probes; every other tool is syntax-checked only`);

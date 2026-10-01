@@ -57,6 +57,8 @@ jobs:
       - name: Fleet parity (skipped automatically when standalone clones are absent)
         if: runner.os == 'Windows'
         run: node tools/sync-parity.mjs check --strict
+      - name: Tool CLI contract - every tool answers --help and rejects unknown flags
+        run: node tools/verify-tools.mjs --check-cli --quiet
       - name: OPS dashboard smoke (both OS)
         run: node tools/ops-dashboard.mjs --out docs/metrics/OPS-DASHBOARD.md
       - name: Upload OPS dashboard
