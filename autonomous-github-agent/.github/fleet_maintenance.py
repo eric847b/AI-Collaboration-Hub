@@ -1,8 +1,8 @@
 """
-Fleet Maintenance v1.1 — cross-repository hygiene plan engine.
+Fleet Maintenance v1.1.1 — cross-repository hygiene plan engine.
 
-Default scope: Sigma FLEET (5 repos). Optional --scope all discovers every
-repository owned by the authenticated account (from #317 capability).
+Default scope: shared fleet_config CORE_FLEET. Optional --scope all discovers every
+repository owned by the authenticated account.
 
 Modes:
   plan       — inspect + report only (default, fail-closed)
@@ -21,18 +21,24 @@ from typing import Any
 
 import requests
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
-FLEET = [
-    "eric847b/autonomous-github-agent",
-    "eric847b/singularity-operator",
-    "eric847b/AI-Collaboration-Hub",
-    "eric847b/zero-cost-wealth-playbook-tool",
-    "eric847b/modular-hub-modernization",
-]
+try:
+    from fleet_config import get_fleet, get_host_repo
+
+    FLEET = get_fleet(extended=False)
+    HOST_REPO = get_host_repo()
+except Exception:
+    FLEET = [
+        "eric847b/autonomous-github-agent",
+        "eric847b/singularity-operator",
+        "eric847b/AI-Collaboration-Hub",
+        "eric847b/zero-cost-wealth-playbook-tool",
+        "eric847b/modular-hub-modernization",
+    ]
+    HOST_REPO = os.getenv("GITHUB_REPOSITORY", "eric847b/autonomous-github-agent")
 
 OWNER = os.getenv("GITHUB_OWNER", "eric847b")
-HOST_REPO = os.getenv("GITHUB_REPOSITORY", "eric847b/autonomous-github-agent")
 MAX_REPOS = int(os.getenv("FLEET_MAINTENANCE_MAX_REPOS", "100"))
 
 REQUIRED_ROOT_FILES = ["README.md", "LICENSE", "SECURITY.md", ".gitignore"]
@@ -109,7 +115,7 @@ def discover_owned_repos(headers: dict, max_repos: int = MAX_REPOS) -> list[str]
             if not batch:
                 break
             for r in batch:
-                login = ((r.get("owner") or {}).get("login") or "")
+                login = (r.get("owner") or {}).get("login") or ""
                 full = r.get("full_name") or ""
                 if login == OWNER and full:
                     repos.append(full)
@@ -160,7 +166,6 @@ def inspect_repo(repo: str, headers: dict | None = None) -> RepoReport:
                 )
             )
 
-    # Soft CI signal (host only via workflows list would be heavy; skip if no .github)
     if ".github" not in name_set:
         findings.append(
             Finding(
@@ -268,7 +273,7 @@ def main() -> None:
         "--scope",
         choices=["fleet", "all"],
         default="fleet",
-        help="fleet = Sigma 5; all = every owned repo visible to token",
+        help="fleet = shared CORE_FLEET; all = every owned repo visible to token",
     )
     parser.add_argument("--dry-run", action="store_true", default=True)
     parser.add_argument("--no-dry-run", action="store_true")

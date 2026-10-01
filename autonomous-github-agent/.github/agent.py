@@ -47,9 +47,9 @@ def main() -> None:
     rc = int(run_once())
     try:
         from scripts.agent_profile_persist import persist_profile_to_repo
-        p=Path(ROOT.parent / ".agent_profile.json")
-        profile=json.loads(p.read_text()) if p.exists() else {}
-        result=persist_profile_to_repo(profile,os.getenv("GITHUB_REPOSITORY",""))
+        p = Path(ROOT.parent / ".agent_profile.json")
+        profile = json.loads(p.read_text()) if p.exists() else {}
+        result = persist_profile_to_repo(profile, os.getenv("GITHUB_REPOSITORY", ""))
         print(f"[profile-persist] {result}")
     except Exception as exc:
         print(f"[profile-persist] skipped: {str(exc)[:120]}")

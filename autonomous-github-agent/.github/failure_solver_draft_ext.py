@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import re
 
 import requests
@@ -26,12 +27,8 @@ def _existing_pr(solver, fingerprint: str) -> dict | None:
     if not solver.headers:
         return None
     try:
-        status, data = solver._gh_get(
-            f"https://api.github.com/repos/{solver.repo_name}/pulls",
-            {"state": "open", "per_page": 100},
-        )
-        if status != 200 or not data:
-            return None
+        status, data = solver._gh_get(f"https://api.github.com/repos/{solver.repo_name}/pulls", {"state": "open", "per_page": 100})
+        if status != 200 or not data: return None
         for pr in data:
             body = str(pr.get("body") or "")
             if f"FailureSolver fingerprint: `{fingerprint}`" in body:
@@ -42,16 +39,22 @@ def _existing_pr(solver, fingerprint: str) -> dict | None:
 
 
 def create_draft_pr_for_safe_class(solver, analysis: dict) -> dict | None:
-    """Create one review-only PR per stable failure fingerprint; never modify production code."""
-    if not solver.headers:
-        return None
+    """Create at most one review-only PR per run and fingerprint; never production code."""
+    if not solver.headers: return None
     top = analysis.get("classifications") or [{}]
     cls = top[0].get("class", "") if top else ""
-    if cls not in SAFE_AUTO_FIX_CLASSES or analysis.get("top_score", 0) < 70:
-        return None
+    if cls not in SAFE_AUTO_FIX_CLASSES or analysis.get("top_score", 0) < 70: return None
 
     run = analysis.get("run") or {}
-    run_id = run.get("id", "unknown")
+    run_id = str(run.get("id") or os.getenv("GITHUB_RUN_ID") or "unknown")
+    max_drafts = max(1, int(os.getenv("AGENT_MAX_DRAFT_PRS", "1")))
+    if solver.profile.get("draft_pr_run") != run_id:
+        solver.profile["draft_pr_run"] = run_id
+        solver.profile["draft_prs_this_run"] = 0
+    if solver.profile.get("draft_prs_this_run", 0) >= max_drafts:
+        solver.profile["draft_prs_deduped"] = solver.profile.get("draft_prs_deduped", 0) + 1
+        return {"class": cls, "status": "budget_exhausted", "max_draft_prs": max_drafts}
+
     fingerprint = _fingerprint(analysis, cls)
     existing = _existing_pr(solver, fingerprint)
     if existing:
@@ -65,64 +68,41 @@ def create_draft_pr_for_safe_class(solver, analysis: dict) -> dict | None:
         "missing_file": "Add Path.exists() guards; create empty placeholder where design expects it; prefer fail-closed defaults.",
     }
     content = (
-        f"# Auto-remediation note: {cls}\n\n"
-        f"Detected by FailureSolver.\n\n"
-        f"## Suggested minimal change\n{notes.get(cls, 'Investigate logs.')}\n\n"
-        f"## Context\n- Source run: {run.get('html_url', 'n/a')}\n"
-        f"- Run id: `{run_id}`\n- Conclusion: `{run.get('conclusion')}`\n"
-        f"- Branch: `{run.get('head_branch')}`\n- Fingerprint: `{fingerprint}`\n\n"
-        f"Review-only artifact. No production code modified automatically.\n"
+        f"# Auto-remediation note: {cls}\n\nDetected by FailureSolver.\n\n"
+        f"## Suggested minimal change\n{notes[cls]}\n\n## Context\n"
+        f"- Source run: {run.get('html_url', 'n/a')}\n- Run id: `{run_id}`\n"
+        f"- Conclusion: `{run.get('conclusion')}`\n- Branch: `{run.get('head_branch')}`\n"
+        f"- Fingerprint: `{fingerprint}`\n\nReview-only artifact. No production code modified automatically.\n"
     )
     branch_name = f"auto-fix/{cls}-{fingerprint}"
+    created_branch = False
     try:
         status, ref_data = solver._gh_get(f"https://api.github.com/repos/{solver.repo_name}/git/ref/heads/main")
-        if status != 200 or not ref_data:
-            return {"error": "cannot_get_main_ref"}
+        if status != 200 or not ref_data: return {"error": "cannot_get_main_ref"}
         main_sha = (ref_data.get("object") or {}).get("sha")
-        if not main_sha:
-            return {"error": "no_main_sha"}
-        cr = requests.post(
-            f"https://api.github.com/repos/{solver.repo_name}/git/refs",
-            headers=solver.headers,
-            json={"ref": f"refs/heads/{branch_name}", "sha": main_sha},
-            timeout=20,
-        )
-        if cr.status_code not in (200, 201):
-            return {"error": f"create_branch:{cr.status_code}"}
+        if not main_sha: return {"error": "no_main_sha"}
+        cr = requests.post(f"https://api.github.com/repos/{solver.repo_name}/git/refs", headers=solver.headers, json={"ref": f"refs/heads/{branch_name}", "sha": main_sha}, timeout=20)
+        if cr.status_code not in (200, 201): return {"error": f"create_branch:{cr.status_code}"}
+        created_branch = True
         put = requests.put(
-            f"https://api.github.com/repos/{solver.repo_name}/contents/{path}",
-            headers=solver.headers,
-            json={
-                "message": f"chore(auto-fix): {cls} remediation note [FailureSolver]",
-                "content": base64.b64encode(content.encode()).decode("ascii"),
-                "branch": branch_name,
-            },
-            timeout=30,
+            f"https://api.github.com/repos/{solver.repo_name}/contents/{path}", headers=solver.headers,
+            json={"message": f"chore(auto-fix): {cls} remediation note [FailureSolver]", "content": base64.b64encode(content.encode()).decode("ascii"), "branch": branch_name}, timeout=30,
         )
-        if put.status_code not in (200, 201):
-            return {"error": f"put_file:{put.status_code}"}
+        if put.status_code not in (200, 201): raise RuntimeError(f"put_file:{put.status_code}")
         pr = requests.post(
-            f"https://api.github.com/repos/{solver.repo_name}/pulls",
-            headers=solver.headers,
-            json={
-                "title": f"🛠️ Auto-fix draft: {cls} ({fingerprint})",
-                "body": (
-                    f"FailureSolver detected **{cls}** with score {analysis.get('top_score', 0):.0f}.\n\n"
-                    f"**Run:** {run.get('html_url')}\n"
-                    f"**FailureSolver fingerprint: `{fingerprint}`**\n\n"
-                    f"Review-only remediation note. No production code modified automatically."
-                ),
-                "head": branch_name,
-                "base": "main",
-                "draft": True,
-            },
-            timeout=20,
+            f"https://api.github.com/repos/{solver.repo_name}/pulls", headers=solver.headers,
+            json={"title": f"🛠️ Auto-fix draft: {cls} ({fingerprint})", "body": f"FailureSolver detected **{cls}** with score {analysis.get('top_score', 0):.0f}.\n\n**Run:** {run.get('html_url')}\n**FailureSolver fingerprint: `{fingerprint}`**\n\nReview-only remediation note. No production code modified automatically.", "head": branch_name, "base": "main", "draft": True}, timeout=20,
         )
-        if pr.status_code in (200, 201):
-            data = pr.json()
-            solver.profile["draft_prs_created"] = solver.profile.get("draft_prs_created", 0) + 1
-            return {"number": data.get("number"), "html_url": data.get("html_url"), "class": cls, "branch": branch_name, "fingerprint": fingerprint}
-        return {"error": f"create_pr:{pr.status_code}"}
+        if pr.status_code not in (200, 201): raise RuntimeError(f"create_pr:{pr.status_code}")
+        data = pr.json()
+        solver.profile["draft_prs_created"] = solver.profile.get("draft_prs_created", 0) + 1
+        solver.profile["draft_prs_this_run"] = solver.profile.get("draft_prs_this_run", 0) + 1
+        return {"number": data.get("number"), "html_url": data.get("html_url"), "class": cls, "branch": branch_name, "fingerprint": fingerprint}
     except Exception as e:
+        if created_branch:
+            try:
+                requests.delete(f"https://api.github.com/repos/{solver.repo_name}/git/refs/heads/{branch_name}", headers=solver.headers, timeout=15)
+            except Exception as cleanup_error:
+                solver.record_error(cleanup_error, "draft_branch_cleanup")
         solver.record_error(e, "create_draft_pr")
         return {"error": str(e)[:120]}
