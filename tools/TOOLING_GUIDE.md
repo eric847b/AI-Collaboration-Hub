@@ -54,22 +54,28 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-quality.ps1
 
 ### `tools/verify-tools.mjs` — Tool Health Check
 
-**Purpose:** One-command health check for all `tools/*.mjs|*.cjs` — syntax + read-only smoke runs.
+**Purpose:** One-command health check for all `tools/*.mjs|*.cjs` — syntax + read-only smoke runs, with **tiered verdicts**.
 
 **Features:**
-- `node --check` syntax validation for all tools
-- Read-only smoke runs (safe, no side effects)
-- `--strict` mode also fails on parity DIFFs
-- 12 tools verified green
+- `node --check` syntax validation for every tool
+- Read-only smoke matrix (14 probes; server-spawning tools stay syntax-checked only) — the matrix is asserted side-effect free by `--self-test` (no `sync`/`collect`/`push`/`--update-baseline`/`serve`/… probe can ever run)
+- **Tiered classification (v2, 2026-10-01):** `ok` · `warn` (advisory ops signal — a stale OPS-dashboard stamp, which the dashboard's own per-section markers already flag for regeneration) · `fail` (real drift: broken link, secret, uncovered manifest, malformed handoff, missing dashboard artifact *or* missing section markers, syntax error). Only `fail` breaks the default exit code, so a >24h-old dashboard timestamp no longer masquerades as a tool defect
+- `--strict` promotes warns to failures (also appends `--strict` to the `sync-parity.mjs check` probe)
+- `--json` machine-readable report (schema 1), `--quiet` (problems + one summary line), `--list` (print the smoke matrix), `--self-test` (24 unit checks over the classifier, exit-code algebra, `--only` selector and arg plumbing), `--only <tool[,tool]>` (restrict the run to specific tool basenames — triage one probe without paying for 19), `--max-age-hours <h>` forwarded to `ops-dashboard.mjs --check`
 
 **Usage:**
 ```powershell
-node tools/verify-tools.mjs          # basic check
-node tools/verify-tools.mjs --strict # strict mode (fails on parity diffs)
-npm run tools:verify                 # npm alias
+node tools/verify-tools.mjs                       # syntax + smoke of every tool
+node tools/verify-tools.mjs --strict              # warns (stale dashboard, parity DIFF) also fail
+node tools/verify-tools.mjs --json                # machine-readable report
+node tools/verify-tools.mjs --only ops-dashboard.mjs --max-age-hours 0 --strict  # isolate one probe
+node tools/verify-tools.mjs --self-test           # unit-test the classifier, run nothing
+npm run tools:verify                              # npm alias
 ```
 
-**Wired into:** `workspace-gate`, `multi-os-gate.yml`, `verify-tools` VS Code task
+**Verdict triage (measured 2026-10-01):** with the workspace dashboard's stamps past their 24h window the same run reports `1 warn, 0 failed` and exits **0**; adding `--strict` on that identical warn exits **1** — the promotion path, proven in isolation via `--only ops-dashboard.mjs --max-age-hours 0`.
+
+**Wired into:** `npm run tools:verify` / `tools:verify:strict` / `tools:verify:json`, `npm run tools:selftest` (self-test leg), the `verify-tools` VS Code task
 
 ---
 

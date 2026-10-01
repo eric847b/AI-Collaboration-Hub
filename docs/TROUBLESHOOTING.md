@@ -162,6 +162,34 @@ pip install pytest
    node tools/workflow-audit.mjs        # Workflow audit
    ```
 
+### verify-tools reports a `warn` (a stale dashboard no longer fails the run)
+
+**Symptom:** `node tools/verify-tools.mjs` prints
+`WARN  ops-dashboard.mjs --check (dashboard-stale)` with a summary of
+`1 warn`, exit code 0. Verify-tools v1 exited 1 in this situation.
+
+**Why:** the OPS dashboard stamps every section with a marker
+(`<!-- ops-section:<name> ts:<iso8601> -->`) and its own `--check` mode fails
+once any stamp is older than 24h. That is an *ops signal* (the refresh cron has
+not run), not a tool defect - regenerating the dashboard preserves the stamps of
+sections whose content did not change, so a fresh-but-unchanged dashboard keeps
+reporting `STALE` until the cron's `--refresh` pass bumps them. `verify-tools` v2
+therefore classifies it as `warn` (advisory) instead of `fail`.
+
+**Fix / pick your strictness:**
+
+| Situation | Command |
+|-----------|---------|
+| Refresh the stamps (also clears `--check`) | `node tools/ops-dashboard.mjs` then `node tools/ops-dashboard.mjs --refresh` |
+| You want staleness to block | `node tools/verify-tools.mjs --strict` (or `npm run tools:verify:strict`) |
+| Triage which failure you actually have | `node tools/verify-tools.mjs --json` - inspect `rows[].reason` and `summary.warn` |
+| Confirm it is structural, not staleness | `node tools/ops-dashboard.mjs --check` - `dashboard-output-missing` and `dashboard-markers-missing` are hard failures, the `STALE` lines are not |
+
+**Guard rails already in place:** `--self-test` unit-tests exactly this
+classification (stale warns; missing artifact/markers fail; exit-code algebra
+under `--strict`), and the smoke matrix is asserted free of mutating probes, so
+no probe can sync, collect, or rewrite state.
+
 ---
 
 ## General Issues
