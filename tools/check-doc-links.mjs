@@ -9,11 +9,68 @@ import { fileURLToPath } from 'node:url';
  *
  *   node tools/check-doc-links.mjs            # report + exit 1 on broken links
  *   node tools/check-doc-links.mjs --quiet    # only print broken links
+ *   node tools/check-doc-links.mjs --help     # usage (Round 12 D: unknown flags exit 2)
  *
  * Skips: node_modules/.git/build/dist/.venv/docs/api (generated), external URLs, pure anchors.
  */
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const quiet = process.argv.includes('--quiet');
+
+// ── Non-interactive argv tokenizer (Round 12 D hardening) ──────────────
+// Boolean flags only; unknown flags and stray positionals exit 2 instead
+// of being silently ignored. No stdin prompts, ever.
+const argv = process.argv.slice(2);
+const BOOLEAN_FLAGS = new Set(['--quiet']);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!BOOLEAN_FLAGS.has(key)) {
+      console.error(`check-doc-links: unknown flag "${key}" — see \`node tools/check-doc-links.mjs --help\``);
+      process.exit(2);
+    }
+    if (eq >= 0) {
+      console.error(`check-doc-links: flag "${key}" takes no value — see \`node tools/check-doc-links.mjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = true;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'check-doc-links.mjs — verify relative links in tracked Markdown resolve (non-interactive)',
+      '',
+      'Usage: node tools/check-doc-links.mjs [--quiet]',
+      '',
+      'Flags:',
+      '  --quiet   only print broken links (no summary line)',
+      '  --help    print this text and exit 0',
+      '',
+      'Exit codes: 0 = all links resolve, 1 = broken links found, 2 = bad usage.',
+      'Unknown flags and unexpected arguments exit 2.',
+    ].join('\n'),
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length) {
+  console.error(`check-doc-links: unexpected argument "${positionals[0]}" — flags only (see \`node tools/check-doc-links.mjs --help\`)`);
+  process.exit(2);
+}
+const quiet = flags['--quiet'] === true;
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'build', 'dist', '.venv', '.output', 'AppData',
   'docs/api', '.vexp', '.renitor', '.pytest_cache', '.ruff_cache',

@@ -98,8 +98,34 @@ function runSelfTest() {
   if (fails.length > 0) { console.error('new-project --self-test FAIL: ' + fails.join(', ')); process.exit(2); }
   console.log('new-project --self-test PASS (' + must.length + ' files)');
 }
+/**
+ * Explicit flag inventory (Round 12 D hardening). This tool is a generator, so
+ * a silently-ignored typo is the worst kind of failure: `--dryrun` would have
+ * scaffolded real files where the caller expected a dry run. Unknown flags and
+ * stray positionals exit 1 (its documented usage-error code) before any write.
+ */
+const BOOL_FLAGS = new Set(['--force', '--dry-run', '--self-test']);
+const VAL_FLAGS = new Set(['--name', '--out', '--port', '--app-id']);
+
+function rejectBadFlags() {
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--help' || a === '-h') return;
+    if (!a.startsWith('-')) fail(`unexpected argument "${a}" - this tool takes flags only (see --help)`);
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!BOOL_FLAGS.has(key) && !VAL_FLAGS.has(key)) fail(`unknown flag "${key}" - see --help`);
+    if (BOOL_FLAGS.has(key) && eq >= 0) fail(`flag "${key}" takes no value - see --help`);
+    if (VAL_FLAGS.has(key) && eq < 0) {
+      if (i + 1 >= argv.length) fail(`flag "${key}" requires a value - see --help`);
+      i += 1;
+    }
+  }
+}
+
 function runMain() {
   if (has('--help') || argv.includes('-h')) { printHelp(); return; }
+  rejectBadFlags();
   if (has('--self-test')) { runSelfTest(); return; }
   const pname = opt('--name', '');
   if (!pname) fail('missing --name <kebab-name> (or use --self-test / --help)');

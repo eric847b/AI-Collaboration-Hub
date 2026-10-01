@@ -18,11 +18,90 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const args = process.argv.slice(2);
-const opt = (name, def) => {
-  const i = args.indexOf(name);
-  return i >= 0 && i + 1 < args.length ? args[i + 1] : def;
-};
+const argv = process.argv.slice(2);
+
+// ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
+// Every knob is a value flag, accepted as `--flag value` or `--flag=value`.
+// Unknown flags, missing values and stray positionals exit 2 rather than being
+// silently ignored. No stdin prompts.
+const VALUE_FLAGS = new Set([
+  '--url',
+  '--project',
+  '--port',
+  '--requests',
+  '--concurrency',
+  '--timeout-ms',
+  '--max-error-rate',
+  '--max-p95-ms',
+]);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!VALUE_FLAGS.has(key)) {
+      console.error(`load-test: unknown flag "${key}" - see \`node tools/load-test.mjs --help\``);
+      process.exit(2);
+    }
+    let value;
+    if (eq >= 0) {
+      value = a.slice(eq + 1);
+    } else if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+      value = argv[i + 1];
+      i += 1;
+    } else {
+      console.error(`load-test: flag "${key}" requires a value - see \`node tools/load-test.mjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = value;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'load-test.mjs - dependency-free load tester for preview builds (plain Node http)',
+      '',
+      'Usage: node tools/load-test.mjs --project <app> [options]',
+      '       node tools/load-test.mjs --url http://127.0.0.1:8080/ [options]',
+      '',
+      'Flags (all take a value; --flag value or --flag=value):',
+      '  --project <app>          project folder with a built dist/ (starts `vite preview`)',
+      '  --url <url>              target an already-running server instead of spawning preview',
+      '  --port <n>               preview server port (default 4173)',
+      '  --requests <n>           measured request count (default 300)',
+      '  --concurrency <n>        parallel workers (default 15)',
+      '  --timeout-ms <ms>        per-request timeout (default 120000 - slow-laptop budget)',
+      '  --max-error-rate <pct>   error-rate gate, percent (default 1)',
+      '  --max-p95-ms <ms>        p95 latency gate in ms (default 3000)',
+      '  --help                   print this text and exit 0',
+      '',
+      'Exit codes: 0 = pass, 1 = gate violation (error rate or p95), 2 = setup error / bad usage.',
+      'Unknown flags, missing flag values and unexpected arguments exit 2.',
+    ].join('\n')
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length > 0) {
+  console.error(
+    `load-test: unexpected argument "${positionals[0]}" - this tool takes flags only (see \`node tools/load-test.mjs --help\`)`
+  );
+  process.exit(2);
+}
+
+const opt = (name, def) => (flags[name] === undefined ? def : flags[name]);
 
 const urlArg = opt('--url', '');
 const project = opt('--project', '');

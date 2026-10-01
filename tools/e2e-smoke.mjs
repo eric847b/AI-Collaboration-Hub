@@ -18,12 +18,79 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-const opt = (name, def) => {
-  const i = args.indexOf(name);
-  return i >= 0 && i + 1 < args.length ? args[i + 1] : def;
-};
 
-const project = opt('--project', '');
+// ── Non-interactive argv tokenizer (Round 12 D hardening) ──────────────
+// Value flags: --project --port --timeout --marker --route (repeatable).
+// Unknown flags and stray positionals exit 2 instead of being silently
+// ignored. No stdin prompts, ever.
+const VALUE_FLAGS = new Set(['--project', '--port', '--timeout', '--marker', '--route']);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < args.length; i += 1) {
+  const a = args[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!VALUE_FLAGS.has(key)) {
+      console.error(`e2e-smoke: unknown flag "${key}" — see \`node tools/e2e-smoke.mjs --help\``);
+      process.exit(2);
+    }
+    let value;
+    if (eq >= 0) {
+      value = a.slice(eq + 1);
+    } else if (i + 1 < args.length) {
+      value = args[i + 1];
+      i += 1;
+    } else {
+      console.error(`e2e-smoke: flag "${key}" requires a value — see \`node tools/e2e-smoke.mjs --help\``);
+      process.exit(2);
+    }
+    if (key === '--route') {
+      if (!flags['--route']) flags['--route'] = [];
+      flags['--route'].push(value);
+    } else {
+      flags[key] = value;
+    }
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'e2e-smoke.mjs — serve a built Vite app and assert HTTP 200 per route (non-interactive)',
+      '',
+      'Usage: node tools/e2e-smoke.mjs --project <app> [--port <n>] [--timeout <seconds>] [--marker <text>] [--route <path> ...]',
+      '',
+      'Flags:',
+      '  --project <app>      project folder with a built dist/ (required)',
+      '  --port <n>           preview server port (default 4173)',
+      '  --timeout <seconds>  server-start budget (default 600)',
+      '  --marker <text>      substring expected in the response body (warn-only)',
+      '  --route <path>       probe an extra route (repeatable; default "/")',
+      '  --help               print this text and exit 0',
+      '',
+      'Exit codes: 0 = pass, 1 = smoke failure, 2 = setup/bad usage.',
+      'Unknown flags and unexpected arguments exit 2.',
+    ].join('\n'),
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length) {
+  console.error(`e2e-smoke: unexpected argument "${positionals[0]}" — flags only (see \`node tools/e2e-smoke.mjs --help\`)`);
+  process.exit(2);
+}
+
+const project = flags['--project'] || '';
 const pkgPath = path.join(ROOT, project, 'package.json');
 if (!project || !fs.existsSync(pkgPath)) {
   console.error(`e2e-smoke: unknown project "${project || '(none)'}"`);
@@ -34,16 +101,13 @@ if (!fs.existsSync(path.join(ROOT, project, 'dist'))) {
   process.exit(2);
 }
 
-const port = Number(opt('--port', '4173'));
+const port = Number(flags['--port'] ?? '4173');
 // Slow-laptop default: 10 min server-start budget (was 60s). Override with --timeout <seconds>.
-const timeoutMs = Number(opt('--timeout', '600')) * 1000;
-const marker = opt('--marker', '<div id="root"');
+const timeoutMs = Number(flags['--timeout'] ?? '600') * 1000;
+const marker = flags['--marker'] ?? '<div id="root"';
 
 // Repeatable --route <path> probes (synthetic multi-route checks). Default: "/".
-const routes = [];
-for (let i = 0; i < args.length - 1; i++) {
-  if (args[i] === '--route') routes.push(args[i + 1]);
-}
+const routes = flags['--route'] ? [...flags['--route']] : [];
 if (!routes.length) routes.push('/');
 
 function killTree(child) {

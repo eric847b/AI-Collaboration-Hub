@@ -112,11 +112,94 @@ function decodeV8(absPath, projectRoot) {
 const NODE_TEST_PROJECT = 'collabhub-modules';
 
 const argv = process.argv.slice(2);
-const cmd = argv.find((a) => !a.startsWith('--')) || 'report';
+
+// ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
+// Commands are positionals (collect | report | markdown); every knob is a value
+// flag accepted as `--flag value` or `--flag=value`. The previous
+// `argv.find((a) => !a.startsWith('--'))` command lookup mis-read a flag VALUE
+// as the command (`--ledger <p> report` picked `<p>`), so commands are now taken
+// from real positionals only. Unknown flags/commands and missing values exit 2.
+const COMMANDS = ['collect', 'report', 'markdown'];
+const VALUE_FLAGS = new Set(['--ledger', '--note', '--limit', '--out']);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!VALUE_FLAGS.has(key)) {
+      console.error(`coverage-trend: unknown flag "${key}" - see \`node tools/coverage-trend.cjs --help\``);
+      process.exit(2);
+    }
+    let value;
+    if (eq >= 0) {
+      value = a.slice(eq + 1);
+    } else if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+      value = argv[i + 1];
+      i += 1;
+    } else {
+      console.error(`coverage-trend: flag "${key}" requires a value - see \`node tools/coverage-trend.cjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = value;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'coverage-trend.cjs - workspace test-coverage ledger + trend views',
+      '',
+      'Usage: node tools/coverage-trend.cjs <command> [options]',
+      '',
+      'Commands:',
+      '  collect    append one snapshot of every tracked project (the only writer)',
+      '  report     print recent snapshots + per-project lines-% trend (default)',
+      '  markdown   render docs/metrics/coverage-report.md',
+      '',
+      'Flags (all take a value; --flag value or --flag=value):',
+      '  --ledger <path>  ledger file (default docs/metrics/coverage-history.json)',
+      '  --note <text>    free-text note stored with a `collect` snapshot',
+      '  --limit <n>      snapshots shown by `report` (default 5)',
+      '  --out <path>     markdown output (default docs/metrics/coverage-report.md)',
+      '  --help           print this text and exit 0',
+      '',
+      'Reads coverage-summary.json (istanbul) or coverage-final.json (raw V8) - it never',
+      'runs tests. A missing/empty artifact is recorded as "pending", never a failure.',
+      '',
+      'Exit codes: 0 = success (including "nothing collected"), 1 = command failure,',
+      '2 = bad usage. Unknown flags, unknown commands and missing values exit 2.',
+    ].join('\n')
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length > 1) {
+  console.error(
+    `coverage-trend: unexpected argument "${positionals[1]}" - expected at most one command (see \`node tools/coverage-trend.cjs --help\`)`
+  );
+  process.exit(2);
+}
+if (positionals.length === 1 && !COMMANDS.includes(positionals[0])) {
+  console.error(
+    `coverage-trend: unknown command "${positionals[0]}" (expected: ${COMMANDS.join(' | ')}) - see \`node tools/coverage-trend.cjs --help\``
+  );
+  process.exit(2);
+}
+const cmd = positionals[0] || 'report';
 
 function opt(name, def) {
-  const i = argv.indexOf(name);
-  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
+  return flags[name] === undefined ? def : flags[name];
 }
 
 function ledgerPath() {

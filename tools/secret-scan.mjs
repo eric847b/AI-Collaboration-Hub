@@ -267,6 +267,41 @@ exit codes: 0 clean | 1 findings | 2 setup error`);
   process.exit(0);
 }
 
+/**
+ * Explicit flag inventory (Round 12 D hardening). A typo'd flag used to be
+ * silently ignored, so `--stagd` ran a full working-tree scan during a commit
+ * instead of scanning the index. Boolean flags only - no value flags.
+ */
+const SS_BOOL_FLAGS = new Set([
+  '--quiet',
+  '--json',
+  '--strict',
+  '--staged',
+  '--all',
+  '--self-test',
+  '--verbose',
+  '--check-ci',
+  '--list-rules',
+]);
+
+function rejectBadFlags() {
+  for (const a of argv) {
+    if (a === '--help' || a === '-h') return;
+    if (!a.startsWith('-')) {
+      console.error(
+        `secret-scan: unexpected argument "${a}" - this tool takes flags only (see \`node tools/secret-scan.mjs --help\`)`
+      );
+      process.exit(2);
+    }
+    if (!SS_BOOL_FLAGS.has(a)) {
+      console.error(`secret-scan: unknown flag "${a}" - see \`node tools/secret-scan.mjs --help\``);
+      process.exit(2);
+    }
+  }
+}
+
+rejectBadFlags();
+
 if (listRules) {
   console.log('\\n# secret-scan rules');
   console.log('| Rule | Severity | Pattern |');

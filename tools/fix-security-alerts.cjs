@@ -359,15 +359,39 @@ function fetchAlerts() {
 
 /* ---------- dispatch ---------- */
 const USAGE = [
-  'Usage: node fix-security-alerts.cjs <command>',
+  'fix-security-alerts.cjs - close npm Dependabot alerts by patching lockfiles',
+  '',
+  'Usage: node tools/fix-security-alerts.cjs <command>',
+  '',
+  'Commands:',
   '  selftest  semver selftest, no writes',
   '  fetch     npm registry metadata for planned targets -> tmp-reg-meta.json (network)',
   '  alerts    gh dependabot alerts -> tmp-alerts.json (network, gh CLI)',
   '  patch     apply edits to lockfiles + verify (local only; requires fetch first)',
+  '',
+  'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
+  'Unknown flags and unknown commands exit 2.',
 ].join('\n');
-const cmd = process.argv[2];
+const COMMANDS = ['selftest', 'fetch', 'alerts', 'patch'];
+const argv = process.argv.slice(2);
+const cmd = argv.find((a) => !a.startsWith('-'));
+if (argv.includes('--help') || argv.includes('-h')) {
+  console.log(USAGE);
+  process.exit(0);
+}
+for (const a of argv) {
+  if (a.startsWith('-')) {
+    console.error(`fix-security-alerts: unknown flag "${a}" - see \`node tools/fix-security-alerts.cjs --help\``);
+    process.exit(2);
+  }
+}
+if (cmd !== undefined && !COMMANDS.includes(cmd)) {
+  console.error(`fix-security-alerts: unknown command "${cmd}" (expected: ${COMMANDS.join(' | ')})\n`);
+  console.error(USAGE);
+  process.exit(2);
+}
 if (cmd === 'selftest') selftest();
 else if (cmd === 'fetch') fetchMeta().catch(e => { console.error('FETCH FAILED: ' + e.message); process.exit(1); });
 else if (cmd === 'alerts') fetchAlerts();
 else if (cmd === 'patch') { try { applyPlan(); } catch (e) { console.error('PATCH FAILED: ' + e.message); process.exit(1); } }
-else { console.error(USAGE); process.exit(1); }
+else { console.error(USAGE); process.exit(2); }

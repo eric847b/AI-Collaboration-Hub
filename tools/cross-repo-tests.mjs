@@ -39,6 +39,44 @@ const opt = (name, def) => {
 };
 const pairFilter = opt('--pair', null);
 
+/**
+ * Explicit flag inventory (Round 12 D hardening). A typo'd flag used to be
+ * dropped silently, so `--ci` misspelled meant a silent run in lenient mode.
+ * Unknown flags and stray positionals exit 2 (runner setup error) up front.
+ */
+const CI_FLAGS = new Set(['--ci', '--quiet']);
+const CI_VALUE_FLAGS = new Set(['--pair']);
+
+function rejectBadFlags() {
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--help' || a === '-h') return;
+    if (!a.startsWith('-')) {
+      console.error(`cross-repo-tests: unexpected argument "${a}" - this tool takes flags only (see \`node tools/cross-repo-tests.mjs --help\`)`);
+      process.exit(2);
+    }
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!CI_FLAGS.has(key) && !CI_VALUE_FLAGS.has(key)) {
+      console.error(`cross-repo-tests: unknown flag "${key}" - see \`node tools/cross-repo-tests.mjs --help\``);
+      process.exit(2);
+    }
+    if (CI_FLAGS.has(key) && eq >= 0) {
+      console.error(`cross-repo-tests: flag "${key}" takes no value - see \`node tools/cross-repo-tests.mjs --help\``);
+      process.exit(2);
+    }
+    if (CI_VALUE_FLAGS.has(key) && eq < 0) {
+      if (i + 1 >= argv.length) {
+        console.error(`cross-repo-tests: flag "${key}" requires a value - see \`node tools/cross-repo-tests.mjs --help\``);
+        process.exit(2);
+      }
+      i += 1;
+    }
+  }
+}
+
+rejectBadFlags();
+
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }

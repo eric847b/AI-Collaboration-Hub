@@ -357,6 +357,8 @@ function usage() {
       '  --quiet           print only problems + a one-line summary',
       '  --list            print the smoke matrix and exit',
       '  --self-test       unit-test classification/arg logic and exit',
+      '  --check-cli       assert every tool answers --help with 0 and rejects an unknown',
+      '                    flag with a non-zero usage exit (Round 12 D contract), then exit',
       '  --only            restrict the run to specific tool basenames (comma-separated; an',
       '                    unmatched name fails the run instead of reporting a clean zero)',
       '  --max-age-hours   forwarded to ops-dashboard.mjs --check (default: tool default 24;',
@@ -365,15 +367,148 @@ function usage() {
   );
 }
 
+/**
+ * Explicit flag inventory (Round 12 D hardening). Anything outside this set is
+ * a typo and must exit 2 instead of being silently ignored - a misspelled
+ * `--strict` used to run a full un-strict gate and still report green.
+ * Single pass, so a repeated flag or a value that itself starts with `-` can
+ * never desync the scan.
+ */
+const WF_BOOL_FLAGS = new Set([
+  '--strict',
+  '--json',
+  '--quiet',
+  '--list',
+  '--self-test',
+  '--check-cli',
+]);
+const VALUE_FLAGS = new Set(['--only', '--max-age-hours']);
+
 if (has('--help') || has('-h')) {
   usage();
   process.exit(0);
+}
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (!a.startsWith('-')) {
+    console.error(
+      `verify-tools: unexpected argument "${a}" - this tool takes flags only (see \`node tools/verify-tools.mjs --help\`)`
+    );
+    process.exit(2);
+  }
+  const eq = a.indexOf('=');
+  const key = eq >= 0 ? a.slice(0, eq) : a;
+  if (key !== '--help' && key !== '-h' && !WF_BOOL_FLAGS.has(key) && !VALUE_FLAGS.has(key)) {
+    console.error(`verify-tools: unknown flag "${key}" - see \`node tools/verify-tools.mjs --help\``);
+    process.exit(2);
+  }
+  if (WF_BOOL_FLAGS.has(key) && eq >= 0) {
+    console.error(`verify-tools: flag "${key}" takes no value - see \`node tools/verify-tools.mjs --help\``);
+    process.exit(2);
+  }
+  if (VALUE_FLAGS.has(key) && eq >= 0) {
+    // `opt()` resolves values via argv.indexOf('--only'), so the `--only=x`
+    // form would parse here and then be silently ignored downstream. Reject it
+    // rather than accept a flag that does nothing.
+    console.error(
+      `verify-tools: flag "${key}" takes its value as a separate argument, not "${a}" - see \`node tools/verify-tools.mjs --help\``
+    );
+    process.exit(2);
+  }
+  if (VALUE_FLAGS.has(key)) {
+    if (i + 1 >= argv.length) {
+      console.error(`verify-tools: flag "${key}" requires a value - see \`node tools/verify-tools.mjs --help\``);
+      process.exit(2);
+    }
+    i += 1;
+  }
 }
 if (has('--self-test')) runSelfTest();
 if (invalidMaxAge(maxAgeHours)) {
   console.error(`verify-tools: --max-age-hours expects a non-negative number, got '${maxAgeHours}'`);
   process.exit(2);
 }
+/**
+ * Round 12 D CLI contract, enforced instead of merely documented.
+ *
+ * Every tool in tools/*.mjs|*.cjs must (a) answer `--help` with exit 0 and
+ * (b) REJECT an unknown flag with a non-zero usage exit instead of silently
+ * ignoring it. Rationale: a silently-ignored typo is the worst class of tool
+ * bug — `--stric` ran a lenient scan, `--dryrun` scaffolded real files, and
+ * `--jsno` handed prose to a JSON-parsing CI caller, all while reporting a
+ * confident exit 0.
+ *
+ * The unknown-flag exit is required to be non-zero rather than exactly 2
+ * because a few tools document 1 as their usage-error code (new-project.mjs);
+ * what matters is that the mistake is loud, never silent.
+ *
+ * Both probes are cheap and side-effect free: an unknown flag must be rejected
+ * BEFORE any work, so a conformant tool never scans, scaffolds or spawns here.
+ */
+function checkCliContract() {
+  let tools;
+  try {
+    tools = fs
+      .readdirSync(TOOLS_DIR)
+      .filter((f) => /\.(mjs|cjs)$/.test(f))
+      .sort();
+  } catch (e) {
+    console.error(`verify-tools: cannot list tools/ — ${e.message}`);
+    process.exit(2);
+  }
+
+  const probe = (tool, args) =>
+    execFileSync(process.execPath, [path.join(TOOLS_DIR, tool), ...args], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 60000,
+    });
+
+  const rows = [];
+  let failed = 0;
+  for (const tool of tools) {
+    let helpCode;
+    let badCode;
+    try {
+      probe(tool, ['--help']);
+      helpCode = 0;
+    } catch (e) {
+      // A hang or a signal is also a contract failure; surface it as such.
+      helpCode = e.status ?? `signal:${e.signal}`;
+    }
+    try {
+      probe(tool, ['--definitely-not-a-flag']);
+      badCode = 0; // accepted the unknown flag → silent-ignore bug
+    } catch (e) {
+      badCode = e.status ?? `signal:${e.signal}`;
+    }
+    const helpOk = helpCode === 0;
+    const badOk = typeof badCode === 'number' && badCode !== 0;
+    const ok = helpOk && badOk;
+    if (!ok) failed += 1;
+    rows.push({ tool, help: helpCode, unknown: badCode, ok });
+  }
+
+  if (asJson) {
+    console.log(JSON.stringify({ schema: 1, mode: 'check-cli', rows, failed }, null, 2));
+  } else if (!quiet) {
+    console.log('\n# CLI contract (Round 12 D)');
+    console.log('| Tool | --help | unknown flag | Verdict |');
+    console.log('|------|--------|---------------|---------|');
+    for (const r of rows) {
+      console.log(
+        `| ${r.tool} | ${r.help === 0 ? 'ok' : r.help} | ${r.unknown === 0 ? 'IGNORED' : `rejected (${r.unknown})`} | ${r.ok ? 'ok' : 'FAIL'} |`
+      );
+    }
+  }
+  const line = `verify-tools --check-cli: ${rows.length - failed}/${rows.length} tools honor the --help / reject-unknown contract.`;
+  if (quiet || asJson) console.log(line);
+  else console.log(`\n${line}`);
+  process.exit(failed > 0 ? 1 : 0);
+}
+
+if (has('--check-cli')) checkCliContract();
 if (has('--list')) {
   for (const [tool, args] of Object.entries(SMOKE)) console.log(`${tool}${args.length ? ` ${args.join(' ')}` : ''}`);
   console.log(`${Object.keys(SMOKE).length} smoke probes; every other tool is syntax-checked only`);

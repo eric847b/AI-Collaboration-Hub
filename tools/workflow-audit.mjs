@@ -1326,8 +1326,56 @@ function printDelta(entries, label) {
   }
 }
 
+/**
+ * Explicit flag inventory (Round 12 D hardening). A typo'd flag used to be
+ * silently ignored, so `--stric` ran the lenient scan and reported exit 0 where
+ * the caller believed warnings were fatal. `--baseline` is the only value flag.
+ */
+const WF_BOOL_FLAGS = new Set([
+  '--quiet',
+  '--json',
+  '--strict',
+  '--self-test',
+  '--list-rules',
+  '--check-baseline',
+  '--update-baseline',
+  '--verbose',
+]);
+const WF_VALUE_FLAGS = new Set(['--baseline']);
+
+function rejectBadFlags() {
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--help' || a === '-h') return;
+    if (!a.startsWith('-')) {
+      console.error(
+        `workflow-audit: unexpected argument "${a}" - this tool takes flags only (see \`node tools/workflow-audit.mjs --help\`)`
+      );
+      process.exit(2);
+    }
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!WF_BOOL_FLAGS.has(key) && !WF_VALUE_FLAGS.has(key)) {
+      console.error(`workflow-audit: unknown flag "${key}" - see \`node tools/workflow-audit.mjs --help\``);
+      process.exit(2);
+    }
+    if (WF_BOOL_FLAGS.has(key) && eq >= 0) {
+      console.error(`workflow-audit: flag "${key}" takes no value - see \`node tools/workflow-audit.mjs --help\``);
+      process.exit(2);
+    }
+    if (WF_VALUE_FLAGS.has(key) && eq < 0) {
+      if (i + 1 >= argv.length) {
+        console.error(`workflow-audit: flag "${key}" requires a value - see \`node tools/workflow-audit.mjs --help\``);
+        process.exit(2);
+      }
+      i += 1;
+    }
+  }
+}
+
 function main() {
   if (showHelp) return printHelp();
+  rejectBadFlags();
   if (listRules) return printRules();
   if (selfTest) return selfTestExit();
 

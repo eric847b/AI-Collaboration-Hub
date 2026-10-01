@@ -32,7 +32,67 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXT = path.join(ROOT, 'ai-chat-websites', 'Userscripts', 'extension');
-const quiet = process.argv.includes('--quiet');
+
+// ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
+// Boolean flags only. Unknown flags, `--flag=value` on a boolean, and stray
+// positionals all exit 2 instead of being silently ignored. No stdin prompts.
+const argv = process.argv.slice(2);
+const BOOLEAN_FLAGS = new Set(['--quiet']);
+const flags = {};
+const positionals = [];
+for (const a of argv) {
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!BOOLEAN_FLAGS.has(key)) {
+      console.error(`extension-check: unknown flag "${key}" - see \`node tools/extension-check.mjs --help\``);
+      process.exit(2);
+    }
+    if (eq >= 0) {
+      console.error(`extension-check: flag "${key}" takes no value - see \`node tools/extension-check.mjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = true;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'extension-check.mjs - read-only health check for the ai-chat-websites Unified AI Assistant Suite extension',
+      '',
+      'Usage: node tools/extension-check.mjs [--quiet]',
+      '',
+      'Flags:',
+      '  --quiet   print only the summary line plus failures (no per-check "ok" lines)',
+      '  --help    print this text and exit 0',
+      '',
+      'Checks: manifest MV3 fields, ladder plumbing in background.js/options.html,',
+      'provider allow-list parity, and hardcoded-secret scans. Read-only.',
+      '',
+      'Exit codes: 0 = all green, 1 = at least one check failed, 2 = bad usage.',
+      'Unknown flags and unexpected arguments exit 2.',
+    ].join('\n')
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length > 0) {
+  console.error(
+    `extension-check: unexpected argument "${positionals[0]}" - this tool takes flags only (see \`node tools/extension-check.mjs --help\`)`
+  );
+  process.exit(2);
+}
+const quiet = flags['--quiet'] === true;
 
 const failures = [];
 const passes = [];

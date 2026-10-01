@@ -31,10 +31,87 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
-const opt = (name, def) => {
-  const i = argv.indexOf(name);
-  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
-};
+
+// ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
+// Boolean: --check --refresh. Value: --out --max-age-hours. Unknown flags and
+// stray positionals exit 2 instead of being silently ignored. No stdin prompts.
+const BOOLEAN_FLAGS = new Set(['--check', '--refresh']);
+const VALUE_FLAGS = new Set(['--out', '--max-age-hours']);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    let value;
+    if (eq >= 0) {
+      if (BOOLEAN_FLAGS.has(key)) {
+        console.error(`ops-dashboard: flag "${key}" takes no value - see \`node tools/ops-dashboard.mjs --help\``);
+        process.exit(2);
+      }
+      value = a.slice(eq + 1);
+    } else if (VALUE_FLAGS.has(key)) {
+      if (i + 1 >= argv.length) {
+        console.error(`ops-dashboard: flag "${key}" requires a value - see \`node tools/ops-dashboard.mjs --help\``);
+        process.exit(2);
+      }
+      value = argv[i + 1];
+      i += 1;
+    } else if (BOOLEAN_FLAGS.has(key)) {
+      flags[key] = true;
+      continue;
+    } else {
+      console.error(`ops-dashboard: unknown flag "${key}" - see \`node tools/ops-dashboard.mjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = value;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'ops-dashboard.mjs - repo-level observability dashboard (workflows, tooling, ledgers, telemetry)',
+      '',
+      'Usage: node tools/ops-dashboard.mjs [--out <path>] [--refresh]',
+      '       node tools/ops-dashboard.mjs --check [--max-age-hours <h>]',
+      '',
+      'Flags:',
+      '  --check              freshness check only; exits 1 when the output is missing,',
+      '                       lacks section markers, or any section is stale',
+      '  --max-age-hours <h>  max section age in hours for --check (default 24)',
+      '  --out <path>         output file (default docs/metrics/OPS-DASHBOARD.md)',
+      '  --refresh            restamp every section even when content is unchanged',
+      '  --help               print this text and exit 0',
+      '',
+      'Regeneration is idempotent: unchanged sections keep their original timestamps,',
+      'so a fully unchanged run does not rewrite the file (no git churn).',
+      '',
+      'Exit codes: 0 = written/unchanged or check passed, 1 = --check found stale/missing data,',
+      '2 = bad usage. Unknown flags and unexpected arguments exit 2.',
+    ].join('\n')
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length > 0) {
+  console.error(
+    `ops-dashboard: unexpected argument "${positionals[0]}" - this tool takes flags only (see \`node tools/ops-dashboard.mjs --help\`)`
+  );
+  process.exit(2);
+}
+
+const opt = (name, def) => (flags[name] === undefined ? def : flags[name]);
 const outArg = opt('--out', '');
 const OUT = path.isAbsolute(outArg) ? outArg : path.join(ROOT, outArg || path.join('docs', 'metrics', 'OPS-DASHBOARD.md'));
 

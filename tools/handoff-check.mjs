@@ -52,6 +52,36 @@ const verbose = has('--verbose');
 const selfTest = has('--self-test');
 const fileOverride = arg('--file');
 
+/**
+ * Explicit flag inventory (Round 12 D hardening). A typo'd flag used to be
+ * silently ignored, so `--jsno` quietly ran the human report and a CI caller
+ * parsing JSON got prose. Unknown flags now exit 2 before any work happens.
+ */
+const BOOLEAN_FLAGS = new Set(['--json', '--strict', '--quiet', '--verbose', '--self-test']);
+const VALUE_FLAGS = new Set(['--file']);
+
+function rejectBadFlags() {
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--help' || a === '-h') return;
+    if (!a.startsWith('-')) {
+      console.error(`handoff-check: unexpected argument "${a}" - this tool takes flags only (see \`node tools/handoff-check.mjs --help\`)`);
+      process.exit(2);
+    }
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    if (!BOOLEAN_FLAGS.has(key) && !VALUE_FLAGS.has(key)) {
+      console.error(`handoff-check: unknown flag "${key}" - see \`node tools/handoff-check.mjs --help\``);
+      process.exit(2);
+    }
+    if (BOOLEAN_FLAGS.has(key) && eq >= 0) {
+      console.error(`handoff-check: flag "${key}" takes no value - see \`node tools/handoff-check.mjs --help\``);
+      process.exit(2);
+    }
+    if (VALUE_FLAGS.has(key) && eq < 0) i += 1; // consume the value
+  }
+}
+
 if (has('--help') || has('-h')) {
   console.log(
     [
@@ -76,6 +106,7 @@ if (has('--help') || has('-h')) {
   );
   process.exit(0);
 }
+rejectBadFlags();
 
 /** Lifecycle states; anything else is a typo that would confuse the next session. */
 const STATUSES = ['completed', 'partial', 'blocked', 'stopped', 'in-progress'];

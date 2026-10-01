@@ -14,11 +14,111 @@ const DEFAULT_LEDGER = path.join('docs', 'metrics', 'flake-history.json');
 const MAX_ENTRIES = 200;
 
 const argv = process.argv.slice(2);
-const cmd = (argv.find((a) => ['record', 'report', 'markdown'].includes(a)) || 'report');
+
+// ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
+// Commands are positionals (record | report | markdown); every knob is a value
+// flag accepted as `--flag value` or `--flag=value`. `--flakes` is the one
+// optional-value flag: bare `--flakes` means 0, `--flakes 3` sets the count.
+// Unknown flags, unknown commands and missing values exit 2. No stdin prompts.
+const COMMANDS = ['record', 'report', 'markdown'];
+const VALUE_FLAGS = new Set([
+  '--ledger',
+  '--suite',
+  '--note',
+  '--from-playwright',
+  '--tests',
+  '--passed',
+  '--failed',
+  '--retries',
+  '--limit',
+  '--out',
+]);
+const OPTIONAL_VALUE_FLAGS = new Set(['--flakes']);
+const flags = {};
+const positionals = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--help' || a === '-h') {
+    flags['--help'] = true;
+    continue;
+  }
+  if (a.startsWith('-')) {
+    const eq = a.indexOf('=');
+    const key = eq >= 0 ? a.slice(0, eq) : a;
+    let value;
+    if (eq >= 0) {
+      value = a.slice(eq + 1);
+    } else if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+      value = argv[i + 1];
+      i += 1;
+    } else if (OPTIONAL_VALUE_FLAGS.has(key)) {
+      value = true;
+    } else {
+      console.error(`flake-tracker: unknown flag "${key}" - see \`node tools/flake-tracker.cjs --help\``);
+      process.exit(2);
+    }
+    if (!VALUE_FLAGS.has(key) && !OPTIONAL_VALUE_FLAGS.has(key)) {
+      console.error(`flake-tracker: unknown flag "${key}" - see \`node tools/flake-tracker.cjs --help\``);
+      process.exit(2);
+    }
+    flags[key] = value;
+    continue;
+  }
+  positionals.push(a);
+}
+
+function usage() {
+  console.log(
+    [
+      'flake-tracker.cjs - test flake-rate ledger plus trend views (mirrors bundle/coverage-trend)',
+      '',
+      'Usage: node tools/flake-tracker.cjs <command> [options]',
+      '',
+      'Commands:',
+      '  record     append one run snapshot to the ledger (the only writer)',
+      '  report     print recent runs + per-suite flake-rate trend (default)',
+      '  markdown   render docs/metrics/flake-report.md',
+      '',
+      'Flags (all take a value; --flag value or --flag=value):',
+      '  --suite <name>            suite id for `record` (required there)',
+      '  --tests <n>               total tests for `record`',
+      '  --passed <n>              passed count for `record`',
+      '  --failed <n>             failed count (default: tests - passed)',
+      '  --retries <n>             retry count (default 0)',
+      '  --flakes [<n>]            flake count (bare flag means 0; default min(retries, passed))',
+      '  --from-playwright <path>  derive counts from a Playwright JSON report',
+      '  --note <text>             free-text note stored with the entry',
+      '  --ledger <path>           ledger file (default docs/metrics/flake-history.json)',
+      '  --limit <n>               rows shown by `report` (default 5)',
+      '  --out <path>              markdown output (default docs/metrics/flake-report.md)',
+      '  --help                    print this text and exit 0',
+      '',
+      'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
+      'Unknown flags, unknown commands and missing flag values exit 2.',
+    ].join('\n')
+  );
+}
+
+if (flags['--help']) {
+  usage();
+  process.exit(0);
+}
+if (positionals.length > 1) {
+  console.error(
+    `flake-tracker: unexpected argument "${positionals[1]}" - expected at most one command (see \`node tools/flake-tracker.cjs --help\`)`
+  );
+  process.exit(2);
+}
+if (positionals.length === 1 && !COMMANDS.includes(positionals[0])) {
+  console.error(
+    `flake-tracker: unknown command "${positionals[0]}" (expected: ${COMMANDS.join(' | ')}) - see \`node tools/flake-tracker.cjs --help\``
+  );
+  process.exit(2);
+}
+const cmd = positionals[0] || 'report';
 
 function opt(name, def) {
-  const i = argv.indexOf(name);
-  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
+  return flags[name] === undefined ? def : flags[name];
 }
 function ledgerPath() {
   const given = opt('--ledger', '');
@@ -80,7 +180,13 @@ function record() {
     }
     failed = num(opt('--failed', tests - passed), tests - passed);
     retries = num(opt('--retries', 0), 0);
-    flakes = argv.includes('--flakes') ? num(opt('--flakes', 0), 0) : Math.min(retries, passed);
+    // `--flakes` is an optional-value flag: the tokenizer stores `true` for the
+    // bare form, which must mean 0 (num(true) would coerce to 1).
+    const flakeFlag = flags['--flakes'];
+    flakes =
+      flakeFlag === undefined
+        ? Math.min(retries, passed)
+        : num(flakeFlag === true ? 0 : flakeFlag, 0);
   }
   const rate = tests > 0 ? (flakes / tests) * 100 : null;
   const file = ledgerPath();

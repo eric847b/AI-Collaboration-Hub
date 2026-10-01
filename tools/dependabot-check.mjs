@@ -120,8 +120,33 @@ function covers(entries, ecosystem, dir) {
 function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help') || args.includes('-h')) {
-    console.log('usage: node tools/dependabot-check.mjs [--list]');
+    console.log(
+      [
+        'dependabot-check.mjs - read-only coverage check for .github/dependabot.yml',
+        '',
+        'usage: node tools/dependabot-check.mjs [--list]',
+        '',
+        '  --list, -l  print the per-manifest coverage table (still exit 1 on gaps)',
+        '  --help     print this text and exit 0',
+        '',
+        'exit codes: 0 = all manifests covered, 1 = coverage gaps, 2 = usage/infra error.',
+        'Unknown flags and unexpected arguments exit 2.',
+      ].join('\n')
+    );
     return 0;
+  }
+  // Round 12 D: a typo'd flag used to be silently ignored and the run still
+  // exited 0/1, so CI could not tell "verified clean" from "never checked".
+  const ALLOWED = new Set(['--list', '-l']);
+  for (const a of args) {
+    if (!a.startsWith('-')) {
+      console.error(`dependabot-check: unexpected argument "${a}" - this tool takes flags only (see \`node tools/dependabot-check.mjs --help\`)`);
+      return 2;
+    }
+    if (!ALLOWED.has(a)) {
+      console.error(`dependabot-check: unknown flag "${a}" - see \`node tools/dependabot-check.mjs --help\``);
+      return 2;
+    }
   }
   const verbose = args.includes('--list') || args.includes('-l');
 
