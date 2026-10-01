@@ -1,16 +1,24 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T22:16:51Z",
+  "scanned_at": "2026-10-01T17:38:53Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
   },
   "duplicate_drafts": {
-    "closed": [],
+    "closed": [
+      {
+        "number": 812,
+        "key": "bot:\ud83e\udd16 fix peer conflict: typescript -> ~5.9.3 in ./nex"
+      },
+      {
+        "number": 810,
+        "key": "bot:\ud83e\udd16 fix peer conflict: typescript -> ~5.9.3 in ./nex"
+      }
+    ],
     "kept": [
-      679,
-      678
+      813
     ],
     "errors": []
   },
@@ -25,12 +33,50 @@
   "dependabot_conflicts": {
     "rebase_requests": [],
     "recreate_requests": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 742,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 741,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 740,
+        "reason": "not-patch-conflict-policy"
+      },
+      {
+        "number": 739,
+        "reason": "not-patch-conflict-policy"
+      }
+    ],
     "errors": []
   },
   "dependabot_merges": {
     "merged": [],
-    "skipped": [],
+    "skipped": [
+      {
+        "number": 739,
+        "reason": "not-patch",
+        "title": "chore(deps): update flake8 requirement from >=7.3.0 to >=7.4.1 in /singularity-operator"
+      },
+      {
+        "number": 740,
+        "reason": "not-patch",
+        "title": "chore(deps): update flake8 requirement from >=7.3.0 to >=7.4.1"
+      },
+      {
+        "number": 741,
+        "reason": "not-patch",
+        "title": "chore(deps): bump the npm-chat group in /ai-chat-websites with 8 updates"
+      },
+      {
+        "number": 742,
+        "reason": "not-patch",
+        "title": "chore(deps)(deps): bump the npm-nexus group in /nexus-infinity-hub with 11 updates"
+      }
+    ],
     "errors": []
   }
 }
