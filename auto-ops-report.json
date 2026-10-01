@@ -1,7 +1,7 @@
 {
   "version": "1.2.1",
   "dry_run": false,
-  "scanned_at": "2026-09-20T22:16:51Z",
+  "scanned_at": "2026-10-01T05:51:35Z",
   "actionlint": {
     "path": ".github/actionlint.yaml",
     "action": "exists"
@@ -9,8 +9,7 @@
   "duplicate_drafts": {
     "closed": [],
     "kept": [
-      679,
-      678
+      788
     ],
     "errors": []
   },
@@ -29,8 +28,23 @@
     "errors": []
   },
   "dependabot_merges": {
-    "merged": [],
-    "skipped": [],
+    "merged": [
+      {
+        "number": 789,
+        "title": "chore(deps)(deps-dev): bump brace-expansion from 5.0.9 to 5.0.12 in /nexus-infinity-hub"
+      },
+      {
+        "number": 790,
+        "title": "chore(deps)(deps-dev): bump brace-expansion from 5.0.7 to 5.0.12 in /self-evolve-dash"
+      }
+    ],
+    "skipped": [
+      {
+        "number": 791,
+        "reason": "not-patch",
+        "title": "chore(deps): bump axios from 1.18.1 to 1.20.0 in /ai-chat-websites"
+      }
+    ],
     "errors": []
   }
 }
