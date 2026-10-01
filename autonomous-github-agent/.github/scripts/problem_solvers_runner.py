@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent v6.1 Unified — problem-solvers runner + auto_ops.
+Agent v6.2 Unified — problem-solvers runner + auto_ops.
 
 Scans + auto-fixes:
   0) auto_ops: duplicate draft spam, Dependabot patches, stale branches, actionlint
@@ -12,6 +12,10 @@ Scans + auto-fixes:
   6) Closed-loop ledger updates
 
 Supports DRY_RUN=1, MAX_SOLVER_TASKS (default 8), writes agent-report.json.
+
+v6.2: every bot PR type is deduped (not just lockfiles). Opening a new
+auto-fix-peer / auto-fix-pysyn PR when one already exists (open, or closed
+in the last 48h) is how 62 duplicate branches accumulated on 2026-10-01.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ import os
 import sys
 import time
 from collections import Counter
+from datetime import datetime, timezone, timedelta
 
 _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS not in sys.path:
@@ -63,7 +68,8 @@ except ImportError:
 
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 MAX_SOLVER_TASKS = int(os.getenv("MAX_SOLVER_TASKS", "8"))
-VERSION = "6.1"
+VERSION = "6.2"
+CLOSED_PR_LOOKBACK_HOURS = int(os.getenv("CLOSED_PR_LOOKBACK_HOURS", "48"))
 
 SKIP_LOCKFILE_PATH_TOKENS = (
     "userscripts",
@@ -71,6 +77,16 @@ SKIP_LOCKFILE_PATH_TOKENS = (
     "ai chat userscript studio",
     "/archive/",
     "/archives/",
+)
+
+_TITLE_PREFIXES = (
+    "🤖 lockfile:",
+    "🤖 lockfile",
+    "🤖 fix peer conflict:",
+    "🤖 docs:",
+    "🤖 python deps:",
+    "🤖 gha bump:",
+    "🤖",
 )
 
 
@@ -86,26 +102,72 @@ def _should_skip_lockfile_path(proj: str) -> bool:
     return any(t in lower for t in SKIP_LOCKFILE_PATH_TOKENS)
 
 
+def title_needle(title: str) -> str:
+    """Stable key for bot-PR dedupe. Strips emoji/type prefix, keeps the target."""
+    t = (title or "").lower().strip()
+    for prefix in _TITLE_PREFIXES:
+        if t.startswith(prefix):
+            t = t[len(prefix):].strip()
+            break
+    return t[:50]
+
+
+def _is_bot_pr(title: str, head_ref: str) -> bool:
+    t = (title or "").lower()
+    h = (head_ref or "").lower()
+    return t.startswith("🤖") or "lockfile" in t or h.startswith("auto-fix")
+
+
+def _pr_matches_needle(title: str, head_ref: str, needle: str) -> bool:
+    if not needle:
+        return False
+    n = needle.lower()[:50]
+    t = (title or "").lower()
+    h = (head_ref or "").lower()
+    return n in t or n in h or n in title_needle(title)
+
+
 def open_bot_pr_exists_for(needle: str) -> bool:
+    """True if an open or recently-closed bot PR already covers this needle.
+
+    Recently-closed matters: auto_ops closes duplicate drafts, and without
+    this lookback the next solver pass immediately opens a replacement.
+    """
     if not GITHUB_AVAILABLE or not needle:
         return False
     token = os.getenv("GITHUB_TOKEN")
     repo = os.getenv("REPO")
     if not token or not repo:
         return False
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=CLOSED_PR_LOOKBACK_HOURS)
     try:
         g = Github(token)
         r = g.get_repo(repo)
-        n = needle.lower()[:50]
         for pr in r.get_pulls(state="open"):
-            t = (pr.title or "").lower()
             head = ""
             with contextlib.suppress(Exception):
-                head = (pr.head.ref or "").lower()
-            is_bot = t.startswith("🤖") or "lockfile" in t or head.startswith("auto-fix")
-            if not is_bot:
+                head = pr.head.ref or ""
+            if not _is_bot_pr(pr.title or "", head):
                 continue
-            if n in t or n in head:
+            if _pr_matches_needle(pr.title or "", head, needle):
+                return True
+        checked = 0
+        for pr in r.get_pulls(state="closed", sort="updated", direction="desc"):
+            checked += 1
+            if checked > 40:
+                break
+            updated = pr.updated_at
+            if updated is not None:
+                if updated.tzinfo is None:
+                    updated = updated.replace(tzinfo=timezone.utc)
+                if updated < cutoff:
+                    break
+            head = ""
+            with contextlib.suppress(Exception):
+                head = pr.head.ref or ""
+            if not _is_bot_pr(pr.title or "", head):
+                continue
+            if _pr_matches_needle(pr.title or "", head, needle):
                 return True
         return False
     except Exception as e:
@@ -113,22 +175,39 @@ def open_bot_pr_exists_for(needle: str) -> bool:
         return False
 
 
+def _reset_to_main() -> None:
+    _git("git checkout -- .")
+    _git("git clean -fd -e agent-report.json -e auto-ops-report.json -e auto-fix-ledger.json")
+    _git("git checkout main 2>/dev/null || git checkout -B main")
+    _git("git pull origin main 2>/dev/null || true")
+
+
 def _branch_and_pr(title: str, body: str, branch: str) -> bool:
     if DRY_RUN:
         log.info(f"[DRY_RUN] would open PR: {title}")
         return True
-    if title.startswith("🤖 Lockfile") and open_bot_pr_exists_for(title.replace("🤖 Lockfile:", "").strip()):
-        log.info(f"Skip PR — open bot lockfile PR already exists for: {title}")
+    needle = title_needle(title)
+    if open_bot_pr_exists_for(needle):
+        log.info(f"Skip PR — bot PR already exists for: {title}")
+        _reset_to_main()
         return False
+    dirty = _git("git status --porcelain")
+    if not dirty.strip():
+        log.info(f"Skip PR — no working-tree changes for: {title}")
+        return False
+    _git("git checkout main 2>/dev/null || true")
     _git(f"git checkout -b {branch} || git checkout {branch}")
     _git("git add -A")
-    _git(f"git commit -m '{title[:70].replace(chr(39), '')} DEPTH:1' || true")
+    msg = title[:70].replace("'", "")
+    _git(f"git commit -m '{msg}' || true")
     _git(f"git push origin {branch} || true")
     if not GITHUB_AVAILABLE:
+        _reset_to_main()
         return False
     token = os.getenv("GITHUB_TOKEN")
     repo = os.getenv("REPO")
     if not token or not repo:
+        _reset_to_main()
         return False
     try:
         g = Github(token)
@@ -138,9 +217,11 @@ def _branch_and_pr(title: str, body: str, branch: str) -> bool:
         if CLOSED_LOOP:
             with contextlib.suppress(Exception):
                 record_fix("auto_pr", title, pr_number=pr.number)
+        _reset_to_main()
         return True
     except Exception as e:
         log.warning(f"PR create failed: {e}")
+        _reset_to_main()
         return False
 
 
@@ -149,6 +230,12 @@ def handle_python_syntax(task: dict) -> bool:
     if not path or not os.path.isfile(path):
         return False
     note = path + ".SYNTAX_ERROR.md"
+    if os.path.isfile(note):
+        log.info(f"Skip pysyn — note already exists: {note}")
+        return False
+    if open_bot_pr_exists_for(title_needle(f"🤖 Docs: Python syntax error in {path}")):
+        log.info(f"Skip pysyn — bot PR already exists for {path}")
+        return False
     if not DRY_RUN:
         with open(note, "w") as fh:
             fh.write(f"# Syntax error in `{path}`\n\n{task.get('body', '')}\n")
@@ -164,18 +251,28 @@ def handle_peer_conflict(task: dict) -> bool:
     path = task.get("path")
     peer = task.get("peer", "typescript")
     pin = task.get("pin", "~5.9.3")
+    title = f"🤖 Fix peer conflict: {peer} -> {pin} in {task.get('project_dir', '.')}"
     if DRY_RUN:
         log.info(f"[DRY_RUN] would pin {peer}={pin} in {path}")
         return True
+    if open_bot_pr_exists_for(title_needle(title)):
+        log.info(f"Skip peer — bot PR already exists for: {title}")
+        return False
     res = fix_peer_conflict_in_package_json(path, peer, pin)
     if not res.get("success"):
         log.warning(f"peer fix failed: {res}")
         return False
+    if " -> " in (res.get("output") or ""):
+        old, _, new = res["output"].partition(" -> ")
+        if old.rsplit(": ", 1)[-1].strip() == new.strip():
+            log.info(f"Skip peer — already pinned: {res.get('output')}")
+            _reset_to_main()
+            return False
     proj = task.get("project_dir", ".")
     _git(f"cd {proj!r} && npm install --package-lock-only --legacy-peer-deps --ignore-scripts --no-audit 2>&1 || true")
     branch = f"auto-fix-peer-{int(time.time())}"
     return _branch_and_pr(
-        f"🤖 Fix peer conflict: {peer} -> {pin} in {proj}",
+        title,
         task.get("body", "") + f"\n\nApplied: {res.get('output')}",
         branch,
     )
@@ -213,15 +310,19 @@ def handle_lockfile(task: dict) -> bool:
 def handle_missing_requirements(task: dict) -> bool:
     proj = task.get("project_dir", ".")
     pins = task.get("pins") or ["requests>=2.28.0"]
+    title = f"🤖 Python deps: {proj}"
     if DRY_RUN:
         log.info(f"[DRY_RUN] would write requirements.txt for {proj}")
         return True
+    if open_bot_pr_exists_for(title_needle(title)):
+        log.info(f"Skip pyreq — bot PR already exists for {proj}")
+        return False
     res = fix_missing_requirements(proj, pins)
     if not res.get("success"):
         return False
     branch = f"auto-fix-{int(time.time())}-pyreq"
     return _branch_and_pr(
-        f"🤖 Python deps: {proj}",
+        title,
         task.get("body", "") + f"\n\nOutput:\n```\n{res.get('output')}\n```",
         branch,
     )
@@ -231,21 +332,59 @@ def handle_gha_deprecation(task: dict) -> bool:
     path = task.get("path")
     action = task.get("action")
     new_ref = task.get("new_ref")
+    title = f"🤖 GHA bump: {action} -> {new_ref}"
     if DRY_RUN:
         log.info(f"[DRY_RUN] would bump {action} to {new_ref} in {path}")
         return True
+    if open_bot_pr_exists_for(title_needle(title)):
+        log.info(f"Skip gha — bot PR already exists for: {title}")
+        return False
     res = fix_gha_version(path, action, new_ref)
     if not res.get("success"):
         return False
     branch = f"auto-fix-gha-{int(time.time())}"
     return _branch_and_pr(
-        f"🤖 GHA bump: {action} -> {new_ref}",
+        title,
         task.get("body", "") + f"\n\nApplied: {res.get('output')}",
         branch,
     )
 
 
+def _self_test() -> int:
+    """Offline guards — no GitHub, no git. Exit 1 on failure."""
+    fails = []
+
+    def check(name, cond):
+        if not cond:
+            fails.append(name)
+
+    check("peer needle", title_needle("🤖 Fix peer conflict: typescript -> ~5.9.3 in ./nexus-infinity-hub")
+          == "typescript -> ~5.9.3 in ./nexus-infinity-hub"[:50])
+    check("lockfile needle", title_needle("🤖 Lockfile: ./nexus-infinity-hub") == "./nexus-infinity-hub")
+    check("pysyn needle", "python syntax error" in title_needle("🤖 Docs: Python syntax error in ./foo.py"))
+    check("bot title", _is_bot_pr("🤖 Fix peer conflict: typescript", "auto-fix-peer-1"))
+    check("human not bot", not _is_bot_pr("Round 12 D: CLI contract", "fix/cli-contract"))
+    check("match peer", _pr_matches_needle(
+        "🤖 Fix peer conflict: typescript -> ~5.9.3 in ./nexus-infinity-hub",
+        "auto-fix-peer-1790876384",
+        title_needle("🤖 Fix peer conflict: typescript -> ~5.9.3 in ./nexus-infinity-hub"),
+    ))
+    check("no false match", not _pr_matches_needle(
+        "🤖 Lockfile: ./self-evolve-dash",
+        "auto-fix-lock-1",
+        title_needle("🤖 Fix peer conflict: typescript -> ~5.9.3 in ./nexus-infinity-hub"),
+    ))
+    if fails:
+        print("SELF-TEST FAIL:", ", ".join(fails))
+        return 1
+    print(f"problem_solvers_runner v{VERSION} self-test 7/7")
+    return 0
+
+
 def main():
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+
     log.info("problem_solvers_runner v%s starting (DRY_RUN=%s MAX=%s)", VERSION, DRY_RUN, MAX_SOLVER_TASKS)
     _git("git config user.name 'github-actions[bot]'")
     _git("git config user.email 'github-actions[bot]@users.noreply.github.com'")
