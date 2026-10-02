@@ -41,6 +41,7 @@ jobs:
           node --check tools/handoff-check.mjs
           node --check tools/load-test.mjs
           node --check tools/check-doc-links.mjs
+          node --check tools/check-flag-contract.mjs
           node --check tools/secret-scan.mjs
           node --check tools/sync-parity.mjs
       - name: Doc-link health (all Markdown)
@@ -59,6 +60,8 @@ jobs:
         run: node tools/sync-parity.mjs check --strict
       - name: Tool CLI contract - every tool answers --help and rejects unknown flags
         run: node tools/verify-tools.mjs --check-cli --quiet
+      - name: Flag contract - declared flags are the implemented ones (static layer)
+        run: node tools/check-flag-contract.mjs
       - name: Tool self-tests - guard matrix and classifier logic
         run: node tools/verify-tools.mjs --self-test
       # The remaining self-test suite, all read-only (fixtures live in a temp dir;

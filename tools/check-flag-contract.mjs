@@ -3,9 +3,11 @@
  * check-flag-contract.mjs — OPTIONAL add-on verifying each tool's declared
  * flags are the flags it actually implements.
  *
- * This is an "expansion pack", not gate plumbing: nothing in the gate, CI, or
- * `verify-tools --check-cli` depends on this file, and adding or removing it
- * changes no existing behaviour.
+ * WIRING (v1.1, 2026-10-01): the STATIC layer is enforced — probed by
+ * `verify-tools` (SMOKE matrix) and run on both OS runners by the
+ * multi-os-gate workflow. `verify-tools --check-cli` also covers this file
+ * like every other tool. The BEHAVIOURAL (`--deep`) layer stays opt-in
+ * (`npm run tools:flags:deep`) because value probes can write files.
  *
  * WHY: `--check-cli` proves a tool answers `--help` with 0 and REJECTS an
  * unknown flag. It cannot prove the flags a tool *declares* are the flags it
@@ -84,8 +86,8 @@ function usage() {
       'Exit codes: 0 = consistent, 1 = inconsistencies found, 2 = bad usage.',
       'Unknown flags, missing values and stray arguments exit 2.',
       '',
-      'NOT wired into the gate or CI on purpose: this is an add-on, and adding',
-      'or removing it changes no existing behaviour.',
+      'Wiring: the static layer runs in verify-tools (SMOKE matrix) and in the',
+      'multi-os-gate workflow; --deep stays opt-in (npm run tools:flags:deep).',
     ].join('\n')
   );
 }
@@ -395,6 +397,15 @@ async function main() {
     };
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tools.length) }, () => worker()));
+
+  // False-green guard (v1.1): `--only check-flag-contract.mjs` passes the
+  // "matched no tools" filter above (the file exists) but every row is then
+  // skipped by the self-skip, so `rows` is empty. Printing "0/0 tools pass"
+  // and exiting 0 would be exactly the silent pass this tool exists to
+  // prevent — refuse to report a clean zero (usage error, exit 2).
+  if (rows.length === 0) {
+    die('audited zero tools - --only selected only the auditor itself, or tools/ holds no auditable file');
+  }
 
   if (asJson) {
     console.log(JSON.stringify({ schema: 1, mode: 'check-flag-contract', deep, rows, failed }, null, 2));

@@ -58,7 +58,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-quality.ps1
 
 **Features:**
 - `node --check` syntax validation for every tool
-- Read-only smoke matrix (14 probes; server-spawning tools stay syntax-checked only) — the matrix is asserted side-effect free by `--self-test` (no `sync`/`collect`/`push`/`--update-baseline`/`serve`/… probe can ever run)
+- Read-only smoke matrix (15 probes; server-spawning tools stay syntax-checked only) — the matrix is asserted side-effect free by `--self-test` (no `sync`/`collect`/`push`/`--update-baseline`/`serve`/… probe can ever run)
 - **Tiered classification (v2, 2026-10-01):** `ok` · `warn` (advisory ops signal — a stale OPS-dashboard stamp, which the dashboard's own per-section markers already flag for regeneration) · `fail` (real drift: broken link, secret, uncovered manifest, malformed handoff, missing dashboard artifact *or* missing section markers, syntax error). Only `fail` breaks the default exit code, so a >24h-old dashboard timestamp no longer masquerades as a tool defect
 - `--strict` promotes warns to failures (also appends `--strict` to the `sync-parity.mjs check` probe)
 - `--json` machine-readable report (schema 1 + `selector`/`maxAgeHours`/`guard` context fields), `--quiet` (problems + one summary line), `--list` (print the smoke matrix), `--self-test` (47 unit checks over the classifier, exit-code algebra, summary derivation, `--only` selector, arg plumbing and four zero-probe end-to-end CLI paths), `--only <tool[,tool]>` (restrict the run to specific tool basenames — triage one probe without paying for 19; **an unmatched name is a hard `fail`, never a clean "0 tools" pass**), `--max-age-hours <h>` forwarded to `ops-dashboard.mjs --check` (non-numeric values exit 2 before any probe runs)
@@ -98,7 +98,7 @@ node tools/check-flag-contract.mjs --only flake-tracker.cjs --json
 npm run tools:flags                                # npm alias (--deep: tools:flags:deep)
 ```
 
-**Wired into:** nothing — deliberately not gate/CI (an add-on: adding or removing it changes no existing behaviour). Auto-discovered by `verify-tools` like every `tools/*` file.
+**Wired into:** `verify-tools` (SMOKE probe — the static layer runs as probe 15 of the matrix; the file is also `--check-cli`-covered like every tool) and `.github/workflows/multi-os-gate.yml` (step `Flag contract - declared flags are the implemented ones (static layer)` on both OS runners). A zero-tool audit exits 2 (false-green guard). The behavioural `--deep` layer stays opt-in — value probes can write files (`npm run tools:flags:deep`).
 
 ---
 
