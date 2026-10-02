@@ -22,6 +22,8 @@
     "tools:verify:strict": "node tools/verify-tools.mjs --strict",
     "tools:verify:json": "node tools/verify-tools.mjs --json",
     "tools:verify:cli": "node tools/verify-tools.mjs --check-cli",
+    "tools:flags": "node tools/check-flag-contract.mjs",
+    "tools:flags:deep": "node tools/check-flag-contract.mjs --deep",
     "scaffold": "node tools/new-project.mjs --help",
     "scan:secrets": "node tools/secret-scan.mjs",
     "scan:staged": "node tools/secret-scan.mjs --staged",

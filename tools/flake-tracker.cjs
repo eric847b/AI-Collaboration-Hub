@@ -45,6 +45,13 @@ for (let i = 0; i < argv.length; i += 1) {
   if (a.startsWith('-')) {
     const eq = a.indexOf('=');
     const key = eq >= 0 ? a.slice(0, eq) : a;
+    // Membership FIRST: a token in no inventory is an unknown flag, full stop.
+    // Only a DECLARED flag may then be reported as missing its value — calling
+    // a known flag "unknown" misleads the user into thinking they mistyped it.
+    if (!VALUE_FLAGS.has(key) && !OPTIONAL_VALUE_FLAGS.has(key)) {
+      console.error(`flake-tracker: unknown flag "${key}" - see \`node tools/flake-tracker.cjs --help\``);
+      process.exit(2);
+    }
     let value;
     if (eq >= 0) {
       value = a.slice(eq + 1);
@@ -54,11 +61,7 @@ for (let i = 0; i < argv.length; i += 1) {
     } else if (OPTIONAL_VALUE_FLAGS.has(key)) {
       value = true;
     } else {
-      console.error(`flake-tracker: unknown flag "${key}" - see \`node tools/flake-tracker.cjs --help\``);
-      process.exit(2);
-    }
-    if (!VALUE_FLAGS.has(key) && !OPTIONAL_VALUE_FLAGS.has(key)) {
-      console.error(`flake-tracker: unknown flag "${key}" - see \`node tools/flake-tracker.cjs --help\``);
+      console.error(`flake-tracker: flag "${key}" requires a value - see \`node tools/flake-tracker.cjs --help\``);
       process.exit(2);
     }
     flags[key] = value;

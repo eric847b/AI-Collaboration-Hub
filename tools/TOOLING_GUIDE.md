@@ -78,6 +78,31 @@ npm run tools:verify                              # npm alias
 **Wired into:** `npm run tools:verify` / `tools:verify:strict` / `tools:verify:json`, `npm run tools:selftest` (self-test leg), the `verify-tools` VS Code task
 
 ---
+### `tools/check-flag-contract.mjs` — Declared-vs-Implemented Flag Audit (add-on)
+
+**Purpose:** OPTIONAL add-on proving each tool's declared flags are the flags it *implements* — the claim `verify-tools --check-cli` cannot make. `--check-cli` proves "answers `--help` with 0 and rejects an unknown flag"; this tool proves "the flags the tool lists are the flags that actually work".
+
+**Design:** no manifest file to drift — candidate flags are extracted from each tool's own source under whatever inventory name it uses (`VALUE_FLAGS`, `CI_FLAGS`, `SS_BOOL_FLAGS`, …), then judged by probing real behaviour.
+
+**Features:**
+- **STATIC (default):** one `--help` per tool — catches a flag used in source but declared nowhere, a flag declared twice (boolean AND value), and a flag declared but missing from the tool's own `--help`
+- **`--deep` (opt-in):** behavioural confirmation of every declared flag; value flags whose value can WRITE (`--out`, `--ledger`, `--baseline`, …) are skipped unless `--allow-write-risky`
+- `--only <tool[,tool]>`, `--json` (schema 1); explicit out-of-tree list matches `--check-cli` (`.husky/js-gate.mjs`)
+- Exit codes: 0 consistent / 1 inconsistencies / 2 bad usage (unknown flags, missing values, stray args)
+
+**Usage:**
+```powershell
+node tools/check-flag-contract.mjs                 # static: 20/20 tools (2026-10-01)
+node tools/check-flag-contract.mjs --deep          # + behavioural probes: 20/20, exit 0
+node tools/check-flag-contract.mjs --only flake-tracker.cjs --json
+npm run tools:flags                                # npm alias (--deep: tools:flags:deep)
+```
+
+**Wired into:** nothing — deliberately not gate/CI (an add-on: adding or removing it changes no existing behaviour). Auto-discovered by `verify-tools` like every `tools/*` file.
+
+---
+
+
 
 ## CI/CD & Workflow Tools
 
