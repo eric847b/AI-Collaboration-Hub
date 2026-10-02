@@ -82,6 +82,7 @@ function usage() {
       '                     TRIAGE MODE: 2 spawns per declared flag, so pair with --only.',
       '  --allow-write-risky let --deep probe flags whose value can WRITE a file',
       '  --only <names>      limit to specific tool basenames (comma-separated)',
+      '  --quiet            print only failing tools and the tally (no per-tool rows)',
       '  --json              machine-readable report (schema 1)',
       '  --help              print this text and exit 0',
       '',
@@ -132,6 +133,7 @@ if (positionals.length > 0) die(`unexpected argument "${positionals[0]}" - this 
 const deep = flags['--deep'] === true;
 const allowWriteRisky = flags['--allow-write-risky'] === true;
 const asJson = flags['--json'] === true;
+const quiet = flags['--quiet'] === true;
 const onlyNames = (flags['--only'] || '')
   .split(',')
   .map((s) => s.trim())
@@ -411,6 +413,16 @@ async function main() {
 
   if (asJson) {
     console.log(JSON.stringify({ schema: 1, mode: 'check-flag-contract', deep, rows, failed }, null, 2));
+  } else if (quiet) {
+    // Quiet prints only what a human must act on: failing tools, their issues,
+    // and the tally. Without this branch `--quiet` parsed and was documented but
+    // changed nothing — a no-op flag, which is the exact failure class this tool
+    // exists to catch, found by this tool's own checker on itself.
+    for (const r of rows.filter((x) => !x.ok)) {
+      console.log(`FAIL  ${path.basename(r.tool)}`);
+      for (const i of r.issues) console.log(`        ${i}`);
+    }
+    console.log(`check-flag-contract: ${rows.length - failed}/${rows.length} tools pass the hard checks.`);
   } else {
     console.log(`\n# flag contract (${deep ? 'static + behavioural' : 'static only'})`);
     for (const r of rows) {
