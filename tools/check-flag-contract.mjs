@@ -37,7 +37,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -430,6 +430,32 @@ function runSelfTest() {
     next: null,
   });
   check('alternative missing-value wording is recognised', classifyBareProbe({ code: 1, out: 'option --limit needs a value' }).kind, 'value');
+
+  // ---- false-green guards, exercised END TO END -------------------------------
+  // These live in main(), not in any pure helper, so nothing above could cover
+  // them. They are the difference between "green" and "verified nothing": if a
+  // refactor dropped either guard, `--only <typo>` or `--only <self>` would
+  // print "0/0 consistent" and exit 0 - a clean pass over zero tools, the exact
+  // false verdict this workspace keeps fixing elsewhere (verify-tools' own
+  // zero-probe guard exists for the same reason).
+  //
+  // The child runs WITHOUT --self-test, so this cannot recurse.
+  const cli = (args) => {
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...args], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      timeout: 60000,
+    });
+    return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+  };
+  const unmatched = cli(['--only', 'zz-no-such-tool.mjs']);
+  check('unmatched --only selector is refused', unmatched.code !== 0, true);
+  check('unmatched selector names the offender', /matched no tools/.test(unmatched.out), true);
+  const onlySelf = cli(['--only', 'check-flag-contract.mjs']);
+  check('selector matching only the auditor is refused', onlySelf.code !== 0, true);
+  check('zero-tool run is never reported clean', /audited zero tools/.test(onlySelf.out), true);
+  const control = cli(['--only', 'extension-check.mjs']);
+  check('a real selector still succeeds (guards are not blanket-fail)', control.code, 0);
 
   const failed = cases.filter((c) => !c.pass);
   for (const c of failed) {
