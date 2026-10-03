@@ -62,7 +62,13 @@ const WRITE_RISKY_FLAGS = new Set([
 
 // ---- argv (Round 12 D contract: explicit inventory, no silent ignores) -------
 
-const BOOLEAN_FLAGS = new Set(['--json', '--quiet', '--deep', '--allow-write-risky']);
+const BOOLEAN_FLAGS = new Set([
+  '--json',
+  '--quiet',
+  '--deep',
+  '--self-test',
+  '--allow-write-risky',
+]);
 const VALUE_FLAGS = new Set(['--only', '--timeout-ms']);
 const argv = process.argv.slice(2);
 
@@ -82,6 +88,7 @@ function usage() {
       '                     TRIAGE MODE: 2 spawns per declared flag, so pair with --only.',
       '  --allow-write-risky let --deep probe flags whose value can WRITE a file',
       '  --only <names>      limit to specific tool basenames (comma-separated)',
+      '  --self-test        prove every detector fires on synthetic fixtures and exit',
       '  --quiet            print only failing tools and the tally (no per-tool rows)',
       '  --json              machine-readable report (schema 1)',
       '  --help              print this text and exit 0',
@@ -240,6 +247,163 @@ const runTool = (rel, args) =>
         resolve({ code: err ? err.code ?? null : 0, out: `${stdout || ''}${stderr || ''}` })
     );
   });
+
+/**
+ * Pure static analysis: everything decidable without running a tool.
+ * Extracted from the worker so --self-test can drive it with synthetic sources;
+ * an async inline body cannot be unit-tested. `helpOut` is the tool's `--help`
+ * text (pass null to skip the documentation check).
+ */
+function analyzeStatic(src, helpOut) {
+  const inventories = extractInventories(src);
+  const allFlags = extractAllFlags(src);
+  const issues = [];
+  const advisory = [];
+
+  // Ownership: which inventory declares each flag. Double declaration is a real
+  // bug - the tool's own precedence silently decides the winner.
+  const owner = new Map();
+  for (const inv of inventories) {
+    for (const f of inv.members) {
+      if (owner.has(f)) issues.push(`flag "${f}" declared in both ${owner.get(f)} and ${inv.name}`);
+      else owner.set(f, inv.name);
+    }
+  }
+
+  // Flags used in source but owned by no inventory: a HEURISTIC, reported as
+  // advisory only (subcommand-scoped tools and orchestrators legitimately have
+  // no flat inventory, and probe/sentinel strings exist only to be rejected).
+  const orphans = [...allFlags].filter(
+    (f) =>
+      !owner.has(f) &&
+      !FOREIGN_FLAGS.has(f.slice(2)) &&
+      f !== '--help' &&
+      f !== '-h' &&
+      !VALUE_FLAGS.has(f) &&
+      !BOOLEAN_FLAGS.has(f)
+  );
+  for (const f of orphans) advisory.push(`flag "${f}" used in source but declared in no inventory`);
+
+  // Declared but absent from the tool's own --help: unambiguous.
+  if (helpOut) {
+    for (const f of owner.keys()) {
+      if (!helpOut.includes(f)) issues.push(`flag "${f}" declared but missing from --help output`);
+    }
+  }
+
+  return { inventories, owner, orphans, advisory, issues };
+}
+
+/**
+ * Self-test: prove every detector fires on synthetic sources, so a green run is
+ * evidence rather than an assumption. The one that matters most is the glob
+ * case - a naive comment stripper silently deleted 56% of coverage-trend.cjs
+ * once, and no end-to-end run would have flagged it as "wrong", only as
+ * "missing". Fixtures therefore assert on SURVIVING declarations, not just on
+ * the absence of errors.
+ */
+function runSelfTest() {
+  const cases = [];
+  const check = (name, actual, expected) =>
+    cases.push({ name, pass: JSON.stringify(actual) === JSON.stringify(expected), actual, expected });
+
+  const clean = `
+    const BOOLEAN_FLAGS = new Set(['--quiet']);
+    const flags = {};
+    for (const a of argv) if (BOOLEAN_FLAGS.has(a)) flags[a] = true;
+  `;
+  const r1 = analyzeStatic(stripComments(clean), 'usage: t [--quiet]\n  --quiet  be quiet');
+  check('clean tool has no issues', r1.issues, []);
+  check('clean tool declares one flag', r1.owner.size, 1);
+
+  // Double declaration across two inventories.
+  const dupe = `
+    const BOOLEAN_FLAGS = new Set(['--quiet']);
+    const VALUE_FLAGS = new Set(['--quiet', '--limit']);
+  `;
+  const r2 = analyzeStatic(stripComments(dupe), '--quiet --limit');
+  check('double declaration is an issue', r2.issues.length, 1);
+  check('double declaration names both inventories', /both/.test(r2.issues[0] || ''), true);
+
+  // Declared but undocumented.
+  const r3 = analyzeStatic(stripComments(clean), 'usage: t with no flags listed');
+  check('declared-but-undocumented is an issue', r3.issues.length, 1);
+
+  // Orphan -> advisory, never a failure.
+  const orphan = `
+    const BOOLEAN_FLAGS = new Set(['--quiet']);
+    const x = argv.includes('--ghost');
+  `;
+  const r4 = analyzeStatic(stripComments(orphan), '--quiet');
+  check('orphan is advisory not issue', r4.issues, []);
+  check('orphan is reported', r4.advisory.length, 1);
+  check('orphan names the flag', /--ghost/.test(r4.advisory[0] || ''), true);
+
+  // Illustrative flags inside comments must not become declarations.
+  const commented = `
+    // a prose example: --stric, --dryrun, --jsno
+    /* block example --nope */
+    const BOOLEAN_FLAGS = new Set(['--quiet']);
+  `;
+  const r5 = analyzeStatic(stripComments(commented), '--quiet');
+  check('comment flags are not orphans', r5.advisory, []);
+  check('comment flags are not declarations', r5.owner.size, 1);
+
+  // GLOB REGRESSION, derived from a real measured failure in coverage-trend.cjs
+  // rather than from a guessed example (two earlier drafts did not reproduce it).
+  //
+  // The shape that actually breaks: a glob ENDING in `/**` with no trailing slash
+  // - `src/test/**`. Its slash-star opens a "comment" the naive regex cannot
+  // close, because `*` + `,` is not `*/`. The scan runs forward to the NEXT real
+  // `*/`, which in that file was an unrelated `/* fall through */` thousands of
+  // characters later - deleting everything between, including the inventory.
+  // Measured span: 7828 chars, after which the tool reported "0 declared" for a
+  // file that declares four.
+  //
+  // Order is load-bearing: the terminator must come AFTER the inventory, or the
+  // span ends early and this fixture would pass even with the bug present.
+  const glob = `
+    const EXCLUDE = ['test/spec files', 'src/test/**'];
+    const VALUE_FLAGS = new Set(['--limit', '--out']);
+    /* an unrelated later block comment */
+  `;
+  const r6 = analyzeStatic(stripComments(glob), '--limit --out');
+  check('glob does not swallow the inventory', r6.owner.size, 2);
+  check('glob keeps both flags', [...r6.owner.keys()].sort(), ['--limit', '--out']);
+
+  // A URL must survive the line-comment stripper.
+  const url = `
+    const DEFAULT = 'http://127.0.0.1:8080/';
+    const VALUE_FLAGS = new Set(['--url']);
+  `;
+  const r7 = analyzeStatic(stripComments(url), '--url');
+  check('url survives comment stripping', r7.owner.size, 1);
+
+  // A non-flag Set (SKIP_DIRS and friends) must not be read as an inventory.
+  const nonFlag = `
+    const SKIP_DIRS = new Set(['node_modules', 'dist']);
+    const VALUE_FLAGS = new Set(['--limit']);
+  `;
+  const r8 = analyzeStatic(stripComments(nonFlag), '--limit');
+  check('non-flag Set is not an inventory', r8.inventories.map((i) => i.name), ['VALUE_FLAGS']);
+
+  // Child-process flags are not this tool's contract.
+  const foreign = `
+    const args = ['ls-files', '--name-only'];
+    const VALUE_FLAGS = new Set(['--limit']);
+  `;
+  const r9 = analyzeStatic(stripComments(foreign), '--limit');
+  check('child-process flags are not orphans', r9.advisory, []);
+
+  const failed = cases.filter((c) => !c.pass);
+  for (const c of failed) {
+    console.error(`FAIL  ${c.name}`);
+    console.error(`      expected ${JSON.stringify(c.expected)}`);
+    console.error(`      actual   ${JSON.stringify(c.actual)}`);
+  }
+  console.log(`check-flag-contract self-test: ${cases.length - failed.length}/${cases.length} passed`);
+  process.exit(failed.length > 0 ? 1 : 0);
+}
 
 async function main() {
   const tools = [
@@ -442,5 +606,10 @@ async function main() {
   }
   process.exit(failed > 0 ? 1 : 0);
 }
+
+// Dispatched here, not next to the argv parse: runSelfTest() reaches the const
+// INVENTORY_RE / FOREIGN_FLAGS / analyzeStatic declarations below, and calling it
+// earlier hit them inside their temporal dead zone (ReferenceError at first run).
+if (flags['--self-test'] === true) runSelfTest();
 
 await main();
