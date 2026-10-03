@@ -60,8 +60,16 @@ jobs:
         run: node tools/sync-parity.mjs check --strict
       - name: Tool CLI contract - every tool answers --help and rejects unknown flags
         run: node tools/verify-tools.mjs --check-cli --quiet
-      - name: Flag contract - declared flags are the implemented ones (static layer)
-        run: node tools/check-flag-contract.mjs
+      # --deep adds the behavioural layer: it probes each DECLARED flag to confirm the
+      # tool implements it, and specifically proves the `--flag=value` form of the
+      # Round 12 D contract works (the only check that does - --check-cli proves
+      # unknown-flag rejection, the static layer proves declared == documented).
+      # Verified green fleet-wide (20/20) and side-effect free: probes run with a
+      # sentinel value, write-risky flags (--out/--ledger) are skipped unless
+      # --allow-write-risky, and a run leaves no tracked or untracked artifact.
+      # Costs ~40s. Drop `--deep` from this line to fall back to the static layer only.
+      - name: Flag contract - declared flags are implemented, --flag=value works
+        run: node tools/check-flag-contract.mjs --deep --quiet
       - name: Tool self-tests - guard matrix and classifier logic
         run: node tools/verify-tools.mjs --self-test
       # The remaining self-test suite, all read-only (fixtures live in a temp dir;
