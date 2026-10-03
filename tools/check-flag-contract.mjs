@@ -395,6 +395,42 @@ function runSelfTest() {
   const r9 = analyzeStatic(stripComments(foreign), '--limit');
   check('child-process flags are not orphans', r9.advisory, []);
 
+  // ---- behavioural layer (the --deep path, now a CI gate on both OS runners) ----
+  //
+  // SAFETY FIRST. isWriteRisky is the only thing stopping the deep layer from
+  // writing files: a probe sends a sentinel VALUE to a flag, so
+  // `ops-dashboard --out=<sentinel>` would rewrite the dashboard in CI. If this
+  // ever regressed, CI would start creating files at attacker-chosen paths.
+  check('write-risky flag is skipped by default', isWriteRisky('--out', false), true);
+  check('write-risky flag is skipped for --ledger', isWriteRisky('--ledger', false), true);
+  check('--allow-write-risky overrides the skip', isWriteRisky('--out', true), false);
+  check('ordinary flag is never write-risky', isWriteRisky('--limit', false), false);
+  check('--help is never write-risky', isWriteRisky('--help', false), false);
+
+  // Classifier branches, including the timeout case that keeps a loaded CI runner
+  // from failing the gate spuriously.
+  check('missing-value message => value flag', classifyBareProbe({ code: 2, out: 'flag "--limit" requires a value' }), {
+    kind: 'value',
+    next: 'equals',
+  });
+  check('unknown-flag message => ambiguous, probe space', classifyBareProbe({ code: 2, out: 'unknown flag "--limit"' }), {
+    kind: 'ambiguous',
+    next: 'space',
+  });
+  check('clean exit => boolean, no follow-up', classifyBareProbe({ code: 0, out: '' }), {
+    kind: 'boolean',
+    next: null,
+  });
+  check('TIMEOUT (null exit) => boolean, no false failure', classifyBareProbe({ code: null, out: '' }), {
+    kind: 'boolean',
+    next: null,
+  });
+  check('echoed phrase on a clean run is not believed', classifyBareProbe({ code: 0, out: 'unknown flag "--x" requires a value' }), {
+    kind: 'boolean',
+    next: null,
+  });
+  check('alternative missing-value wording is recognised', classifyBareProbe({ code: 1, out: 'option --limit needs a value' }).kind, 'value');
+
   const failed = cases.filter((c) => !c.pass);
   for (const c of failed) {
     console.error(`FAIL  ${c.name}`);
@@ -403,6 +439,39 @@ function runSelfTest() {
   }
   console.log(`check-flag-contract self-test: ${cases.length - failed.length}/${cases.length} passed`);
   process.exit(failed.length > 0 ? 1 : 0);
+}
+
+/**
+ * SAFETY PROPERTY, isolated so --self-test can hold it.
+ *
+ * A probe passes a sentinel VALUE to a flag, so probing a flag whose value names
+ * a write destination would actually perform that write - `ops-dashboard
+ * --out=<sentinel>` rewrites docs/metrics/OPS-DASHBOARD.md. This function is the
+ * only thing standing between the deep layer and arbitrary file creation, and it
+ * now runs on BOTH OS runners in CI, so a regression here writes files in CI.
+ * It is therefore pure and separately tested rather than a bare `if` inline.
+ */
+function isWriteRisky(flag, allowWriteRisky) {
+  return WRITE_RISKY_FLAGS.has(flag) && !allowWriteRisky;
+}
+
+/**
+ * Classify a BARE `--flag` probe. Returns which follow-up probe (if any) is
+ * needed. Pure: takes the probe result, returns a verdict - no spawning here, so
+ * --self-test can drive every branch.
+ *
+ * Only a NON-ZERO exit counts as the tool talking about its own argv; a tool that
+ * ran and merely echoed the phrase is not reporting anything. A null exit (the
+ * probe TIMED OUT) matches neither pattern and therefore classifies as boolean:
+ * a slow runner under-reports rather than raising a false gate failure.
+ */
+function classifyBareProbe(bare) {
+  const saysUnknown = /unknown flag/i.test(bare.out || '');
+  const saysMissingValue = /requires? a value|needs a value|missing value/i.test(bare.out || '');
+  const nonZero = bare.code !== 0 && bare.code !== null;
+  if (nonZero && saysMissingValue) return { kind: 'value', next: 'equals' };
+  if (nonZero && saysUnknown) return { kind: 'ambiguous', next: 'space' };
+  return { kind: 'boolean', next: null };
 }
 
 async function main() {
@@ -517,24 +586,25 @@ async function main() {
     // never raise a false alarm.
     const behavioural = [];
     if (deep) {
-      const saysUnknown = (r) => /unknown flag/i.test(r.out);
-      const saysMissingValue = (r) => /requires? a value|needs a value|missing value/i.test(r.out);
+      const saysUnknown = (r) => /unknown flag/i.test(r.out || '');
       for (const f of owner.keys()) {
-        if (WRITE_RISKY_FLAGS.has(f) && !allowWriteRisky) {
+        // SAFETY: never send a sentinel value to a flag whose value is a write
+        // destination. See isWriteRisky for why this is tested separately.
+        if (isWriteRisky(f, allowWriteRisky)) {
           behavioural.push({ flag: f, skipped: 'write-risky' });
           continue;
         }
         const bare = await runTool(rel, [f]);
         const verdict = { flag: f, bare: bare.code };
-        if (bare.code !== 0 && saysMissingValue(bare)) {
-          verdict.kind = 'value';
+        const step = classifyBareProbe(bare);
+        verdict.kind = step.kind;
+        if (step.next === 'equals') {
           const eq = await runTool(rel, [`${f}=zzz-invalid-sentinel`]);
           verdict.equals = eq.code;
-          if (saysUnknown(eq) || saysMissingValue(eq)) {
+          if (saysUnknown(eq) || classifyBareProbe(eq).kind !== 'boolean') {
             issues.push(`flag "${f}" declared in ${owner.get(f)} but rejected in --flag=value form`);
           }
-        } else if (bare.code !== 0 && saysUnknown(bare)) {
-          verdict.kind = 'ambiguous';
+        } else if (step.next === 'space') {
           const space = await runTool(rel, [f, 'zzz-invalid-sentinel']);
           verdict.space = space.code;
           if (space.code !== 0 && saysUnknown(space)) {
@@ -544,8 +614,6 @@ async function main() {
               `flag "${f}" declared in ${owner.get(f)}: its missing-value error calls the known flag "unknown" (exit ${bare.code} is right, the message misleads)`
             );
           }
-        } else {
-          verdict.kind = 'boolean';
         }
         behavioural.push(verdict);
       }
