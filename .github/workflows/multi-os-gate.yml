@@ -76,6 +76,7 @@ jobs:
           node tools/secret-scan.mjs --self-test
           node tools/handoff-check.mjs --self-test
           node tools/workflow-audit.mjs --self-test
+          node tools/check-flag-contract.mjs --self-test
           node tools/telemetry-collector.mjs --self-test
           node tools/telemetry-export.mjs --self-test
       - name: OPS dashboard smoke (both OS)
