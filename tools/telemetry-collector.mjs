@@ -350,6 +350,17 @@ export function createDedupeCache({ windowMs, maxKeys = 5000 }) {
  * Collector state machine: validate → rate-limit → de-dupe → append JSONL.
  * Pure-ish: `deps.now` is injectable so the self-test can drive the windows.
  */
+/**
+ * The per-app rate-limit window, in ms.
+ *
+ * Named (and asserted in --self-test) because the limiter's BEHAVIOUR is not
+ * enough to pin it down: the self-test drives events through an injectable
+ * clock, so a window wrongly set to ~27 hours still lets the limiter trip and
+ * the suite stays green - while in production the bucket would never reset and
+ * every later event from that app would be dropped.
+ */
+export const RATE_WINDOW_MS = 60 * 1000;
+
 export function createCollector(options, deps = {}) {
   const now = deps.now ?? (() => Date.now());
   const outPath = path.resolve(ROOT, options.out);
@@ -359,7 +370,7 @@ export function createCollector(options, deps = {}) {
   });
   const limiter = createRateLimiter({
     maxPerWindow: options.maxEventsPerMin,
-    windowMs: 60 * 1000,
+    windowMs: RATE_WINDOW_MS,
   });
   const stats = {
     startedAt: new Date().toISOString(),
@@ -838,6 +849,10 @@ async function runSelfTest() {
   check('defaults.out', defaults.out === DEFAULT_OUT, defaults.out);
   check('defaults.allowOrigin', defaults.allowOrigin.length === DEFAULT_ORIGINS.length);
   check('defaults.notSelfTest', defaults.selfTest === false);
+  // Pins the limiter WINDOW, not just the limiter. Behaviour alone cannot: the
+  // self-test drives an injectable clock, so a window set to ~27 hours still
+  // trips the limiter and stays green while production would never reset it.
+  check('rate window is one minute', RATE_WINDOW_MS === 60000, String(RATE_WINDOW_MS));
 
   const parsed = parseArgs(['serve', '--port', '0', '--allow-origin', 'http://example.test', '--quiet']);
   check('parse.ephemeralPort', parsed.port === 0, String(parsed.port));

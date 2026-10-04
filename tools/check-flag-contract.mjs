@@ -148,8 +148,18 @@ const onlyNames = (flags['--only'] || '')
 
 // ---- static extraction -----------------------------------------------------
 
-/** Inventory declarations: `const <NAME> = new Set([ '--x', ... ])`. */
-const INVENTORY_RE = /const\s+([A-Z_]+)\s*=\s*new Set\(\[([\s\S]*?)\]\s*\)/g;
+/**
+ * Inventory declarations: `const <NAME> = new Set([ '--x', ... ])`.
+ *
+ * `^` (with the `m` flag) is load-bearing: a real inventory declaration always
+ * STARTS its own line, whereas a snippet of source embedded as DATA - e.g. this
+ * repo's own mutation-probe catalogue, whose probe strings literally contain
+ * `const WRITE_RISKY_FLAGS = new Set([\n  '--out',` - has its `const` mid-line,
+ * after an opening quote. Without the anchor the lazy body scanned on across real
+ * newlines and swallowed whatever Set came next, inventing a phantom inventory
+ * whose name and flags came from two different places.
+ */
+const INVENTORY_RE = /^[ \t]*const\s+([A-Z_]+)\s*=\s*new Set\(\[([\s\S]*?)\]\s*\)/gm;
 /** Any `--flag` string literal anywhere in the source. */
 const FLAG_LITERAL_RE = /['"`]--([a-z0-9][a-z0-9-]*)['"`]/gi;
 const FLAG_STRING_RE = /'(--[a-z0-9][a-z0-9-]*)'/g;

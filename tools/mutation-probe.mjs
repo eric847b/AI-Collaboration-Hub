@@ -88,6 +88,27 @@ const PROBES = [
     to: 'preview: line.trim().slice(0, 90),',
   },
   {
+    tool: 'telemetry-collector.mjs',
+    id: 'telemetry-rate-limit-applies',
+    why: 'the per-app rate limiter must actually drop events, or ingestion is unbounded',
+    from: 'windowMs: RATE_WINDOW_MS,',
+    to: 'windowMs: 0,',
+  },
+  {
+    tool: 'telemetry-collector.mjs',
+    id: 'telemetry-rate-window-is-a-minute',
+    why: 'the limiter window must stay 60s - behaviour alone cannot pin it, since the self-test drives an injectable clock',
+    from: 'export const RATE_WINDOW_MS = 60 * 1000;',
+    to: 'export const RATE_WINDOW_MS = 60 * 100000;',
+  },
+  {
+    tool: 'telemetry-collector.mjs',
+    id: 'telemetry-dedupe-suppresses',
+    why: 'identical events inside the dedupe window must be suppressed, not double-counted',
+    from: 'windowMs: options.dedupeWindow * 1000,',
+    to: 'windowMs: 0,',
+  },
+  {
     tool: 'check-flag-contract.mjs',
     id: 'flag-write-risk-safety',
     why: 'the --deep layer must skip value flags that can WRITE, or a probe rewrites a real file',
