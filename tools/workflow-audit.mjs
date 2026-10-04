@@ -742,6 +742,40 @@ function auditWorkflow(wf) {
       });
     }
   }
+  return annotatePrivilegedVerdict(findings);
+}
+
+/**
+ * WF004 is advisory by construction: it fires on the mere PRESENCE of a
+ * privileged trigger, and the workflows that legitimately need one (self-heal
+ * reacting to `workflow_run`) can never remove it without losing their purpose.
+ * So the only honest way to retire it is to actually perform the review the rule
+ * asks for. This appends that review to the message, derived from findings this
+ * SAME run already produced - never a second implementation of those checks.
+ *
+ * Finding COUNTS are deliberately untouched, so the ratchet baseline stays
+ * valid and this cannot turn an accepted-debt entry red or green on its own.
+ */
+const UNTRUSTED_REACH_RULES = new Map([
+  ['WF011', 'untrusted checkout'],
+  ['WF001', 'untrusted context in a shell'],
+  ['WF010', 'dispatch input in a shell'],
+]);
+
+/** Append a safety verdict to every WF004 hit, from this run's own findings. */
+function annotatePrivilegedVerdict(findings) {
+  if (!findings.some((f) => f.rule === 'WF004')) return findings;
+  const reach = [
+    ...new Set(
+      findings.filter((f) => UNTRUSTED_REACH_RULES.has(f.rule)).map((f) => f.rule),
+    ),
+  ];
+  const verdict = reach.length
+    ? `RISKY: reaches untrusted code via ${reach.map((r) => `${r} (${UNTRUSTED_REACH_RULES.get(r)})`).join(', ')}`
+    : 'reviewed: no untrusted checkout or input reaches it (no WF001/WF010/WF011 hits)';
+  for (const f of findings) {
+    if (f.rule === 'WF004') f.message = `${f.message} -- ${verdict}`;
+  }
   return findings;
 }
 
@@ -1188,6 +1222,62 @@ function runSelfTest() {
     if (got !== want) failures.push(`verdict (${label}): exit ${got}, expected ${want}`);
   }
   notes.push('exit-code contract (ledger-only default, --strict opt-in, low always advisory)');
+
+  // 7. The WF004 safety verdict must be load-bearing in BOTH directions. An
+  //    annotation that can only ever say "reviewed" would launder a genuinely
+  //    dangerous workflow into looking audited, which is strictly worse than the
+  //    original advisory. So: a privileged workflow that also feeds untrusted
+  //    code into the privileged job MUST be labelled RISKY and must name the rule
+  //    responsible, and the verdict must never alter finding COUNTS (the ratchet
+  //    ledger keys on file+rule counts, so a changed count would silently rot it).
+  const verdictCases = [
+    [
+      'RISKY when an untrusted checkout reaches the privileged job',
+      cleanWorkflow(
+        [
+          `      - uses: actions/checkout@${CHECKOUT_SHA}`,
+          '        with:',
+          '          ref: ${{ github.event.pull_request.head.sha }}',
+        ],
+        { trigger: 'on: pull_request_target' }
+      ),
+      'RISKY',
+      'WF011',
+    ],
+    [
+      'reviewed when nothing untrusted reaches the privileged job',
+      cleanWorkflow(['      - run: echo hi'], { trigger: 'on: pull_request_target' }),
+      'reviewed',
+      null,
+    ],
+  ];
+  for (const [label, source, want, wantRule] of verdictCases) {
+    let got;
+    try {
+      got = auditWorkflow(parseWorkflow(source, `fixture-verdict-${label}.yml`));
+    } catch (e) {
+      failures.push(`WF004 verdict (${label}): threw — ${e.message}`);
+      continue;
+    }
+    const wf004 = got.filter((f) => f.rule === 'WF004');
+    if (wf004.length !== 1) {
+      failures.push(`WF004 verdict (${label}): expected 1 WF004 finding, got ${wf004.length}`);
+      continue;
+    }
+    if (!wf004[0].message.includes(want)) {
+      failures.push(`WF004 verdict (${label}): message lacks ${JSON.stringify(want)} — got ${JSON.stringify(wf004[0].message)}`);
+    }
+    if (wantRule && !wf004[0].message.includes(wantRule)) {
+      failures.push(`WF004 verdict (${label}): verdict does not name ${wantRule} — got ${JSON.stringify(wf004[0].message)}`);
+    }
+    // Count preservation: the same sources must yield the pre-annotation counts.
+    const preCount = got.filter((f) => f.rule !== 'WF004').length;
+    const postCount = got.length;
+    if (preCount + 1 !== postCount) {
+      failures.push(`WF004 verdict (${label}): annotation changed the finding count (${preCount} -> ${postCount})`);
+    }
+  }
+  notes.push('WF004 verdict flips both ways and preserves finding counts (ratchet-safe)');
 
   return { checked, notes, failures };
 }
