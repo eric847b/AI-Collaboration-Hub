@@ -84,6 +84,9 @@ const SMOKE = {
   'ops-dashboard.mjs': ['--check'],
   'telemetry-collector.mjs': ['report', '--limit', '1'],
   'telemetry-export.mjs': ['--self-test'],
+  // Cheap and read-only on purpose: a bare run would spawn every probed tool's
+  // --self-test, which is far too slow (and pointlessly heavy) for a smoke row.
+  'mutation-probe.mjs': ['--list-probes'],
 };
 
 /** Tokens that must never appear in a smoke probe (they mutate state). */

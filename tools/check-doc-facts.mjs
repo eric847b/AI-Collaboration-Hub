@@ -246,6 +246,12 @@ check('a subject with no count attached is fine', claimFindings('run `--check-cl
 check('an unrelated count is not flagged', claimFindings('coverage 47/47 and gate 25/25', SUBJ, 'x.md').length, 0);
 check('dated evidence next to a subject is tolerated', claimFindings('`--check-cli` 21/21 conform; a probe drops it to 19/20 exit 1', SUBJ, 'x.md').length, 0);
 check('an ILLUSTRATION of the bug is not a claim', claimFindings('Motivated by real drift: six stale `--check-cli` 19/19 claims across three files', SUBJ, 'x.md').length, 0);
+  // The reporting path itself. A drifted claim previously referenced an
+  // identifier that did not exist, so the validator CRASHED (ReferenceError)
+  // exactly when it had something to report - a validator that can only pass.
+  // These two execute that path so it can never be untested again.
+  check('a drifted claim renders its live-totals hint', formatHint({ denominator: 21 }, 23, 22), ' (live totals: 23 / 22)');
+  check('a hintless finding renders an empty hint', formatHint({ denominator: null }), '');
 check('a "claims like" illustration is not a claim', claimFindings('catches stale claims like "`--check-cli` 19/19" after the total moved', SUBJ, 'x.md').length, 0);
 check('an "e.g." illustration is not a claim', claimFindings('e.g. `--check-cli` 19/19 is now wrong', SUBJ, 'x.md').length, 0);
 check('CONTROL: a real claim is still caught after a cue word', claimFindings('`--check-cli` reports 21/22 tools honor the contract', SUBJ, 'x.md').length, 1);
@@ -367,8 +373,21 @@ denominator: null,
 }
 }
 
+/**
+ * The "(live totals: ...)" suffix on a drifted claim.
+ *
+ * Extracted so the self-test can EXECUTE it. This used to be inline in the
+ * reporting loop below and referenced an identifier that did not exist, so the
+ * one path a validator exists for - reporting drift - threw a ReferenceError
+ * instead of reporting. It survived only because nothing ran it until a claim
+ * actually went stale.
+ */
+function formatHint(d, cli, flag) {
+  return d.denominator === null ? '' : ` (live totals: ${cli} / ${flag})`;
+}
+
 for (const d of drifted) {
-const hint = d.denominator === null ? '' : ` (live totals: ${totals.join(' / ')})`;
+      const hint = formatHint(d, cliTotal, flagTotal);
 console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
 }
 if (!quiet) {
