@@ -1226,10 +1226,12 @@ function runSelfTest() {
   // 7. The WF004 safety verdict must be load-bearing in BOTH directions. An
   //    annotation that can only ever say "reviewed" would launder a genuinely
   //    dangerous workflow into looking audited, which is strictly worse than the
-  //    original advisory. So: a privileged workflow that also feeds untrusted
-  //    code into the privileged job MUST be labelled RISKY and must name the rule
-  //    responsible, and the verdict must never alter finding COUNTS (the ratchet
-  //    ledger keys on file+rule counts, so a changed count would silently rot it).
+  //    original advisory. EVERY untrusted-reach rule is exercised separately
+  //    (WF011 untrusted checkout, WF001 untrusted context, WF010 dispatch input):
+  //    covering only one of them leaves the others silently unverified - a
+  //    neutered WF001 branch kept this self-test GREEN while a privileged job
+  //    interpolated a PR title into a shell. Counts must also be preserved, or
+  //    the ratchet ledger (keyed on file+rule counts) would rot.
   const verdictCases = [
     [
       'RISKY when an untrusted checkout reaches the privileged job',
@@ -1243,6 +1245,22 @@ function runSelfTest() {
       ),
       'RISKY',
       'WF011',
+    ],
+    [
+      'RISKY when untrusted context is interpolated into a privileged shell',
+      cleanWorkflow(['      - run: echo "${{ github.event.issue.title }}"'], {
+        trigger: 'on: pull_request_target',
+      }),
+      'RISKY',
+      'WF001',
+    ],
+    [
+      'RISKY when dispatch input is interpolated into a privileged shell',
+      cleanWorkflow(['      - run: echo "${{ github.event.inputs.target }}"'], {
+        trigger: 'on: pull_request_target',
+      }),
+      'RISKY',
+      'WF010',
     ],
     [
       'reviewed when nothing untrusted reaches the privileged job',
