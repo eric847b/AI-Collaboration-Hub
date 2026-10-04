@@ -80,6 +80,16 @@ jobs:
         run: node tools/check-flag-contract.mjs --deep --quiet
       - name: Tool self-tests - guard matrix and classifier logic
         run: node tools/verify-tools.mjs --self-test
+      # Proves those self-tests actually BITE: each probe runs the probed tool's
+      # --self-test twice, unmodified (a control that must exit 0) and with one
+      # declared mutation (must exit non-zero). A mutant that survives means a
+      # documented guard does not cover the risk it claims to - the exact failure
+      # mode that let workflow-audit's WF004 verdict and secret-scan's preview
+      # redaction ship unverified. A check nothing runs would rot, so it runs here.
+      # Costs ~40s (8 probes, each spawning its target's self-test); writes only
+      # throwaway copies BESIDE each probed tool and deletes them in a finally.
+      - name: Mutation probes - self-test guards must fail when the code is broken
+        run: node tools/mutation-probe.mjs --quiet
       # The remaining self-test suite, all read-only (fixtures live in a temp dir;
       # verified to leave the working tree byte-identical). These previously gated
       # only via the local `npm run tools:selftest` chain, so a regression in any

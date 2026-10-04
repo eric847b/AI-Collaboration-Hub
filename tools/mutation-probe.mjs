@@ -88,6 +88,13 @@ const PROBES = [
     to: 'preview: line.trim().slice(0, 90),',
   },
   {
+    tool: 'check-flag-contract.mjs',
+    id: 'flag-write-risk-safety',
+    why: 'the --deep layer must skip value flags that can WRITE, or a probe rewrites a real file',
+    from: "const WRITE_RISKY_FLAGS = new Set([\n  '--out',",
+    to: "const WRITE_RISKY_FLAGS = new Set([\n  '--out-disabled',",
+  },
+  {
     tool: 'verify-tools.mjs',
     id: 'verify-strict-promotes-warns',
     why: '--strict must exit 1 when any warn is present',
@@ -203,7 +210,11 @@ function runProbe(probe, maxSeconds) {
   const base = path.basename(src);
   const controlFile = path.join(dir, '.mutation-probe-control-' + base);
   const mutantFile = path.join(dir, '.mutation-probe-' + probe.id + '-' + base);
-  const original = fs.readFileSync(src, 'utf8');
+  // Normalize CRLF -> LF before matching. Declared `from` strings are authored
+  // with \n, and most of the older tools here are CRLF: without this a perfectly
+  // valid probe would report `drift` on every one of them. Normalizing the
+  // source (rather than the probe) also keeps the control copy byte-comparable.
+  const original = fs.readFileSync(src, 'utf8').replace(/\r\n/g, '\n');
 
   try {
     if (!original.includes(probe.from)) {
