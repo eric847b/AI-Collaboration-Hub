@@ -41,11 +41,19 @@ jobs:
           node --check tools/handoff-check.mjs
           node --check tools/load-test.mjs
           node --check tools/check-doc-links.mjs
+          node --check tools/check-doc-facts.mjs
           node --check tools/check-flag-contract.mjs
           node --check tools/secret-scan.mjs
           node --check tools/sync-parity.mjs
       - name: Doc-link health (all Markdown)
         run: node tools/check-doc-links.mjs
+      # Complements the link check above: links prove a doc PATH is real, this
+      # proves a doc NUMBER is still true. It caught six stale "--check-cli 19/19"
+      # claims across three files on 2026-10-01, and immediately caught its own
+      # addition (adding this tool moved the live total 21 -> 22). Totals are
+      # derived from the filesystem and check-flag-contract --json, never hand-typed.
+      - name: Doc facts (documented counts still match runtime truth)
+        run: node tools/check-doc-facts.mjs
       - name: Extension health (informational — ladder surface may lag)
         continue-on-error: true
         run: node tools/extension-check.mjs --quiet

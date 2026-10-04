@@ -69,6 +69,7 @@ const onlyArg = opt('--only', '');
  */
 const SMOKE = {
   'check-doc-links.mjs': ['--quiet'],
+  'check-doc-facts.mjs': [],
   'check-flag-contract.mjs': [],
   'extension-check.mjs': ['--quiet'],
   'secret-scan.mjs': ['--quiet'],
