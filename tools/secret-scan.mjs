@@ -353,8 +353,28 @@ if (selfTest || checkCi) {
   const failures = [];
   for (const [id, value] of Object.entries(sample)) {
     const hits = scanText('<synthetic>', value, rules).filter((f) => f.rule === id);
-    if (hits.length === 0) failures.push(`detector miss: ${id}`);
-    else if (hits[0].evidence.includes(value.slice(-12))) failures.push(`redaction leak: ${id}`);
+    if (hits.length === 0) {
+      failures.push(`detector miss: ${id}`);
+      continue;
+    }
+    // BOTH report fields must be leak-free, and they fail differently.
+    // `evidence` carries redact() directly; `preview` carries the surrounding
+    // source line with the match spliced back in. Asserting only `evidence`
+    // left `preview` completely unverified - mutating preview to emit the raw
+    // line kept this self-test GREEN, so a regression would have started
+    // pasting whole credentials into scan reports with nothing failing.
+    //
+    // The preview check uses a 20-char PREFIX, not the tail: `preview` is
+    // truncated to 90 chars, so for a longer secret the tail is absent even
+    // when the line leaks wholesale (a tail-based check would pass vacuously).
+    // redact() only ever exposes the first 4 characters, so a 20-char prefix
+    // must never survive - at any length.
+    if (hits[0].evidence.includes(value.slice(-12))) {
+      failures.push(`redaction leak (evidence): ${id}`);
+    }
+    if (hits[0].preview.includes(value.slice(0, 20))) {
+      failures.push(`redaction leak (preview): ${id}`);
+    }
   }
   for (const line of clean) {
     const hits = scanText('<clean>', line, rules);
