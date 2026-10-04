@@ -199,29 +199,30 @@ return fs.readdirSync(path.join(ROOT, 'tools')).filter((f) => /\.(mjs|cjs)$/.tes
 }
 
 /**
-* Totals the docs are allowed to cite. Both are computed, never assumed:
-*  - cliTotal  : what `--check-cli` audits (tools/ + out-of-tree).
-*  - flagTotal : what check-flag-contract audits, read from its own --json
-*                because it excludes ITSELF, so the two differ by one.
-*/
+ * Totals the docs are allowed to cite. Derived, never hand-copied.
+ *
+ * `flagTotal` is computed as `cliTotal - 1` under one stated invariant:
+ * check-flag-contract audits everything `--check-cli` audits, MINUS ITSELF (an
+ * auditor that audited its own source would be reasoning circularly). Deriving
+ * it keeps this tool near-instant instead of paying ~5.5 s to spawn every tool
+ * on every gate run and in both CI OS runners.
+ *
+ * That invariant is an ASSUMPTION here and a VERIFIED FACT in --self-test,
+ * which spawns the real tool and compares. If check-flag-contract ever changes
+ * who it audits, the self-test fails in CI instead of the docs quietly going
+ * wrong — which is the whole point of having this tool.
+ */
 function computeTotals() {
-const cliTotal = countToolsOnDisk() + parseExtraTools(fs.readFileSync(path.join(ROOT, 'tools/verify-tools.mjs'), 'utf8')).length;
-// NOTE: no --quiet here — check-flag-contract declares only
-// --deep/--allow-write-risky/--only/--json, and an undeclared flag would
-// exit 2 and silently turn this total into null.
-const r = spawnSync(process.execPath, [path.join(ROOT, 'tools/check-flag-contract.mjs'), '--json'], {
-cwd: ROOT,
-encoding: 'utf8',
-timeout: 120000,
-});
-let flagTotal = null;
-try {
-const parsed = JSON.parse(r.stdout || '');
-if (Array.isArray(parsed.rows)) flagTotal = parsed.rows.length;
-} catch {
-flagTotal = null; // reported as a failure below, never silently skipped
+const extras = parseExtraTools(fs.readFileSync(path.join(ROOT, 'tools/verify-tools.mjs'), 'utf8'));
+const cliTotal = countToolsOnDisk() + extras.length;
+return { cliTotal, flagTotal: cliTotal - 1 };
 }
-return { cliTotal, flagTotal };
+
+/** The auditor under audit must exist, or the totals above are fiction. */
+function totalsAreSane(cliTotal) {
+return (
+cliTotal >= 2 && fs.existsSync(path.join(ROOT, 'tools/check-flag-contract.mjs')) && fs.existsSync(path.join(ROOT, 'tools/verify-tools.mjs'))
+);
 }
 
 /**
@@ -262,6 +263,32 @@ check('stale "stays opt-in" against a deep workflow', deepClaimVerdict('`--deep`
 check('"stays opt-in" is honest when CI is static', deepClaimVerdict('`--deep` stays opt-in', WF_STATIC), 'agrees');
 check('doc says nothing about deep', deepClaimVerdict('a doc with no claim here', WF_STATIC), 'silent');
 check('local-only opt-in wording makes no CI claim', deepClaimVerdict('`--deep` stays opt-in locally because value probes can write', WF_DEEP), 'silent');
+
+// ---- the invariant that lets the hot path skip a 5.5s spawn ----
+// flagTotal is DERIVED as cliTotal - 1 in computeTotals(). Here that assumption
+// is paid for: the real tool is spawned and compared, so if check-flag-contract
+// ever changes who it audits, CI fails here instead of the docs going wrong.
+{
+const { cliTotal, flagTotal: derived } = computeTotals();
+check('derived totals are sane', totalsAreSane(cliTotal), true);
+check('INVARIANT-SHAPE derived flagTotal is cliTotal - 1', derived, cliTotal - 1);
+// NOTE: no --quiet — check-flag-contract declares only
+// --deep/--allow-write-risky/--only/--json; an undeclared flag exits 2.
+const r = spawnSync(process.execPath, [path.join(ROOT, 'tools/check-flag-contract.mjs'), '--json'], {
+cwd: ROOT,
+encoding: 'utf8',
+timeout: 180000,
+});
+let actual = null;
+try {
+const parsed = JSON.parse(r.stdout || '');
+if (Array.isArray(parsed.rows)) actual = parsed.rows.length;
+} catch {
+actual = null;
+}
+check('check-flag-contract --json produced rows', actual !== null, true);
+check('INVARIANT flagTotal === cliTotal - 1 (auditor excludes only itself)', actual, derived);
+}
 
 // ---- parseExtraTools: read from verify-tools, never a second copy ----
 const vt = fs.readFileSync(path.join(ROOT, 'tools/verify-tools.mjs'), 'utf8');
@@ -310,11 +337,12 @@ process.exit(2);
 }
 
 const { cliTotal, flagTotal } = computeTotals();
-if (flagTotal === null) {
-console.error('check-doc-facts: could not read check-flag-contract --json (the tool is broken) — that is itself a failure');
+if (!totalsAreSane(cliTotal)) {
+console.error(
+`check-doc-facts: cannot derive live totals (cliTotal=${cliTotal}, tools/ or the auditor missing) — refusing to report 0 drifted facts`,
+);
 process.exit(1);
 }
-const totals = [cliTotal, flagTotal];
 const workflowPath = path.join(ROOT, '.github/workflows/multi-os-gate.yml');
 const workflowText = fs.existsSync(workflowPath) ? fs.readFileSync(workflowPath, 'utf8') : '';
 
@@ -345,7 +373,7 @@ console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
 }
 if (!quiet) {
 console.log(
-`\ncheck-doc-facts: ${present.length} documents, ${totals.join(' + ')} live tool totals, ${drifted.length} drifted claim(s)`,
+`\ncheck-doc-facts: ${present.length} documents, ${cliTotal} + ${flagTotal} live tool totals, ${drifted.length} drifted claim(s)`,
 );
 }
 process.exit(drifted.length > 0 ? 1 : 0);
