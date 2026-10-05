@@ -37,7 +37,7 @@ const EXT = path.join(ROOT, 'ai-chat-websites', 'Userscripts', 'extension');
 // Boolean flags only. Unknown flags, `--flag=value` on a boolean, and stray
 // positionals all exit 2 instead of being silently ignored. No stdin prompts.
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--quiet']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test']);
 const flags = {};
 const positionals = [];
 for (const a of argv) {
@@ -71,6 +71,7 @@ function usage() {
       '',
       'Flags:',
       '  --quiet   print only the summary line plus failures (no per-check "ok" lines)',
+  '  --self-test  prove the parity + secret rules bite (no extension needed)  [no extension]',
       '  --help    print this text and exit 0',
       '',
       'Checks: manifest MV3 fields, ladder plumbing in background.js/options.html,',
@@ -94,6 +95,13 @@ if (positionals.length > 0) {
 }
 const quiet = flags['--quiet'] === true;
 
+// Dispatch BEFORE any file reading: the self-test must not depend on the extension
+// tree being present, or it could not run in a checkout that has no extension.
+if (flags['--self-test']) {
+  runSelfTest();
+  process.exit(0);
+}
+
 const failures = [];
 const passes = [];
 function check(name, ok, detail = '') {
@@ -112,6 +120,39 @@ function extractProviders(src) {
   const m = src && src.match(/LADDER_PROVIDERS\s*=\s*\[([^\]]*)\]/);
   if (!m) return null;
   return [...m[1].matchAll(/['"]([a-z0-9-]+)['"]/g)].map((x) => x[1]).sort();
+}
+
+/**
+ * Provider parity between background.js and options.html.
+ *
+ * An empty allow-list is NOT parity: `LADDER_PROVIDERS = []` on both sides compares
+ * equal ([] === []) and would report green for an extension that routes to no
+ * provider at all. Requiring non-empty on both sides keeps that vacuous pass out.
+ * A null list means "not extractable", which is also a failure, not an exemption.
+ */
+function providersParity(bgList, optList) {
+  if (bgList === null || optList === null) {
+    return { ok: false, reason: 'LADDER_PROVIDERS not extractable' };
+  }
+  if (!bgList.length || !optList.length) {
+    return { ok: false, reason: `empty LADDER_PROVIDERS (background=${bgList.length} options=${optList.length})` };
+  }
+  // Compare canonically: extractProviders happens to sort, but relying on that is an
+  // accident of the caller. A JSON.stringify comparison is ORDER-SENSITIVE, so
+  // ['a','b'] vs ['b','a'] would report a mismatch that does not exist.
+  const a = [...bgList].sort();
+  const b = [...optList].sort();
+  const same = JSON.stringify(a) === JSON.stringify(b);
+  return { ok: same, reason: `background=[${bgList}] options=[${optList}]` };
+}
+
+/** Pure so the self-test can prove the detectors actually fire. */
+function hasHardcodedSecret(src) {
+  return (
+    /sk-[A-Za-z0-9]{10,}/.test(src) ||
+    /xox[bap]-[A-Za-z0-9-]+/.test(src) ||
+    /ghp_[A-Za-z0-9]{10,}/.test(src)
+  );
 }
 
 // ---- 1. manifest.json -------------------------------------------------------
@@ -188,11 +229,8 @@ if (bg !== null && opt !== null) {
   check('background.js LADDER_PROVIDERS extractable', bgProviders !== null);
   check('options.html LADDER_PROVIDERS extractable', optProviders !== null);
   if (bgProviders && optProviders) {
-    check(
-      `LADDER_PROVIDERS parity (${bgProviders.join(',')})`,
-      JSON.stringify(bgProviders) === JSON.stringify(optProviders),
-      `background=[${bgProviders}] options=[${optProviders}]`,
-    );
+    const parity = providersParity(bgProviders, optProviders);
+    check(`LADDER_PROVIDERS parity (${bgProviders.join(',')})`, parity.ok, parity.reason);
   }
 }
 
@@ -202,10 +240,52 @@ for (const [name, src] of [
   ['options.html', opt],
 ]) {
   if (src === null) continue;
-  check(
-    `${name} has no hardcoded secrets`,
-    !/sk-[A-Za-z0-9]{10,}/.test(src) && !/xox[bap]-[A-Za-z0-9-]+/.test(src) && !/ghp_[A-Za-z0-9]{10,}/.test(src),
-  );
+  check(`${name} has no hardcoded secrets`, !hasHardcodedSecret(src));
+}
+
+// ---- Self-test -----------------------------------------------------------------
+// Assembled from fragments on purpose: a literal `sk-xxxx` in THIS file would make
+// secret-scan flag the tool that scans for secrets, so the probes are built at runtime.
+function runSelfTest() {
+  const failures = [];
+  let ran = 0;
+  const check = (name, cond) => { ran += 1; if (!cond) failures.push(name); };
+
+  // extractProviders
+  check('providers extract from a normal list', JSON.stringify(extractProviders("const LADDER_PROVIDERS = ['openai', 'gemini'];")) === '["gemini","openai"]');
+  check('providers are sorted, so ordering never fakes a mismatch', JSON.stringify(extractProviders("const LADDER_PROVIDERS = ['b', 'a'];")) === '["a","b"]');
+  check('an empty list extracts as [] not null', JSON.stringify(extractProviders('const LADDER_PROVIDERS = [];')) === '[]');
+  check('a missing list extracts as null', extractProviders('const SOMETHING_ELSE = 1;') === null);
+  check('null source extracts as null', extractProviders(null) === null);
+
+  // Parity: the vacuous green this closes is [] === [].
+  check('identical non-empty lists are in parity', providersParity(['openai'], ['openai']).ok === true);
+  check('different lists are NOT in parity', providersParity(['openai'], ['gemini']).ok === false);
+  check('TWO EMPTY LISTS ARE NOT PARITY', providersParity([], []).ok === false);
+  check('empty vs non-empty is not parity', providersParity([], ['openai']).ok === false);
+  check('non-empty vs empty is not parity', providersParity(['openai'], []).ok === false);
+  check('an unextractable list is not parity', providersParity(null, ['openai']).ok === false);
+  check('order does not affect parity', providersParity(['a', 'b'], ['b', 'a']).ok === true);
+
+  // Secret detectors must actually FIRE, not merely be present in the source.
+  const FAKE_OPENAI = ['sk', 'A1b2C3d4E5f6'].join('-');
+  const FAKE_SLACK = ['xoxb', '1234-5678-Abcd'].join('-');
+  const FAKE_GH = ['ghp', 'aBcD1234eFgH5678'].join('_');
+  check('an OpenAI-shaped key is detected', hasHardcodedSecret(`const k = "${FAKE_OPENAI}";`) === true);
+  check('a Slack-shaped token is detected', hasHardcodedSecret(`const k = "${FAKE_SLACK}";`) === true);
+  check('a GitHub-shaped token is detected', hasHardcodedSecret(`const k = "${FAKE_GH}";`) === true);
+  check('an ordinary config file is clean', hasHardcodedSecret('const MODEL = "gpt-4o"; const X = 1;') === false);
+  check('a too-short sk- fragment is not flagged', hasHardcodedSecret('sk-short') === false);
+  // NOTE: no "sk-antigravity" style near-miss assertion. The detector is deliberately
+  // fail-safe: any sk- plus 10+ alphanumerics is reported. Asserting an exemption would
+  // push toward special-casing the regex, which is how detectors grow holes.
+
+  if (failures.length) {
+    console.error(`extension-check self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log(`extension-check self-test: ${ran}/${ran} passed`);
 }
 
 // ---- report -----------------------------------------------------------------

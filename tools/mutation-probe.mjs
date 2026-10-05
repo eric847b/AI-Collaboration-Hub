@@ -109,6 +109,27 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'extension-check.mjs',
+    id: 'extcheck-empty-lists-are-not-parity',
+    why: 'LADDER_PROVIDERS = [] on both sides compares equal - a vacuous green for an extension routing nowhere',
+    from: "  if (!bgList.length || !optList.length) {",
+    to: '  if (false) {',
+  },
+  {
+    tool: 'extension-check.mjs',
+    id: 'extcheck-secret-detector-fires',
+    why: 'the hardcoded-secret detector must actually flag a key-shaped string',
+    from: "    /sk-[A-Za-z0-9]{10,}/.test(src) ||",
+    to: '    false ||',
+  },
+  {
+    tool: 'extension-check.mjs',
+    id: 'extcheck-unextractable-is-not-parity',
+    why: 'a null allow-list is a failure, not an exemption from the parity check',
+    from: "  if (bgList === null || optList === null) {",
+    to: '  if (false) {',
+  },
+  {
     tool: 'e2e-smoke.mjs',
     id: 'e2e-only-200-passes',
     why: 'a widened status comparison (status < 400) would green-light a 404/500 route',
