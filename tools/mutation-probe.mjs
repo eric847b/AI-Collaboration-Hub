@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'sync-parity.mjs',
+    id: 'parity-missing-only-never-overwrites',
+    why: 'missing-only must never clobber an actively-developed nested mirror - overwriting destroys another session work (durable rule 12)',
+    from: "  return mode === 'overwrite' ? status !== 'parity' : status === 'MISSING';",
+    to: "  return status !== 'parity';",
+  },
+  {
+    tool: 'sync-parity.mjs',
+    id: 'parity-strict-counts-diff-drift',
+    why: '--strict must fail on DIFF drift, not only on absent files',
+    from: "  return rows.filter((r) => r.status === 'DIFF' || r.status === 'MISSING').length;",
+    to: "  return rows.filter((r) => r.status === 'MISSING').length;",
+  },
+  {
     tool: 'coverage-trend.cjs',
     id: 'coverage-gate-is-70pct',
     why: 'the coverage gate must stay 70% - it was a bare inline literal nothing asserted',

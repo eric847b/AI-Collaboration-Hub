@@ -72,7 +72,7 @@ jobs:
       # tool implements it, and specifically proves the `--flag=value` form of the
       # Round 12 D contract works (the only check that does - --check-cli proves
       # unknown-flag rejection, the static layer proves declared == documented).
-      # Verified green fleet-wide (20/20) and side-effect free: probes run with a
+      # Verified green fleet-wide (22/22) and side-effect free: probes run with a
       # sentinel value, write-risky flags (--out/--ledger) are skipped unless
       # --allow-write-risky, and a run leaves no tracked or untracked artifact.
       # Costs ~40s. Drop `--deep` from this line to fall back to the static layer only.
@@ -86,7 +86,8 @@ jobs:
       # documented guard does not cover the risk it claims to - the exact failure
       # mode that let workflow-audit's WF004 verdict and secret-scan's preview
       # redaction ship unverified. A check nothing runs would rot, so it runs here.
-      # Costs ~40s (8 probes, each spawning its target's self-test); writes only
+      # Costs ~55s (23 probes, each spawning its target's self-test TWICE - an
+      # unmodified control plus one mutant); writes only
       # throwaway copies BESIDE each probed tool and deletes them in a finally.
       - name: Mutation probes - self-test guards must fail when the code is broken
         run: node tools/mutation-probe.mjs --quiet
@@ -112,10 +113,11 @@ jobs:
           node tools/ops-dashboard.mjs --self-test
           node tools/bundle-trend.cjs --self-test
           node tools/coverage-trend.cjs --self-test
+          node tools/sync-parity.mjs --self-test
           # The mutation harness verifies every OTHER tool's guards, so its own
           # verdict logic is the last link in the chain and the only one whose
           # failure mode is silent: labelling a surviving mutant "caught" would
-          # make all 17 probes report assurance while proving nothing.
+          # make all 23 probes report assurance while proving nothing.
           node tools/mutation-probe.mjs --self-test
       - name: OPS dashboard smoke (both OS)
         run: node tools/ops-dashboard.mjs --out docs/metrics/OPS-DASHBOARD.md

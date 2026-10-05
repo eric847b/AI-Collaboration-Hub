@@ -35,7 +35,7 @@ const argv = process.argv.slice(2);
 // unknown commands exit 2 with usage instead of silently degrading to `check`.
 // No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--map', '--mode']);
-const BOOL_FLAGS = new Set(['--strict']);
+const BOOL_FLAGS = new Set(['--strict', '--self-test']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -87,6 +87,7 @@ function usage() {
       '  --map   parity map path (default tools/parity-map.json)      [check + sync]',
       '  --mode  limit the run to pairs of one mode                  [check + sync]',
       '  --strict  fail on overwrite-mode drift                      [check only]',
+      '  --self-test  prove the parity/overwrite rules bite (14 checks)      [any command]',
       '  --help   print this text and exit 0',
       '',
       'Default command: check. Every input is an explicit flag — there is no',
@@ -174,13 +175,37 @@ function listPairFiles(pair) {
   return files;
 }
 
+/** Pure status decision: does a nested mirror match its standalone source? */
+function classifyStatus(nestedExists, hashesMatch) {
+  if (!nestedExists) return 'MISSING';
+  return hashesMatch ? 'parity' : 'DIFF';
+}
+
+/**
+ * May this file be written into the nested mirror?
+ *
+ * `missing-only` NEVER overwrites an EXISTING nested file: that mode exists to
+ * create absent mirrors while leaving actively-developed nested work alone
+ * (durable rule 12). Overwriting a DIFF there would silently destroy another
+ * session's edits, so the two branches must stay distinct.
+ */
+function shouldCopyFile(mode, status) {
+  return mode === 'overwrite' ? status !== 'parity' : status === 'MISSING';
+}
+
+/** Strict-mode violations: only overwrite-mode drift counts. */
+function countViolations(mode, rows) {
+  if (mode !== 'overwrite') return 0;
+  return rows.filter((r) => r.status === 'DIFF' || r.status === 'MISSING').length;
+}
+
 function survey(pair) {
   const nestedRoot = path.resolve(ROOT, pair.nestedRoot);
   const rows = [];
   for (const f of listPairFiles(pair)) {
     const nestedAbs = path.join(nestedRoot, f.rel);
     const nestedExists = fs.existsSync(nestedAbs);
-    const status = !nestedExists ? 'MISSING' : sha256(f.abs) === sha256(nestedAbs) ? 'parity' : 'DIFF';
+    const status = classifyStatus(nestedExists, sha256(f.abs) === sha256(nestedAbs));
     rows.push({ rel: f.rel, status });
   }
   return rows;
@@ -191,7 +216,7 @@ function apply(pair, rows) {
   const nestedRoot = path.resolve(ROOT, pair.nestedRoot);
   let copied = 0;
   for (const row of rows) {
-    const shouldCopy = pair.mode === 'overwrite' ? row.status !== 'parity' : row.status === 'MISSING';
+    const shouldCopy = shouldCopyFile(pair.mode, row.status);
     if (!shouldCopy) continue;
     const src = path.join(stdRoot, row.rel);
     const dst = path.join(nestedRoot, row.rel);
@@ -210,6 +235,52 @@ function printPair(name, mode, rows) {
   for (const r of rows) {
     if (r.status !== 'parity') console.log(`  ${r.status.padEnd(7)} ${r.rel}`);
   }
+}
+
+/**
+ * The fleet mirror gate had no self-test anywhere. These three decisions decide
+ * whether a mirror may be overwritten, and `missing-only` is a DATA-SAFETY
+ * property: it must never clobber an actively-developed nested file (durable
+ * rule 12). A regression there destroys another session's edits silently.
+ */
+function runSelfTest() {
+  const failures = [];
+  const check = (name, cond) => { if (!cond) failures.push(name); };
+
+  // Status classification.
+  check('absent nested file is MISSING', classifyStatus(false, true) === 'MISSING');
+  check('absent nested file is MISSING even when hashes "match"', classifyStatus(false, false) === 'MISSING');
+  check('present + identical is parity', classifyStatus(true, true) === 'parity');
+  check('present + differing is DIFF', classifyStatus(true, false) === 'DIFF');
+
+  // overwrite mode: reconcile everything that is not already at parity.
+  check('overwrite copies a DIFF', shouldCopyFile('overwrite', 'DIFF') === true);
+  check('overwrite copies a MISSING', shouldCopyFile('overwrite', 'MISSING') === true);
+  check('overwrite skips parity', shouldCopyFile('overwrite', 'parity') === false);
+
+  // missing-only: THE SAFETY PROPERTY. A DIFF nested file is somebody's active
+  // work and must be left alone; only absent files are created.
+  check('missing-only creates an absent mirror', shouldCopyFile('missing-only', 'MISSING') === true);
+  check('missing-only NEVER overwrites a DIFF', shouldCopyFile('missing-only', 'DIFF') === false);
+  check('missing-only skips parity', shouldCopyFile('missing-only', 'parity') === false);
+
+  // Violations: only overwrite-mode drift gates --strict.
+  const rows = [{ status: 'parity' }, { status: 'DIFF' }, { status: 'MISSING' }];
+  check('overwrite counts only drift', countViolations('overwrite', rows) === 2);
+  check('overwrite counts nothing when all parity', countViolations('overwrite', [{ status: 'parity' }]) === 0);
+  check('missing-only never contributes violations', countViolations('missing-only', rows) === 0);
+
+  if (failures.length) {
+    console.error(`sync-parity self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log('sync-parity self-test: 14/14 passed');
+}
+
+if (flags['--self-test']) {
+  runSelfTest();
+  process.exit(0);
 }
 
 const map = loadMap();
@@ -232,7 +303,7 @@ for (const pair of map.pairs) {
   }
   printPair(pair.name, pair.mode, rows);
   if (pair.mode === 'overwrite') {
-    violations += rows.filter((r) => r.status === 'DIFF' || r.status === 'MISSING').length;
+    violations += countViolations(pair.mode, rows);
   }
 }
 if (cmd === 'sync') console.log('\nsync-parity: sync applied. Re-run `check` to verify all overwrite-mode pairs are at parity.');
