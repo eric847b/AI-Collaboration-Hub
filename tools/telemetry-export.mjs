@@ -509,9 +509,34 @@ export async function runSelfTest() {
   check('PUT rejected 405', method405.status === 405);
   server.close();
 
+  // The PRODUCTION bind, not just this suite's own listener. The HTTP block
+  // above builds its own server, so `startExportServer`'s hard-coded loopback
+  // bind was never executed by ANY test - rewriting it to 0.0.0.0 (exposing the
+  // browser bridge to every device on the LAN) left the suite green. Assert the
+  // address the real server actually bound.
+  const prod = await startExportServer({ ...baseOpts, port: 0 });
+  const bound = prod.address().address;
+  check('production bridge binds loopback only', bound === '127.0.0.1', String(bound));
+  await new Promise((r) => prod.close(r));
+
   // -- flag hygiene -------------------------------------------------------------
-  const hostReject = (() => { try { parseExportArgs(['serve', '--host', '0.0.0.0']); return false; } catch (e) { return e instanceof ExportError; } })();
-  check('--host override refused (loopback-only)', hostReject);
+  // Pinned to the MESSAGE, not merely "it threw an ExportError": a coarse
+  // `instanceof` check is satisfied by ANY validation error, so `--host` could
+  // stop being rejected (the value would then trip the stray-positional guard
+  // instead) and this check would still pass. It must be THIS guard that fired.
+  const hostReject = (() => {
+    try {
+      parseExportArgs(['serve', '--host', '0.0.0.0']);
+      return null;
+    } catch (e) {
+      return e instanceof ExportError ? e.message : `not an ExportError: ${e && e.message}`;
+    }
+  })();
+  check(
+    '--host override refused (loopback-only)',
+    typeof hostReject === 'string' && hostReject.includes('--host'),
+    String(hostReject)
+  );
   const pushRequiresFile = (() => { try { parseExportArgs(['push']); return false; } catch (e) { return e instanceof ExportError; } })();
   check('push without --file refused', pushRequiresFile);
 

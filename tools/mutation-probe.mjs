@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'telemetry-export.mjs',
+    id: 'export-bridge-binds-loopback',
+    why: 'the production bridge must bind 127.0.0.1 - the suite built its own listener, so the real bind was untested and 0.0.0.0 shipped green',
+    from: "server.listen(options.port, '127.0.0.1', () => {",
+    to: "server.listen(options.port, '0.0.0.0', () => {",
+  },
+  {
+    tool: 'telemetry-export.mjs',
+    id: 'export-host-flag-refused',
+    why: '--host must be refused by the loopback guard specifically, not by any unrelated validation error',
+    from: "case '--host': throw new ExportError('--host is not supported: the bridge always binds 127.0.0.1');",
+    to: "case '--host': i += 1; break;",
+  },
+  {
     tool: 'check-flag-contract.mjs',
     id: 'flag-write-risk-safety',
     why: 'the --deep layer must skip value flags that can WRITE, or a probe rewrites a real file',
