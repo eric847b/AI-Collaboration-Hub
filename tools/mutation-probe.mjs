@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-stale-claim-is-reported',
+    why: 'a drifted N/N claim must be reported, not silently accepted - this is the doc-count gate',
+    from: "check('wrong total for that subject is drift', claimFindings('static 21/20', [{ re: /static/gi, total: 20, label: 'static' }], 'x.md').length, 1);",
+    to: "check('wrong total for that subject is drift', claimFindings('static 21/20', [{ re: /static/gi, total: 20, label: 'static' }], 'x.md').length, 2);",
+  },
+  {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-invariants-are-checked',
+    why: 'the cliTotal-1 invariant is an assumption in the hot path; if the self-test stops comparing it, the doc goes quietly wrong',
+    from: "check('INVARIANT-SHAPE derived flagTotal is cliTotal - 1', derived, cliTotal - 1);",
+    to: "check('INVARIANT-SHAPE derived flagTotal is cliTotal - 1', derived, cliTotal - 2);",
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',
