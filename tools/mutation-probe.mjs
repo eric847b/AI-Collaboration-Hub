@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'handoff-check.mjs',
+    id: 'handoff-freshness-not-weakened',
+    why: 'a handoff result older than the narrative must still warn (durable rule 10)',
+    from: 'if (resultMs < handoffMs - MTIME_SLACK_MS) {',
+    to: 'if (resultMs < handoffMs - 86400000) {',
+  },
+  {
+    tool: 'handoff-check.mjs',
+    id: 'handoff-freshness-slack-is-1s',
+    why: 'the freshness slack must stay 1000ms - the 60s-spaced cases cannot distinguish 0 from 1000',
+    from: 'const MTIME_SLACK_MS = 1000;',
+    to: 'const MTIME_SLACK_MS = 0;',
+  },
+  {
     tool: 'telemetry-export.mjs',
     id: 'export-bridge-binds-loopback',
     why: 'the production bridge must bind 127.0.0.1 - the suite built its own listener, so the real bind was untested and 0.0.0.0 shipped green',

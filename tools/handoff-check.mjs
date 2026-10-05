@@ -255,12 +255,22 @@ function validate(doc) {
  * @param {number|null} handoffMs mtime of current-handoff.md
  * @returns {{errors: string[], warnings: string[]}}
  */
+/**
+ * Timestamp slack (ms) absorbed when comparing the two handoff artefacts.
+ *
+ * Named and asserted because behaviour alone cannot pin it: the freshness cases
+ * are a minute apart, so widening this to a day still warns (caught by the
+ * suite), while dropping it to 0 is invisible to every case - the suite only
+ * proves the DIRECTION of the guard, never the width of its tolerance.
+ */
+const MTIME_SLACK_MS = 1000;
+
 function freshnessFindings(resultMs, handoffMs) {
   const errors = [];
   const warnings = [];
   if (resultMs === null || handoffMs === null) return { errors, warnings };
   // 1s slack absorbs filesystem timestamp granularity between two quick writes.
-  if (resultMs < handoffMs - 1000) {
+  if (resultMs < handoffMs - MTIME_SLACK_MS) {
     warnings.push(
       'handoff-result.json is older than current-handoff.md - the result was not refreshed with the narrative',
     );
@@ -498,7 +508,7 @@ if (selfTest) {
 
   // 3. freshness invariant - pure, exercised without touching .renitor/
   const t0 = 1_000_000;
-  const FRESHNESS_CASES = 4;
+  const FRESHNESS_CASES = 6;
   if (!freshnessFindings(t0, t0 + 60_000).warnings.some((m) => m.includes('older than current-handoff.md'))) {
     failures.push('freshness miss: an older result must warn');
   }
@@ -507,6 +517,17 @@ if (selfTest) {
   }
   if (freshnessFindings(t0, t0).warnings.length) {
     failures.push('freshness false positive: equal mtimes must not warn');
+  }
+  // Pins the TOLERANCE, which the cases above cannot: they are 60s apart, so a
+  // slack of 0 is as invisible as one of 1000, and only the value distinguishes
+  // "absorbs filesystem granularity" from "no grace at all".
+  if (MTIME_SLACK_MS !== 1000) {
+    failures.push(`freshness slack drift: expected 1000ms of granularity tolerance, got ${MTIME_SLACK_MS}`);
+  }
+  // And the boundary it exists to protect: a result slightly older than the
+  // narrative is exactly the case that must NOT warn.
+  if (freshnessFindings(t0 - 500, t0).warnings.length) {
+    failures.push('freshness false positive: sub-second skew must not warn');
   }
   if (freshnessFindings(null, t0).warnings.length || freshnessFindings(t0, null).warnings.length) {
     failures.push('freshness false positive: a missing artefact must not warn');
