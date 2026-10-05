@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'flake-tracker.cjs',
+    id: 'flake-zero-tests-is-na-not-zero',
+    why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',
+    from: '  if (!Number.isFinite(tests) || tests <= 0) return null;',
+    to: '  if (false) return null;',
+  },
+  {
+    tool: 'flake-tracker.cjs',
+    id: 'flake-spark-labels-no-data',
+    why: 'an empty series must be labelled, not rendered as a blank chart',
+    from: "  if (nums.length === 0) return '(no data)';",
+    to: "  if (false) return '(no data)';",
+  },
+  {
     tool: 'dependabot-check.mjs',
     id: 'dependabot-zero-manifests-exits-2',
     why: 'zero inspected manifests means nothing was checked - it must not report "all covered"',
