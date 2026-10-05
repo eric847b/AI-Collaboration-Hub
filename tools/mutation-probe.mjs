@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'ops-dashboard.mjs',
+    id: 'dashboard-stale-threshold-is-24h',
+    why: 'the dashboard staleness threshold must stay 24h - no behavioural case can pin it',
+    from: 'const DEFAULT_MAX_AGE_HOURS = 24;',
+    to: 'const DEFAULT_MAX_AGE_HOURS = 240;',
+  },
+  {
+    tool: 'ops-dashboard.mjs',
+    id: 'dashboard-stale-detection-fires',
+    why: 'a section past the threshold must be reported stale, not quietly ok',
+    from: "return { state: ageH > maxAgeHours ? 'stale' : 'fresh', ageH };",
+    to: "return { state: 'fresh', ageH };",
+  },
+  {
     tool: 'handoff-check.mjs',
     id: 'handoff-freshness-not-weakened',
     why: 'a handoff result older than the narrative must still warn (durable rule 10)',

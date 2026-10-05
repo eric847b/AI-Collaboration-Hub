@@ -35,7 +35,7 @@ const argv = process.argv.slice(2);
 // ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
 // Boolean: --check --refresh. Value: --out --max-age-hours. Unknown flags and
 // stray positionals exit 2 instead of being silently ignored. No stdin prompts.
-const BOOLEAN_FLAGS = new Set(['--check', '--refresh']);
+const BOOLEAN_FLAGS = new Set(['--check', '--refresh', '--self-test']);
 const VALUE_FLAGS = new Set(['--out', '--max-age-hours']);
 const flags = {};
 const positionals = [];
@@ -89,6 +89,7 @@ function usage() {
       '  --max-age-hours <h>  max section age in hours for --check (default 24)',
       '  --out <path>         output file (default docs/metrics/OPS-DASHBOARD.md)',
       '  --refresh            restamp every section even when content is unchanged',
+      '  --self-test          assert the freshness logic (threshold + boundaries); exit 0/1',
       '  --help               print this text and exit 0',
       '',
       'Regeneration is idempotent: unchanged sections keep their original timestamps,',
@@ -383,8 +384,34 @@ function parseFreshness(raw) {
   return { stamps, bodies };
 }
 
+/**
+ * Default max age (hours) for `--check`.
+ *
+ * Named and asserted because nothing else pins it: this threshold is what makes
+ * a stale dashboard an ops signal, and a behavioural check only proves the
+ * comparison FIRES, not what it compares against. One constant, one assertion.
+ */
+const DEFAULT_MAX_AGE_HOURS = 24;
+
+/**
+ * Classify one section's freshness marker. Pure, so `--self-test` can drive it
+ * with a synthetic clock instead of touching the real dashboard.
+ *
+ * @param {string|undefined} ts   the section's timestamp marker, if present
+ * @param {number} nowMs          current time in ms
+ * @param {number} maxAgeHours    staleness threshold in hours
+ * @returns {{state: 'fresh'|'stale'|'unknown', ageH: number|null}}
+ */
+export function evaluateSectionFreshness(ts, nowMs, maxAgeHours) {
+  const parsed = ts ? Date.parse(ts) : NaN;
+  if (!ts || !Number.isFinite(parsed)) return { state: 'unknown', ageH: null };
+  const ageH = (nowMs - parsed) / 3.6e6;
+  // Strictly greater: a section exactly AT the threshold is still fresh.
+  return { state: ageH > maxAgeHours ? 'stale' : 'fresh', ageH };
+}
+
 function freshnessCheck() {
-  const maxAgeHours = parseFloat(opt('--max-age-hours', '24'));
+  const maxAgeHours = parseFloat(opt('--max-age-hours', String(DEFAULT_MAX_AGE_HOURS)));
   if (!fs.existsSync(OUT)) {
     console.error(`ops-dashboard: freshness FAIL — ${path.relative(ROOT, OUT)} does not exist; run: node tools/ops-dashboard.mjs`);
     process.exit(1);
@@ -395,15 +422,11 @@ function freshnessCheck() {
   let stale = 0;
   console.log(`ops-dashboard: freshness check (max age ${maxAgeHours}h)`);
   for (const id of SECTION_IDS) {
-    const ts = stamps.get(id);
-    const parsed = ts ? Date.parse(ts) : NaN;
-    if (!ts || !Number.isFinite(parsed)) {
+    const { state, ageH } = evaluateSectionFreshness(stamps.get(id), now, maxAgeHours);
+    if (state === 'unknown') {
       console.log(`  ${id.padEnd(16)} no timestamp marker — regenerate`);
       stale += 1;
-      continue;
-    }
-    const ageH = (now - parsed) / 3.6e6;
-    if (ageH > maxAgeHours) {
+    } else if (state === 'stale') {
       console.log(`  ${id.padEnd(16)} ${ageH.toFixed(1)}h  STALE (> ${maxAgeHours}h)`);
       stale += 1;
     } else {
@@ -417,7 +440,51 @@ function freshnessCheck() {
   console.log(`ops-dashboard: all ${SECTION_IDS.length} sections fresh`);
 }
 
+// ---- self-test ------------------------------------------------------------
+
+/**
+ * Freshness has no self-test elsewhere, and it is the check the repo leans on:
+ * `verify-tools` classifies a stale dashboard as an ADVISORY warn and the gate
+ * surfaces it. Every case below is driven by a synthetic clock through the pure
+ * evaluator, so nothing here reads or writes the real dashboard.
+ */
+function runSelfTest() {
+  const failures = [];
+  const check = (name, cond) => { if (!cond) failures.push(name); };
+  const NOW = Date.parse('2026-10-04T12:00:00Z');
+  const at = (h) => new Date(NOW - h * 3.6e6).toISOString();
+
+  // The threshold itself. A behavioural case cannot pin this - every other case
+  // below passes for any plausible value - so it is asserted directly.
+  check('default max age is 24h', DEFAULT_MAX_AGE_HOURS === 24);
+
+  check('a just-stamped section is fresh', evaluateSectionFreshness(at(0), NOW, DEFAULT_MAX_AGE_HOURS).state === 'fresh');
+  check('a 23h-old section is fresh', evaluateSectionFreshness(at(23), NOW, DEFAULT_MAX_AGE_HOURS).state === 'fresh');
+  // Boundary: `>` is strict, so exactly AT the threshold is still fresh.
+  check('a section exactly at the threshold is fresh', evaluateSectionFreshness(at(24), NOW, DEFAULT_MAX_AGE_HOURS).state === 'fresh');
+  check('a section 1s past the threshold is stale', evaluateSectionFreshness(at(24 + 1 / 3600), NOW, DEFAULT_MAX_AGE_HOURS).state === 'stale');
+  check('a 48h-old section is stale', evaluateSectionFreshness(at(48), NOW, DEFAULT_MAX_AGE_HOURS).state === 'stale');
+  // A missing or unparseable marker is 'unknown', never silently 'fresh'.
+  check('a missing marker is unknown', evaluateSectionFreshness(undefined, NOW, DEFAULT_MAX_AGE_HOURS).state === 'unknown');
+  check('an empty marker is unknown', evaluateSectionFreshness('', NOW, DEFAULT_MAX_AGE_HOURS).state === 'unknown');
+  check('an unparseable marker is unknown', evaluateSectionFreshness('not-a-date', NOW, DEFAULT_MAX_AGE_HOURS).state === 'unknown');
+  check('ageH is null for unknown', evaluateSectionFreshness(undefined, NOW, DEFAULT_MAX_AGE_HOURS).ageH === null);
+  check('ageH is reported for a fresh section', evaluateSectionFreshness(at(2), NOW, DEFAULT_MAX_AGE_HOURS).ageH === 2);
+
+  if (failures.length) {
+    console.error(`ops-dashboard self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log('ops-dashboard self-test: 10/10 passed');
+}
+
 // ---- main ----------------------------------------------------------------
+
+if (argv.includes('--self-test')) {
+  runSelfTest();
+  process.exit(0);
+}
 
 if (argv.includes('--check')) {
   freshnessCheck();
