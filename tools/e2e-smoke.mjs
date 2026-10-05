@@ -32,6 +32,10 @@ for (let i = 0; i < args.length; i += 1) {
     flags['--help'] = true;
     continue;
   }
+  if (a === '--self-test') {
+    flags['--self-test'] = true;
+    continue;
+  }
   if (a.startsWith('-')) {
     const eq = a.indexOf('=');
     const key = eq >= 0 ? a.slice(0, eq) : a;
@@ -60,6 +64,64 @@ for (let i = 0; i < args.length; i += 1) {
   positionals.push(a);
 }
 
+// ---- Pure helpers (self-tested) ---------------------------------------------------
+// `--port abc` / `--timeout abc` used to yield NaN. A NaN deadline makes
+// `Date.now() > deadline` false forever, so the server-start budget silently
+// stopped existing and the tool hung rather than failing fast.
+function coercePort(raw) {
+  if (raw === undefined) return 4173;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) return NaN;
+  return n;
+}
+
+function coerceTimeoutSeconds(raw) {
+  if (raw === undefined) return 600;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return NaN;
+  return n;
+}
+
+function requireNumber(value, label, raw) {
+  if (Number.isNaN(value)) {
+    console.error(`e2e-smoke: ${label} must be a finite number (got ${JSON.stringify(raw)})`);
+    process.exit(2);
+  }
+  return value;
+}
+
+/** Only 200 passes. 204/301/404/500 are all failures - pinned, because a widened
+ *  comparison (`status < 400`, `status >= 200`) would green-light a broken route. */
+function isRouteOk(status) {
+  return status === 200;
+}
+
+/**
+ * Route list defaults to ["/"]. An empty or blank route is a typo, not a request to
+ * the site root, so it is dropped rather than silently becoming "/".
+ */
+function normalizeRoutes(provided) {
+  const list = (provided || []).map((r) => String(r).trim()).filter((r) => r.length > 0);
+  return list.length ? list : ['/'];
+}
+
+/**
+ * The marker is INFORMATIONAL by design: it warns, it never fails a run. Pinning
+ * that matters in both directions - making it fatal would red-herring CI on any app
+ * whose root node markup differs.
+ */
+function evaluateRoutes(results) {
+  // Zero results is a FAIL, not a vacuous pass: an empty array trivially has zero
+  // failures, which would report green having probed nothing. normalizeRoutes makes
+  // it unreachable today; this keeps it unreachable if that ever changes.
+  if (!results.length) {
+    return { failures: 0, warned: 0, passed: false, exitCode: 1, noResults: true };
+  }
+  const failures = results.filter((r) => !isRouteOk(r.status)).length;
+  const warned = results.filter((r) => !r.hasMarker).length;
+  return { failures, warned, passed: failures === 0, exitCode: failures === 0 ? 0 : 1, noResults: false };
+}
+
 function usage() {
   console.log(
     [
@@ -73,6 +135,7 @@ function usage() {
       '  --timeout <seconds>  server-start budget (default 600)',
       '  --marker <text>      substring expected in the response body (warn-only)',
       '  --route <path>       probe an extra route (repeatable; default "/")',
+      '  --self-test         prove the 200-only rule and NaN rejection bite (no server)    [no server]',
       '  --help               print this text and exit 0',
       '',
       'Exit codes: 0 = pass, 1 = smoke failure, 2 = setup/bad usage.',
@@ -81,8 +144,69 @@ function usage() {
   );
 }
 
+function runSelfTest() {
+  const failures = [];
+  let ran = 0;
+  const check = (name, cond) => { ran += 1; if (!cond) failures.push(name); };
+
+  // Only 200 passes. A widened comparison would green-light a broken route.
+  check('200 passes', isRouteOk(200) === true);
+  check('404 fails', isRouteOk(404) === false);
+  check('500 fails', isRouteOk(500) === false);
+  check('301 fails (a redirect is not a served route)', isRouteOk(301) === false);
+  check('204 fails', isRouteOk(204) === false);
+  check('0 fails (a transport failure)', isRouteOk(0) === false);
+  check('undefined status fails', isRouteOk(undefined) === false);
+
+  // NaN port/timeout must be rejected: a NaN deadline never expires.
+  check('port defaults to 4173', coercePort(undefined) === 4173);
+  check('a valid port parses', coercePort('8080') === 8080);
+  check('a NaN port is rejected', Number.isNaN(coercePort('abc')));
+  check('port 0 is rejected', Number.isNaN(coercePort('0')));
+  check('port 70000 is rejected', Number.isNaN(coercePort('70000')));
+  check('a fractional port is rejected', Number.isNaN(coercePort('80.5')));
+  check('timeout defaults to 600s', coerceTimeoutSeconds(undefined) === 600);
+  check('a valid timeout parses', coerceTimeoutSeconds('30') === 30);
+  check('a NaN timeout is rejected', Number.isNaN(coerceTimeoutSeconds('abc')));
+  check('a zero timeout is rejected', Number.isNaN(coerceTimeoutSeconds('0')));
+  check('a negative timeout is rejected', Number.isNaN(coerceTimeoutSeconds('-1')));
+
+  // Route normalization.
+  check('no routes means the site root', JSON.stringify(normalizeRoutes(undefined)) === '["/"]');
+  check('an empty list means the site root', JSON.stringify(normalizeRoutes([])) === '["/"]');
+  check('a blank route is dropped', JSON.stringify(normalizeRoutes([''])) === '["/"]');
+  check('a whitespace route is dropped', JSON.stringify(normalizeRoutes(['   '])) === '["/"]');
+  check('explicit routes are kept in order', JSON.stringify(normalizeRoutes(['/a', '/b'])) === '["/a","/b"]');
+  check('routes are trimmed', JSON.stringify(normalizeRoutes([' /a '])) === '["/a"]');
+
+  // Verdicts.
+  check('all-200 passes', evaluateRoutes([{ status: 200, hasMarker: true }]).passed === true);
+  check('all-200 exits 0', evaluateRoutes([{ status: 200, hasMarker: true }]).exitCode === 0);
+  check('one 404 fails', evaluateRoutes([{ status: 200, hasMarker: true }, { status: 404, hasMarker: false }]).passed === false);
+  check('one 404 exits 1', evaluateRoutes([{ status: 200, hasMarker: true }, { status: 404, hasMarker: false }]).exitCode === 1);
+  check('the failure is counted', evaluateRoutes([{ status: 200, hasMarker: true }, { status: 404, hasMarker: false }]).failures === 1);
+  check('an all-404 run fails', evaluateRoutes([{ status: 404, hasMarker: false }]).passed === false);
+  check('no results at all does NOT pass (a vacuous green is a false green)', evaluateRoutes([]).passed === false);
+
+  // The marker is informational: a missing marker warns, it never fails.
+  const noMarker = evaluateRoutes([{ status: 200, hasMarker: false }]);
+  check('a missing marker still passes', noMarker.passed === true);
+  check('a missing marker is counted as a warning', noMarker.warned === 1);
+
+  if (failures.length) {
+    console.error(`e2e-smoke self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log(`e2e-smoke self-test: ${ran}/${ran} passed`);
+}
+
 if (flags['--help']) {
   usage();
+  process.exit(0);
+}
+if (flags['--self-test']) {
+  runSelfTest();
   process.exit(0);
 }
 if (positionals.length) {
@@ -101,14 +225,13 @@ if (!fs.existsSync(path.join(ROOT, project, 'dist'))) {
   process.exit(2);
 }
 
-const port = Number(flags['--port'] ?? '4173');
+const port = requireNumber(coercePort(flags['--port']), '--port', flags['--port']);
 // Slow-laptop default: 10 min server-start budget (was 60s). Override with --timeout <seconds>.
-const timeoutMs = Number(flags['--timeout'] ?? '600') * 1000;
+const timeoutMs = requireNumber(coerceTimeoutSeconds(flags['--timeout']), '--timeout', flags['--timeout']) * 1000;
 const marker = flags['--marker'] ?? '<div id="root"';
 
 // Repeatable --route <path> probes (synthetic multi-route checks). Default: "/".
-const routes = flags['--route'] ? [...flags['--route']] : [];
-if (!routes.length) routes.push('/');
+const routes = normalizeRoutes(flags['--route']);
 
 function killTree(child) {
   try {
@@ -192,26 +315,27 @@ const deadline = Date.now() + timeoutMs;
 let exitCode = 1;
 try {
   await waitForServer(deadline);
-  let failures = 0;
+  const results = [];
   for (const route of routes) {
     try {
       const res = await fetchOnce(`http://127.0.0.1:${port}${route}`);
       const hasMarker = res.body.includes(marker);
-      const ok = res.status === 200;
+      const ok = isRouteOk(res.status);
       console.log(`e2e-smoke: ${project} GET ${route} -> HTTP ${res.status} (${res.body.length}B, marker=${hasMarker ? 'found' : 'missing'})${ok ? '' : ' FAIL'}`);
-      if (!ok) failures++;
       if (!hasMarker && route === routes[0]) {
         console.warn(`e2e-smoke: warning — marker "${marker}" not present in response (informational)`);
       }
+      results.push({ status: res.status, hasMarker });
     } catch (err) {
       console.error(`e2e-smoke: ${project} GET ${route} -> FAIL ${err.message}`);
-      failures++;
+      results.push({ status: 0, hasMarker: false });
     }
   }
-  if (failures === 0) {
+  const verdict = evaluateRoutes(results);
+  if (verdict.passed) {
     exitCode = 0;
   } else {
-    console.error(`e2e-smoke: FAIL — ${failures} of ${routes.length} routes answered non-200`);
+    console.error(`e2e-smoke: FAIL — ${verdict.failures} of ${results.length} routes answered non-200`);
   }
 } catch (err) {
   console.error(`e2e-smoke: FAIL — ${err.message}`);
