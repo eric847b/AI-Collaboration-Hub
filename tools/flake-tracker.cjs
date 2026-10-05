@@ -42,6 +42,10 @@ for (let i = 0; i < argv.length; i += 1) {
     flags['--help'] = true;
     continue;
   }
+  if (a === '--self-test') {
+    flags['--self-test'] = true;
+    continue;
+  }
   if (a.startsWith('-')) {
     const eq = a.indexOf('=');
     const key = eq >= 0 ? a.slice(0, eq) : a;
@@ -95,6 +99,7 @@ function usage() {
       '  --limit <n>               rows shown by `report` (default 5)',
       '  --out <path>              markdown output (default docs/metrics/flake-report.md)',
       '  --help                    print this text and exit 0',
+  '  --self-test               prove the rate/spark rules bite (no ledger needed)      [no ledger]',
       '',
       'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
       'Unknown flags, unknown commands and missing flag values exit 2.',
@@ -191,7 +196,7 @@ function record() {
         ? Math.min(retries, passed)
         : num(flakeFlag === true ? 0 : flakeFlag, 0);
   }
-  const rate = tests > 0 ? (flakes / tests) * 100 : null;
+  const rate = computeRate(tests, flakes);
   const file = ledgerPath();
   const ledger = loadLedger(file);
   ledger.entries.push({ timestamp: new Date().toISOString(), gitSha: gitSha(), suite, note, tests, passed, failed, retries, flakes, rate });
@@ -200,6 +205,19 @@ function record() {
   console.log('flake-tracker: recorded ' + suite + ': ' + passed + '/' + tests + ' passed, retries=' + retries + ' flakes=' + flakes);
   return 0;
 }
+/**
+ * Flake rate as a PERCENT, or `null` when no test ran.
+ *
+ * `null` is load-bearing and must never become 0: the report renders `null` as
+ * "n/a", whereas 0 renders as "0.0%", which reads as "we ran tests and none
+ * flaked". A zero-test run is an absence of evidence, not evidence of zero flakes.
+ */
+function computeRate(tests, flakes) {
+  if (!Number.isFinite(tests) || tests <= 0) return null;
+  const f = Number.isFinite(flakes) ? flakes : 0;
+  return (f / tests) * 100;
+}
+
 const GRAINS = ' .:-=+*#%@';
 const fmtRate = (v) => (v === null || v === undefined ? 'n/a' : Number(v).toFixed(1) + '%');
 function suiteSeries(entries, suite) {
@@ -288,4 +306,50 @@ function main() {
   console.error('flake-tracker: unknown command "' + cmd + '" (expected: record | report | markdown)');
   return 1;
 }
+function runSelfTest() {
+  const failures = [];
+  let ran = 0;
+  const check = (name, cond) => { ran += 1; if (!cond) failures.push(name); };
+
+  // THE property: no tests is "n/a", never "0.0%".
+  check('zero tests yields null, not 0', computeRate(0, 0) === null);
+  check('zero tests with flakes still yields null', computeRate(0, 5) === null);
+  check('a negative count yields null', computeRate(-1, 0) === null);
+  check('a NaN count yields null', computeRate(NaN, 0) === null);
+  check('null renders as n/a, not 0.0%', fmtRate(computeRate(0, 0)) === 'n/a');
+  check('undefined renders as n/a', fmtRate(undefined) === 'n/a');
+
+  // Real arithmetic.
+  check('0 flakes of 100 is 0%', computeRate(100, 0) === 0);
+  check('5 flakes of 100 is 5%', computeRate(100, 5) === 5);
+  check('1 flake of 3 is ~33.33%', Math.abs(computeRate(3, 1) - 33.3333333) < 0.001);
+  check('all tests flaky is 100%', computeRate(10, 10) === 100);
+  check('a non-finite flake count is treated as 0', computeRate(100, NaN) === 0);
+  check('a real zero renders as 0.0% (not n/a)', fmtRate(computeRate(100, 0)) === '0.0%');
+
+  // suiteSeries must not silently drop entries, or the sparkline compresses across a gap.
+  const entries = [{ suite: 'a', rate: 5 }, { suite: 'b', rate: null }, { suite: 'a', rate: 1 }];
+  const series = suiteSeries(entries, 'a');
+  check('only the requested suite is selected', series.length === 2);
+  check('numeric rates are preserved', series[0] === 5);
+
+  // spark: no data is labelled, never an empty-looking chart.
+  check('an empty series says (no data)', spark([]) === '(no data)');
+  check('an all-null series says (no data)', spark([null, null]) === '(no data)');
+  check('a flat series still renders', spark([1, 1, 1]).length === 3);
+  check('null entries keep their slot', spark([null, 5]).length === 2);
+
+  if (failures.length) {
+    console.error(`flake-tracker self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log(`flake-tracker self-test: ${ran}/${ran} passed`);
+}
+
+if (flags['--self-test']) {
+  runSelfTest();
+  process.exit(0);
+}
+
 process.exitCode = main();
