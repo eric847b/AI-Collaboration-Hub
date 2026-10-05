@@ -117,6 +117,97 @@ function covers(entries, ecosystem, dir) {
   return null;
 }
 
+/**
+ * Verdict over the inspected manifests.
+ *
+ * A run that inspected ZERO manifests must not report "all covered": `gaps`
+ * would be empty and `gaps.length ? 1 : 0` would exit 0 - a green that means
+ * "nothing was checked" rather than "everything is covered". That is an infra
+ * condition (git enumeration or a rule table that matches nothing), so it exits 2
+ * alongside the other infra failures, never 0.
+ */
+function summarize(rows) {
+  if (!rows.length) {
+    return { checked: 0, covered: 0, gaps: 0, exitCode: 2, reason: 'no manifests matched the ecosystem rules - nothing was checked' };
+  }
+  const gaps = rows.filter((r) => !r.hit).length;
+  return { checked: rows.length, covered: rows.length - gaps, gaps, exitCode: gaps ? 1 : 0, reason: '' };
+}
+
+function runSelfTest() {
+  const failures = [];
+  let ran = 0;
+  const check = (name, cond) => { ran += 1; if (!cond) failures.push(name); };
+
+  // normDir
+  check('empty normalizes to root', normDir('') === '/');
+  check('trailing slash is stripped', normDir('/tools/') === '/tools');
+  check('quotes are stripped', normDir('"/tools"') === '/tools');
+  check('whitespace is trimmed', normDir('  /tools  ') === '/tools');
+
+  // globToRegex - anchoring is what stops a prefix match faking coverage
+  check('a single star does not cross a slash', globToRegex('/a/*').test('/a/b') === true);
+  check('a single star does NOT match a nested path', globToRegex('/a/*').test('/a/b/c') === false);
+  check('a double star crosses slashes', globToRegex('/a/**').test('/a/b/c') === true);
+  check('a literal dot is not a regex wildcard', globToRegex('/a.b').test('/axb') === false);
+  check('a literal dot matches itself', globToRegex('/a.b').test('/a.b') === true);
+  check('a prefix is not a match (anchored)', globToRegex('/tools').test('/tools-extra') === false);
+
+  // covers: npm recurses, pip does not
+  const cfg = [{ ecosystem: 'npm', dirs: ['/app'] }, { ecosystem: 'pip', dirs: ['/py'] }];
+  check('an exact dir is covered', covers(cfg, 'npm', '/app') !== null);
+  check('npm recurses below its dir', covers(cfg, 'npm', '/app/sub') !== null);
+  check('root dir covers everything below for npm', covers([{ ecosystem: 'npm', dirs: ['/'] }], 'npm', '/any/deep') !== null);
+  check('a sibling dir is NOT covered', covers(cfg, 'npm', '/other') === null);
+  check('pip does NOT recurse', covers(cfg, 'pip', '/py/sub') === null);
+  check('the ecosystem must match', covers(cfg, 'pip', '/app') === null);
+  check('a glob dir covers its match', covers([{ ecosystem: 'npm', dirs: ['/a/*'] }], 'npm', '/a/b') !== null);
+  check('empty entries cover nothing', covers([], 'npm', '/') === null);
+
+  // parseConfig
+  const yaml = [
+    'version: 2',
+    'updates:',
+    '  - package-ecosystem: "npm"',
+    '    directories:',
+    '      - "/app"',
+    '      - /other',
+    '    schedule:',
+    '      interval: "weekly"',
+    '  - package-ecosystem: pip',
+    '    directory: "/py"',
+  ].join('\n');
+  const parsed = parseConfig(yaml);
+  check('both ecosystems parse', parsed.length === 2);
+  check('quoted dirs parse', parsed[0].dirs.includes('/app'));
+  check('unquoted dirs parse', parsed[0].dirs.includes('/other'));
+  check('a list ends at the first non-item line', !parsed[0].dirs.includes('interval:'));
+  check('single-line directory parses', parsed[1].dirs.includes('/py'));
+  check('comments are stripped', parseConfig('# - package-ecosystem: npm\n').length === 0);
+
+  // summarize - the vacuous green this closes
+  check('ZERO manifests exits 2, not 0', summarize([]).exitCode === 2);
+  check('the zero-manifest reason is explicit', summarize([]).reason.length > 0);
+  check('all covered exits 0', summarize([{ hit: true }, { hit: true }]).exitCode === 0);
+  check('one gap exits 1', summarize([{ hit: true }, { hit: false }]).exitCode === 1);
+  check('the gap count is right', summarize([{ hit: true }, { hit: false }]).gaps === 1);
+  check('the covered count is right', summarize([{ hit: true }, { hit: false }]).covered === 1);
+  check('an explicit-false row is a gap', summarize([{ hit: null }]).exitCode === 1);
+
+  if (failures.length) {
+    console.error(`dependabot-check self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log(`dependabot-check self-test: ${ran}/${ran} passed`);
+}
+
+const args = process.argv.slice(2);
+if (args.includes('--self-test')) {
+  runSelfTest();
+  process.exit(0);
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help') || args.includes('-h')) {
@@ -128,6 +219,7 @@ function main() {
         '',
         '  --list, -l  print the per-manifest coverage table (still exit 1 on gaps)',
         '  --help     print this text and exit 0',
+  '  --self-test  prove coverage/glob/parse rules bite (no repo access needed)',
         '',
         'exit codes: 0 = all manifests covered, 1 = coverage gaps, 2 = usage/infra error.',
         'Unknown flags and unexpected arguments exit 2.',
@@ -139,6 +231,7 @@ function main() {
   // exited 0/1, so CI could not tell "verified clean" from "never checked".
   const ALLOWED = new Set(['--list', '-l']);
   for (const a of args) {
+    if (a === '--self-test') continue; // consumed before main(); keep the table accurate
     if (!a.startsWith('-')) {
       console.error(`dependabot-check: unexpected argument "${a}" - this tool takes flags only (see \`node tools/dependabot-check.mjs --help\`)`);
       return 2;
@@ -190,19 +283,24 @@ function main() {
     }
   }
 
-  const gaps = rows.filter((r) => !r.hit);
+  const verdict = summarize(rows);
+  const gapRows = rows.filter((r) => !r.hit);
   console.log(
-    `dependabot-check: ${rows.length} manifests (${placeholders.length} skipped AGA placeholders), ` +
-    `${rows.length - gaps.length} covered, ${gaps.length} uncovered (${entries.length} config entries)`
+    `dependabot-check: ${verdict.checked} manifests (${placeholders.length} skipped AGA placeholders), ` +
+    `${verdict.covered} covered, ${verdict.gaps} uncovered (${entries.length} config entries)`
   );
+  if (verdict.exitCode === 2 && !rows.length) {
+    console.error(`dependabot-check: ${verdict.reason}`);
+    return 2;
+  }
   for (const p of placeholders) console.log(`  SKIP (AGA placeholder) ${p.file}`);
-  for (const g of gaps) console.error(`  GAP ${g.ecosystem} ${g.dir} <- ${g.file}`);
-  if (gaps.length && process.env.GITHUB_ACTIONS === 'true') {
-    for (const g of gaps) {
+  for (const g of gapRows) console.error(`  GAP ${g.ecosystem} ${g.dir} <- ${g.file}`);
+  if (verdict.gaps && process.env.GITHUB_ACTIONS === 'true') {
+    for (const g of gapRows) {
       console.log(`::error file=${g.file}::manifest directory ${g.dir} not covered by .github/dependabot.yml`);
     }
   }
-  return gaps.length ? 1 : 0;
+  return verdict.exitCode;
 }
 
 process.exit(main());

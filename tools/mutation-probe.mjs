@@ -109,6 +109,27 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'dependabot-check.mjs',
+    id: 'dependabot-zero-manifests-exits-2',
+    why: 'zero inspected manifests means nothing was checked - it must not report "all covered"',
+    from: '  if (!rows.length) {',
+    to: '  if (false) {',
+  },
+  {
+    tool: 'dependabot-check.mjs',
+    id: 'dependabot-pip-does-not-recurse',
+    why: 'only npm recurses below a directory entry; letting pip recurse hides real gaps',
+    from: '      if (RECURSIVE_ECOSYSTEMS.has(ecosystem)) {',
+    to: '      if (true) {',
+  },
+  {
+    tool: 'dependabot-check.mjs',
+    id: 'dependabot-glob-is-anchored',
+    why: 'an unanchored glob would report coverage for a directory the config never mentions',
+    from: '  return new RegExp(`^${esc}$`);',
+    to: '  return new RegExp(`${esc}`);',
+  },
+  {
     tool: 'extension-check.mjs',
     id: 'extcheck-empty-lists-are-not-parity',
     why: 'LADDER_PROVIDERS = [] on both sides compares equal - a vacuous green for an extension routing nowhere',
