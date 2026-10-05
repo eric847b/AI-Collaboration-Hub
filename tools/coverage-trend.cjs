@@ -30,6 +30,17 @@ const { execSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_LEDGER = path.join('docs', 'metrics', 'coverage-history.json');
 const MAX_ENTRIES = 200;
+/**
+ * The repo's coverage gate, percent lines.
+ *
+ * Was a bare `lines >= 70` inline in statusFor(). Hoisted here because
+ * `--self-test` dispatches from the top level (below), so a `const` declared down
+ * beside its consumer would be in its temporal dead zone at that point.
+ *
+ * This number IS repo policy - the durable rules and STATUS both cite ">=70%" -
+ * so a check on the rendered string could never have protected it.
+ */
+const COVERAGE_GATE_PCT = 70;
 
 // Projects whose coverage is tracked via a summary artifact (relative paths).
 // Preferred artifact is the istanbul coverage-summary.json; when absent the
@@ -125,8 +136,8 @@ const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
-  if (a === '--help' || a === '-h') {
-    flags['--help'] = true;
+  if (a === '--help' || a === '-h' || a === '--self-test') {
+    flags[a] = true;
     continue;
   }
   if (a.startsWith('-')) {
@@ -150,6 +161,46 @@ for (let i = 0; i < argv.length; i += 1) {
     continue;
   }
   positionals.push(a);
+}
+
+/**
+ * The coverage gate had no self-test anywhere, and its threshold IS repo policy
+ * (the durable rules and STATUS both cite ">=70%"). Every case below runs on
+ * synthetic summaries through the pure classifier, so nothing reads a real
+ * coverage artifact.
+ */
+function runSelfTest() {
+  const failures = [];
+  const check = (name, cond) => { if (!cond) failures.push(name); };
+  const at = (lines) => classifyCoverage({ lines });
+
+  // The gate itself. A check on the rendered string could never protect this.
+  check('coverage gate is 70%', COVERAGE_GATE_PCT === 70);
+
+  check('a missing summary is pending', classifyCoverage(null).pass === null);
+  check('a summary without lines is pending', classifyCoverage({}).pass === null);
+  check('null lines is pending', at(null).pass === null);
+  check('pending text names the missing artifact', classifyCoverage(null).text.includes('no summary artifact'));
+
+  // Boundary: `>=` is inclusive, so EXACTLY the gate passes (the counterpart of
+  // the strict `>` gates elsewhere - easy to get backwards).
+  check('exactly at the gate passes', at(70).pass === true);
+  check('just below the gate fails', at(69.9).pass === false);
+  check('well above the gate passes', at(95).pass === true);
+  check('zero coverage fails', at(0).pass === false);
+
+  // The rendered text must not drift from the decision it reports.
+  check('pass text cites the gate', at(88).text.includes('>=70% gate'));
+  check('below-gate text cites the threshold', at(12).text.includes('< 70%'));
+  check('pass text and verdict agree', at(88).text.startsWith('pass') === (at(88).pass === true));
+  check('below text and verdict agree', at(12).text.startsWith('below') === (at(12).pass === false));
+
+  if (failures.length) {
+    console.error(`coverage-trend self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log('coverage-trend self-test: 14/14 passed');
 }
 
 function usage() {
@@ -182,6 +233,11 @@ function usage() {
 
 if (flags['--help']) {
   usage();
+  process.exit(0);
+}
+
+if (flags['--self-test']) {
+  runSelfTest();
   process.exit(0);
 }
 if (positionals.length > 1) {
@@ -266,11 +322,30 @@ function fmtPct(v) {
   return v === null || v === undefined ? 'n/a' : `${Number(v).toFixed(1)}%`;
 }
 
-function statusFor(summary) {
-  if (!summary) return 'pending (no summary artifact - run vitest --coverage)';
+/**
+ * Classify one project's line coverage. Pure, so `--self-test` can drive it
+ * without touching any coverage artifact.
+ *
+ * @param {{lines: number|null|undefined}} summary istanbul-style summary
+ * @returns {{pass: boolean|null, lines: number|null, text: string}}
+ *   `pass === null` means "pending": no summary, or no `lines` field yet.
+ */
+function classifyCoverage(summary) {
+  if (!summary) return { pass: null, lines: null, text: 'pending (no summary artifact - run vitest --coverage)' };
   const lines = summary.lines;
-  if (lines === null || lines === undefined) return 'pending';
-  return lines >= 70 ? `pass (>=70% gate: ${Number(lines).toFixed(1)}% lines)` : `below gate (${Number(lines).toFixed(1)}% lines < 70%)`;
+  if (lines === null || lines === undefined) return { pass: null, lines: null, text: 'pending' };
+  const pct = Number(lines);
+  return {
+    pass: pct >= COVERAGE_GATE_PCT,
+    lines: pct,
+    text: pct >= COVERAGE_GATE_PCT
+      ? `pass (>=${COVERAGE_GATE_PCT}% gate: ${pct.toFixed(1)}% lines)`
+      : `below gate (${pct.toFixed(1)}% lines < ${COVERAGE_GATE_PCT}%)`,
+  };
+}
+
+function statusFor(summary) {
+  return classifyCoverage(summary).text;
 }
 
 function snapshotProjects() {

@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'coverage-trend.cjs',
+    id: 'coverage-gate-is-70pct',
+    why: 'the coverage gate must stay 70% - it was a bare inline literal nothing asserted',
+    from: 'const COVERAGE_GATE_PCT = 70;',
+    to: 'const COVERAGE_GATE_PCT = 5;',
+  },
+  {
+    tool: 'coverage-trend.cjs',
+    id: 'coverage-gate-detection-fires',
+    why: 'coverage below the gate must actually report a failure',
+    from: 'pass: pct >= COVERAGE_GATE_PCT,',
+    to: 'pass: true,',
+  },
+  {
     tool: 'bundle-trend.cjs',
     id: 'bundle-growth-threshold-is-10pct',
     why: 'the bundle regression threshold must stay 10% - no behavioural case can pin it',
