@@ -86,7 +86,9 @@ const SMOKE = {
   'telemetry-export.mjs': ['--self-test'],
   // Cheap and read-only on purpose: a bare run would spawn every probed tool's
   // --self-test, which is far too slow (and pointlessly heavy) for a smoke row.
-  'mutation-probe.mjs': ['--list-probes'],
+  // `--self-test` is the better pick now that the tool has one: it is equally
+  // instant and actually asserts the verdict logic rather than just listing ids.
+  'mutation-probe.mjs': ['--self-test'],
 };
 
 /** Tokens that must never appear in a smoke probe (they mutate state). */
@@ -463,7 +465,7 @@ async function checkCliContract() {
   try {
     scanned = fs
       .readdirSync(TOOLS_DIR)
-      .filter((f) => /\.(mjs|cjs)$/.test(f))
+      .filter((f) => !f.startsWith('.') && /\.(mjs|cjs)$/.test(f))
       .sort()
       .map((f) => `tools/${f}`);
   } catch (e) {
@@ -574,7 +576,7 @@ let tools;
 try {
   tools = fs
     .readdirSync(TOOLS_DIR)
-    .filter((f) => /\.(mjs|cjs)$/.test(f))
+    .filter((f) => !f.startsWith('.') && /\.(mjs|cjs)$/.test(f))
     .sort();
 } catch (e) {
   console.error(`verify-tools: cannot list tools/ - ${e.message}`);

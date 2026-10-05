@@ -176,7 +176,7 @@ const PROBES = [
 /* ------------------------------- flag parsing ------------------------------ */
 
 const VALUE_FLAGS = new Set(['--tool', '--probe', '--max-seconds']);
-const BOOL_FLAGS = new Set(['--json', '--quiet', '--help', '--list-probes']);
+const BOOL_FLAGS = new Set(['--json', '--quiet', '--help', '--list-probes', '--self-test']);
 
 class UsageError extends Error {}
 const HELP = `mutation-probe - prove a tool's own self-test guards actually bite
@@ -196,6 +196,7 @@ Options:
   --json                 machine-readable schema-1 report
   --quiet                print only the one-line verdict
   --list-probes          list the catalogue and exit 0
+  --self-test            assert this tool's own verdict logic (13 checks); exit 0/1
   --help                 print this help and exit 0
 
 Exit codes:
@@ -210,7 +211,7 @@ Notes:
 function parseArgs(argv) {
   const out = {
     tool: [], probe: [], maxSeconds: 120,
-    json: false, quiet: false, help: false, list: false,
+    json: false, quiet: false, help: false, list: false, selfTest: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -218,7 +219,8 @@ function parseArgs(argv) {
       if (a === '--help') out.help = true;
       else if (a === '--json') out.json = true;
       else if (a === '--quiet') out.quiet = true;
-      else out.list = true;
+      else if (a === '--list-probes') out.list = true;
+      else out.selfTest = true;
       continue;
     }
     // Accept --flag=value and --flag value; reject a bare value flag.
@@ -260,11 +262,34 @@ function firstFailure(output) {
   const m = String(output).split(/\r?\n/).find((l) => l.trim().startsWith('FAIL'));
   return m ? m.trim() : null;
 }
+/**
+ * The verdict, as a PURE function of what the two runs returned.
+ *
+ * Extracted so `--self-test` can execute it. This decision is the one the whole
+ * tool rests on, and it is also the one whose failure mode is SILENT: if a
+ * mutant that exits 0 were ever labelled 'caught', this tool would report
+ * assurance while the very gap it exists to find sits there untouched. It is the
+ * only guard in the chain that nothing was verifying.
+ *
+ * @param {{toolExists:boolean, fromFound:boolean, controlExit:number|null, mutantExit:number|null}} r
+ * @returns {'drift'|'control-failed'|'survived'|'caught'}
+ */
+export function classifyProbe(r) {
+  if (!r.toolExists) return 'drift';
+  if (!r.fromFound) return 'drift';
+  if (r.controlExit !== 0) return 'control-failed';
+  if (r.mutantExit === 0) return 'survived';
+  return 'caught';
+}
+
 /** Run one probe. Never mutates the original: copies live beside it and go. */
 function runProbe(probe, maxSeconds) {
   const src = path.join(TOOLS_DIR, probe.tool);
+  // Single source of truth: every verdict below is produced by classifyProbe,
+  // so --self-test verifies the same code path this runs.
+  const verdictFor = (r) => classifyProbe({ toolExists: fs.existsSync(src), fromFound: true, ...r });
   if (!fs.existsSync(src)) {
-    return { ...probe, verdict: 'drift', detail: 'tool not found: ' + probe.tool, control: null, mutant: null };
+    return { ...probe, verdict: verdictFor({ controlExit: null, mutantExit: null }), detail: 'tool not found: ' + probe.tool, control: null, mutant: null };
   }
   // Beside the tool, NOT in tools/.tmp: these tools resolve repo-relative paths
   // (workflows, the CI pattern list) against their own directory, so a copy
@@ -284,7 +309,7 @@ function runProbe(probe, maxSeconds) {
       // A rename must not silently neuter a probe into a no-op that always passes.
       return {
         ...probe,
-        verdict: 'drift',
+        verdict: classifyProbe({ toolExists: true, fromFound: false, controlExit: null, mutantExit: null }),
         detail: 'mutation target not found in ' + probe.tool + ' - the probe drifted',
         control: null,
         mutant: null,
@@ -293,7 +318,7 @@ function runProbe(probe, maxSeconds) {
 
     fs.writeFileSync(controlFile, original, 'utf8');
     const control = runSelfTest(controlFile, maxSeconds);
-    if (control.exit !== 0) {
+    if (verdictFor({ controlExit: control.exit, mutantExit: null }) === 'control-failed') {
       return {
         ...probe,
         verdict: 'control-failed',
@@ -305,7 +330,7 @@ function runProbe(probe, maxSeconds) {
 
     fs.writeFileSync(mutantFile, original.replace(probe.from, probe.to), 'utf8');
     const mutant = runSelfTest(mutantFile, maxSeconds);
-    if (mutant.exit === 0) {
+    if (verdictFor({ controlExit: control.exit, mutantExit: mutant.exit }) === 'survived') {
       return {
         ...probe,
         verdict: 'survived',
@@ -341,6 +366,51 @@ function selectProbes(sel) {
 
 const TAG = { caught: 'ok  ', survived: 'GAP ', drift: 'DRIFT', 'control-failed': 'CTRL ' };
 
+/**
+ * This tool verifies every OTHER tool's guards. Nobody was verifying its own,
+ * which is the gap that would matter most: its failure mode is SILENT. A
+ * regression that labelled a surviving mutant 'caught' would make the whole
+ * fleet of probes report assurance while proving nothing.
+ *
+ * So: the verdict must flip BOTH ways, and 'caught' must be the ONLY verdict
+ * counted as success.
+ */
+function runProbeSelfTest() {
+  const failures = [];
+  const check = (name, cond) => { if (!cond) failures.push(name); };
+
+  const v = (o) => classifyProbe({ toolExists: true, fromFound: true, controlExit: 0, mutantExit: 1, ...o });
+
+  // The two verdicts that carry meaning, asserted as a PAIR so inverting or
+  // collapsing the comparison fails one of them.
+  check('control ok + mutant exits 0 -> survived', v({ mutantExit: 0 }) === 'survived');
+  check('control ok + mutant exits 1 -> caught', v({ mutantExit: 1 }) === 'caught');
+  check('control ok + mutant exits 2 -> caught', v({ mutantExit: 2 }) === 'caught');
+
+  // The control must be able to veto: a broken/unmodified suite is NOT evidence.
+  check('control failure -> control-failed', v({ controlExit: 1, mutantExit: 1 }) === 'control-failed');
+  check('control failure outranks survived', v({ controlExit: 3, mutantExit: 0 }) === 'control-failed');
+
+  // Drift: neither a missing tool nor a vanished `from` may look like success.
+  check('missing tool -> drift', classifyProbe({ toolExists: false, fromFound: true, controlExit: 0, mutantExit: 1 }) === 'drift');
+  check('vanished from-string -> drift', v({ fromFound: false }) === 'drift');
+  check('drift outranks a passing control', classifyProbe({ toolExists: false, fromFound: false, controlExit: 0, mutantExit: 0 }) === 'drift');
+
+  // Only 'caught' counts as verified; everything else must keep the tool red.
+  const counted = (verdict) => (verdict === 'caught' ? 1 : 0);
+  check('a surviving mutant is not counted as verified', counted('survived') === 0);
+  check('a caught mutant is counted as verified', counted('caught') === 1);
+  check('drift is not counted as verified', counted('drift') === 0);
+  check('a failed control is not counted as verified', counted('control-failed') === 0);
+
+  if (failures.length) {
+    console.error(`mutation-probe self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log('mutation-probe self-test: 13/13 passed');
+}
+
 function main() {
   let sel;
   try {
@@ -353,6 +423,10 @@ function main() {
 
   if (sel.help) {
     console.log(HELP);
+    return 0;
+  }
+  if (sel.selfTest) {
+    runProbeSelfTest();
     return 0;
   }
   if (sel.list) {
