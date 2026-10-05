@@ -109,6 +109,20 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'bundle-trend.cjs',
+    id: 'bundle-growth-threshold-is-10pct',
+    why: 'the bundle regression threshold must stay 10% - no behavioural case can pin it',
+    from: 'const DEFAULT_GROWTH_THRESHOLD_PCT = 10;',
+    to: 'const DEFAULT_GROWTH_THRESHOLD_PCT = 1000;',
+  },
+  {
+    tool: 'bundle-trend.cjs',
+    id: 'bundle-growth-detection-fires',
+    why: 'growth past the threshold must be reported as a regression',
+    from: 'return { growth, regressed: growth > thresholdPct };',
+    to: 'return { growth, regressed: false };',
+  },
+  {
     tool: 'ops-dashboard.mjs',
     id: 'dashboard-stale-threshold-is-24h',
     why: 'the dashboard staleness threshold must stay 24h - no behavioural case can pin it',

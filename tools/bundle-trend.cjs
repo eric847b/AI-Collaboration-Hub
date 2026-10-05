@@ -40,6 +40,18 @@ const DEFAULT_LEDGER = path.join('docs', 'metrics', 'bundle-history.json');
 const OUT_DIRS = ['dist', 'build', 'out', '.output', 'release'];
 const MAX_ENTRIES = 200;
 const CHECKSUM_MANIFEST = '.checksum-manifest.json';
+/**
+ * Default regression threshold, percent growth.
+ *
+ * Declared up here, before any dispatch, because `runSelfTest` is invoked from
+ * the top level and a `const` further down the file would be in its temporal
+ * dead zone at that point.
+ *
+ * Named and asserted: this number IS the bundle gate. A behavioural check can
+ * prove the comparison fires but never what it compares against, so the value
+ * itself needs a direct assertion.
+ */
+const DEFAULT_GROWTH_THRESHOLD_PCT = 10;
 
 const argv = process.argv.slice(2);
 
@@ -61,8 +73,8 @@ const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
-  if (a === '--help' || a === '-h') {
-    flags['--help'] = true;
+  if (a === '--help' || a === '-h' || a === '--self-test') {
+    flags[a] = true;
     continue;
   }
   if (a.startsWith('-')) {
@@ -83,6 +95,44 @@ for (let i = 0; i < argv.length; i += 1) {
     continue;
   }
   positionals.push(a);
+}
+
+/**
+ * The bundle regression gate had no self-test anywhere, and this threshold IS the
+ * gate - a silently disarmed size check is exactly the class of defect this repo
+ * keeps meeting. Every case below runs on synthetic numbers through the pure
+ * classifier, so nothing reads real build outputs or the ledger.
+ */
+function runSelfTest() {
+  const failures = [];
+  const check = (name, cond) => { if (!cond) failures.push(name); };
+  const T = DEFAULT_GROWTH_THRESHOLD_PCT;
+  const g = (base, now) => classifyGrowth(base, now, T);
+
+  // The threshold itself: no behavioural case below can pin this.
+  check('default growth threshold is 10%', T === 10);
+
+  check('no change is not a regression', g(100, 100).regressed === false);
+  // Boundary: `>` is strict, so exactly AT the threshold still passes.
+  check('exactly at the threshold passes', g(100, 110).regressed === false);
+  check('just past the threshold fails', g(100, 111).regressed === true);
+  check('a large growth fails', g(100, 200).regressed === true);
+  // Shrinking is never a regression, however large.
+  check('a small shrink passes', g(100, 99).regressed === false);
+  check('a large shrink passes', g(100, 10).regressed === false);
+  check('shrink to zero passes', g(100, 0).regressed === false);
+  // A zero/absent baseline must yield 0%, not Infinity/NaN, or the first
+  // snapshot of a project would read as an infinite regression.
+  check('zero baseline does not regress', g(0, 500).regressed === false);
+  check('zero baseline yields 0% growth', g(0, 500).growth === 0);
+  check('growth percentage is exact', g(200, 250).growth === 25);
+
+  if (failures.length) {
+    console.error(`bundle-trend self-test FAIL: ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  FAIL  ${f}`);
+    process.exit(1);
+  }
+  console.log('bundle-trend self-test: 11/11 passed');
 }
 
 function usage() {
@@ -107,6 +157,7 @@ function usage() {
       '            flags: --project',
       '',
       '  --help    print this text and exit 0',
+      '  --self-test  assert the regression classifier (threshold + boundaries); exit 0/1',
       '',
       '--project scopes a run to ONE auto-discovered project (unknown project exits 2',
       'with the known list). Unknown commands/flags exit 2. There is no interactive',
@@ -117,6 +168,11 @@ function usage() {
 
 if (flags['--help'] || (positionals[0] === 'help' && positionals.length === 1)) {
   usage();
+  process.exit(0);
+}
+
+if (flags['--self-test']) {
+  runSelfTest();
   process.exit(0);
 }
 
@@ -296,9 +352,22 @@ function collect() {
   return 0;
 }
 
+/**
+ * Classify one project's growth. Pure, so `--self-test` can drive it with
+ * synthetic numbers instead of reading real build outputs.
+ *
+ * Shrinking NEVER fails (a smaller bundle is not a regression) and a zero/absent
+ * baseline yields 0% rather than Infinity/NaN.
+ */
+function classifyGrowth(baseBytes, nowBytes, thresholdPct) {
+  const growth = baseBytes > 0 ? ((nowBytes - baseBytes) / baseBytes) * 100 : 0;
+  // Strictly greater: exactly AT the threshold still passes.
+  return { growth, regressed: growth > thresholdPct };
+}
+
 function check() {
   const file = ledgerPath();
-  const threshold = Number(opt('--threshold', '10'));
+  const threshold = Number(opt('--threshold', String(DEFAULT_GROWTH_THRESHOLD_PCT)));
   const measured = measureAll();
   const names = Object.keys(measured);
   if (names.length === 0) {
@@ -315,9 +384,9 @@ function check() {
       console.log(`  ${name.padEnd(34)} no baseline yet (${human(measured[name].bytes)}) — skip`);
       continue;
     }
-    const growth = base.bytes > 0 ? ((measured[name].bytes - base.bytes) / base.bytes) * 100 : 0;
-    const tag = growth > threshold ? 'FAIL' : 'ok  ';
-    if (growth > threshold) {
+    const { growth, regressed } = classifyGrowth(base.bytes, measured[name].bytes, threshold);
+    const tag = regressed ? 'FAIL' : 'ok  ';
+    if (regressed) {
       failed = true;
       regressions.push({ name, base: base.bytes, now: measured[name].bytes, growth });
     }
