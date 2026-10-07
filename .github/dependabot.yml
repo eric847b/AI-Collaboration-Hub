@@ -1,6 +1,12 @@
 version: 2
 # Fleet-aligned Dependabot — labels feed AGA dependabot_coordinator.
 # Patch+minor groups; majors still open as separate PRs for human review.
+#
+# typescript majors are ignored in Node apps that use typescript-eslint:
+# that plugin still requires typescript >=4.8.4 <6.1.0 and hard-throws on
+# TS 7.0 (no JS compiler API until 7.1). See:
+# https://github.com/typescript-eslint/typescript-eslint/issues/10940
+# Revisit when typescript-eslint advertises a typescript@7 peer range.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -34,6 +40,9 @@ updates:
       npm-root:
         patterns: ["*"]
         update-types: ["patch", "minor"]
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/self-evolve-dash"
@@ -50,6 +59,9 @@ updates:
       npm-dash:
         patterns: ["*"]
         update-types: ["patch", "minor"]
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/nexus-infinity-hub"
@@ -66,8 +78,9 @@ updates:
       npm-nexus:
         patterns: ["*"]
         update-types: ["patch", "minor"]
-
-
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/ai-chat-websites"
@@ -83,6 +96,9 @@ updates:
       npm-chat:
         patterns: ["*"]
         update-types: ["patch", "minor"]
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/collabhub-modules"
@@ -98,6 +114,9 @@ updates:
       npm-modules:
         patterns: ["*"]
         update-types: ["patch", "minor"]
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "pip"
     directory: "/"
@@ -144,7 +163,6 @@ updates:
         patterns: ["*"]
         update-types: ["patch", "minor"]
 
-
   - package-ecosystem: "npm"
     directory: "/third-door-blink-controller"
     schedule:
@@ -160,6 +178,9 @@ updates:
       npm-blink-controller:
         patterns: ["*"]
         update-types: ["patch", "minor"]
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "pip"
     directory: "/solutions-dynamics"
@@ -176,5 +197,3 @@ updates:
       pip-solutions-dynamics:
         patterns: ["*"]
         update-types: ["patch", "minor"]
-
-

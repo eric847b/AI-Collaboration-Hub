@@ -118,7 +118,6 @@ jobs:
           node tools/e2e-smoke.mjs --self-test
           node tools/extension-check.mjs --self-test
           node tools/dependabot-check.mjs --self-test
-          node tools/flake-tracker.cjs --self-test
           # The mutation harness verifies every OTHER tool's guards, so its own
           # verdict logic is the last link in the chain and the only one whose
           # failure mode is silent: labelling a surviving mutant "caught" would

@@ -82,10 +82,10 @@
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@jest/globals": "^30.5.2",
-    "@typescript-eslint/eslint-plugin": "^8.70.1",
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
     "@typescript-eslint/parser": "^8.69.0",
     "babel-jest": "^30.5.2",
-    "eslint": "^10.11.0",
+    "eslint": "^10.12.0",
     "ini": "^7.0.0",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
@@ -102,7 +102,9 @@
     "decode-uri-component": ">=0.4.1",
     "image-size": ">=2.0.0",
     "markdownlint-cli": {
-      "js-yaml": "5.4.1"
-    }
+      "js-yaml": "5.4.1",
+      "smol-toml": "1.9.0"
+    },
+    "katex": "0.18.2"
   }
 }
