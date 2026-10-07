@@ -86,7 +86,7 @@ jobs:
       # documented guard does not cover the risk it claims to - the exact failure
       # mode that let workflow-audit's WF004 verdict and secret-scan's preview
       # redaction ship unverified. A check nothing runs would rot, so it runs here.
-      # Costs ~55s (23 probes, each spawning its target's self-test TWICE - an
+      # Runs 44 probes (each spawning its target's self-test TWICE - an
       # unmodified control plus one mutant); writes only
       # throwaway copies BESIDE each probed tool and deletes them in a finally.
       - name: Mutation probes - self-test guards must fail when the code is broken
@@ -122,7 +122,7 @@ jobs:
           # The mutation harness verifies every OTHER tool's guards, so its own
           # verdict logic is the last link in the chain and the only one whose
           # failure mode is silent: labelling a surviving mutant "caught" would
-          # make all 23 probes report assurance while proving nothing.
+          # make all 44 probes report assurance while proving nothing.
           node tools/mutation-probe.mjs --self-test
       - name: OPS dashboard smoke (both OS)
         run: node tools/ops-dashboard.mjs --out docs/metrics/OPS-DASHBOARD.md

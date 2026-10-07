@@ -39,7 +39,13 @@ function comparatorToRange(c) {
   const fill = (i) => (parts[i] && parts[i] !== 'x' && parts[i] !== 'X' && parts[i] !== '*' ? parts[i] : undefined);
   const onePart = fill(1) === undefined;
   let maj = fill(0), min = fill(1), pat = fill(2);
-  if (min === undefined) { if (op === '^' || op === '~' || op === '>' || op === '>=' || op === '<' || op === '<=') { min = 0; } else { return { lo: `${maj}.0.0`, hi: `${+maj + 1}.0.0` }; } }
+  // NOTE: `~` is deliberately NOT in this list. A single-part tilde is NOT
+  // ">=maj.0.0 <maj.1.0": npm defines `~1` as >=1.0.0 <2.0.0 (verified against the
+  // real `semver` package), so it must fall through to the else-branch below.
+  // Filling min=0 made `~1` behave like `~1.0`, which reported patched versions in
+  // 1.1.0-1.9.9 as out-of-range - i.e. it would refuse a security fix that npm would
+  // accept, leaving the advisory open in the lockfile.
+  if (min === undefined) { if (op === '^' || op === '>' || op === '>=' || op === '<' || op === '<=') { min = 0; } else { return { lo: `${maj}.0.0`, hi: `${+maj + 1}.0.0` }; } }
   if (pat === undefined) {
     if (op === '') return { lo: `${maj}.${min}.0`, hi: `${maj}.${+min + 1}.0` };
     if (op === '^') return +maj > 0 ? { lo: `${maj}.${min}.0`, hi: `${+maj + 1}.0.0` } : +min > 0 ? { lo: `0.${min}.0`, hi: `0.${+min + 1}.0` } : { lo: '0.0.0', hi: '0.1.0' };
@@ -165,6 +171,23 @@ function selftest() {
     ['3.0.0', '<= 2', false],
     ['3.0.0', '> 2', true],                     // npm: ">2" === ">=3.0.0"
     ['2.9.9', '> 2', false],
+    // --- 2-part comparator forms ---------------------------------------------------
+    // These exercise the `min === undefined` branch of comparatorToRange, which no
+    // case above reaches. A mutation there once SURVIVED a probe, proving this branch
+    // was untested; a lockfile tool choosing a vulnerable version is exactly the
+    // failure this suite exists to prevent, so every branch now has a case.
+    ['0.8.13', '^0.8', true],                   // ^0.8 == >=0.8.0 <0.9.0 (minor-pinned)
+    ['0.9.0', '^0.8', false],                   // would be TRUE if ^0.x were major-pinned
+    ['0.7.9', '^0.8', false],                   // below the floor
+    ['1.2.9', '^1', true],                      // ^1 == >=1.0.0 <2.0.0
+    ['2.0.0', '^1', false],                     // must NOT widen to any 2.x
+    ['1.2.9', '~1', true],                      // ~1 == >=1.0.0 <2.0.0 (npm: ~1 === 1.x)
+    ['1.1.0', '~1', true],                      // in range: exactly the fix the old <1.1.0 bug refused
+    ['2.0.0', '~1', false],                     // upper bound still exclusive
+    ['1.2.9', '1', true],                       // bare major == >=1.0.0 <2.0.0
+    ['2.5.0', '1', false],
+    ['1.2.9', '>= 1', true],
+    ['0.9.9', '>= 1', false],
   ];
   const bad = cases.filter(([v, r, want]) => sat(v, r) !== want);
   if (bad.length) { console.error('SELFTEST FAIL: ' + JSON.stringify(bad)); process.exit(1); }
@@ -369,6 +392,11 @@ const USAGE = [
   '  alerts    gh dependabot alerts -> tmp-alerts.json (network, gh CLI)',
   '  patch     apply edits to lockfiles + verify (local only; requires fetch first)',
   '',
+  'Flags:',
+  '  --self-test  alias for the `selftest` command (repo-wide convention, and what',
+  '               tools/mutation-probe.mjs invokes to prove these cases bite)',
+  '  --help       print this text and exit 0',
+  '',
   'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
   'Unknown flags and unknown commands exit 2.',
 ].join('\n');
@@ -378,6 +406,13 @@ const cmd = argv.find((a) => !a.startsWith('-'));
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log(USAGE);
   process.exit(0);
+}
+// Repo-wide convention (and what tools/mutation-probe.mjs hardcodes), so the
+// semver safety cases are reachable by the same probe mechanism as every other tool.
+if (argv.includes('--self-test')) {
+  selftest();
+  process.exit(0); // selftest() only exits on failure; a clean run must not fall
+                  // through into the unknown-flag loop below.
 }
 for (const a of argv) {
   if (a.startsWith('-')) {

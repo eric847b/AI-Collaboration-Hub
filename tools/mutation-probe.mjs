@@ -109,6 +109,27 @@ const PROBES = [
     to: 'windowMs: 0,',
   },
   {
+    tool: 'fix-security-alerts.cjs',
+    id: 'fixalerts-inclusive-upper-bound',
+    why: 'if "<= 0.8.14" excluded its own bound, the tool would skip the patched version and leave the alert open',
+    from: "    if (r.hiMode === 'le' ? c2 > 0 : c2 >= 0) return false;",
+    to: '    if (r.hiMode === \'le\' ? c2 >= 0 : c2 > 0) return false;',
+  },
+  {
+    tool: 'fix-security-alerts.cjs',
+    id: 'fixalerts-zero-major-caret',
+    why: '^0.x is pinned to the MINOR; widening it to the major is the exact bug that killed v3',
+    from: "  if (op === '^') return +maj > 0 ? { lo: v, hi: `${+maj + 1}.0.0` } : +min > 0 ? { lo: v, hi: `0.${+min + 1}.0` } : { lo: v, hi: `0.0.${+pat + 1}` };",
+    to: "  if (op === '^') return +maj > 0 ? { lo: v, hi: `${+maj + 1}.0.0` } : +min > 0 ? { lo: v, hi: `1.0.0` } : { lo: v, hi: `0.0.${+pat + 1}` };",
+  },
+  {
+    tool: 'fix-security-alerts.cjs',
+    id: 'fixalerts-strict-lower-bound',
+    why: '"> 1.2.3" must EXCLUDE 1.2.3; treating it as ">=" would claim an unpatched version is fixed',
+    from: "  if (r.loMode === 'gt' ? cmp(v, r.lo) <= 0 : cmp(v, r.lo) < 0) return false;",
+    to: "  if (r.loMode === 'gt' ? cmp(v, r.lo) < 0 : cmp(v, r.lo) < 0) return false;",
+  },
+  {
     tool: 'check-doc-facts.mjs',
     id: 'docfacts-stale-claim-is-reported',
     why: 'a drifted N/N claim must be reported, not silently accepted - this is the doc-count gate',
