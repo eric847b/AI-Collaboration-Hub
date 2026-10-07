@@ -103,6 +103,18 @@ for (const f of files) {
     }
     new vm.Script(src, { filename: f });
   } catch (e) {
+    // Node >= 20.19 resolves ambiguous .js files by MODULE-SYNTAX DETECTION,
+    // so a valid ESM file living in a commonjs package (the eslint.config.js
+    // flat-config style) fails the classic-script parse above while plain
+    // "node --check" accepts it. Re-ask Node itself before failing: a file Node
+    // accepts must never block a commit - this false-red stalled the merge that
+    // carried third-door-blink-controller/eslint.config.js. Genuine syntax
+    // errors fail BOTH checks and still block (userscripts keep the neutralized
+    // path above, so they are excluded from the fallback).
+    if (e instanceof SyntaxError && /\b(import|export)\b/.test(e.message) && !f.endsWith('.user.js')) {
+      const fb = spawnSync(process.execPath, ['--check', f], { stdio: 'ignore' });
+      if (fb.status === 0) continue;
+    }
     const msg = e instanceof SyntaxError ? `${e.name}: ${e.message}` : String(e);
     console.error(`[pre-commit] syntax FAIL: ${f}\n  ${msg.split('\n')[0]}`);
     fail = 1;
