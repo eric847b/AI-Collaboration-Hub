@@ -197,7 +197,11 @@ return [...m[1].matchAll(/'([^']+)'|"([^"]+)"/g)].map((x) => x[1] || x[2]).filte
 }
 
 function countToolsOnDisk() {
-return fs.readdirSync(path.join(ROOT, 'tools')).filter((f) => /\.(mjs|cjs)$/.test(f)).length;
+// Ignore dotfiles. Mutation probes copy a tool beside itself as
+// `.mutation-probe-*.mjs` while --self-test runs. Counting those scratch
+// files inflates cliTotal, makes documented N/N claims look drifted, and
+// fails the unmodified control (Multi-OS gate stuck at 42/44).
+return fs.readdirSync(path.join(ROOT, 'tools')).filter((f) => /\.(mjs|cjs)$/.test(f) && !f.startsWith('.')).length;
 }
 
 /**
@@ -296,6 +300,32 @@ actual = null;
 }
 check('check-flag-contract --json produced rows', actual !== null, true);
 check('INVARIANT flagTotal === cliTotal - 1 (auditor excludes only itself)', actual, derived);
+// The Multi-OS mutation probe copies this file to `.mutation-probe-*.mjs`
+// beside itself and re-runs --self-test. Both inventories must ignore that
+// scratch file or the unmodified control looks drifted (42/44).
+const scratch = path.join(ROOT, 'tools/.mutation-probe-selftest-scratch.mjs');
+const before = countToolsOnDisk();
+fs.writeFileSync(scratch, '// not a tool\n');
+let during;
+let scratchRows = null;
+try {
+during = countToolsOnDisk();
+const r2 = spawnSync(process.execPath, [path.join(ROOT, 'tools/check-flag-contract.mjs'), '--json'], {
+cwd: ROOT,
+encoding: 'utf8',
+timeout: 180000,
+});
+try {
+const parsed = JSON.parse(r2.stdout || '');
+if (Array.isArray(parsed.rows)) scratchRows = parsed.rows.length;
+} catch {
+scratchRows = null;
+}
+} finally {
+fs.rmSync(scratch, { force: true });
+}
+check('mutation-probe scratch copies are not counted as tools', during, before);
+check('a mutation-probe scratch file does not change the audited tool count', scratchRows, actual);
 }
 
 // ---- parseExtraTools: read from verify-tools, never a second copy ----
