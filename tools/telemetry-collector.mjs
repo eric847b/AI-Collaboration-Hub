@@ -133,10 +133,24 @@ export function parseArgs(argv) {
     selfTest: false,
     help: false,
   };
+  // Round 12 D CLI contract: accept `--flag=value` as well as `--flag value`.
+  // The switch below dispatches on the exact space-separated token and reads the
+  // value from the NEXT argv slot, so normalizing `--flag=value` into two tokens
+  // up front makes every case handle both forms with no per-case change (this is
+  // how telemetry-export.mjs's parseExportArgs behaves). `--flag=` with an empty
+  // value is intentionally left as a single token so it still reaches the
+  // "needs a value" path rather than silently becoming an empty value.
+  const norm = [];
+  for (const a of argv) {
+    const m = typeof a === 'string' ? a.match(/^(--[a-z0-9][a-z0-9-]*)=([\s\S]*)$/) : null;
+    if (m && m[2] !== '') norm.push(m[1], m[2]);
+    else norm.push(a);
+  }
+
 
   let i = 0;
-  if (argv[0] && !argv[0].startsWith('-')) {
-    const cmd = argv[0];
+  if (norm[0] && !norm[0].startsWith('-')) {
+    const cmd = norm[0];
     if (!['serve', 'report', 'prune', 'self-test'].includes(cmd)) {
       throw new UsageError(`unknown command "${cmd}" (expected serve|report|prune|self-test)`);
     }
@@ -145,9 +159,9 @@ export function parseArgs(argv) {
     i = 1;
   }
 
-  for (; i < argv.length; i += 1) {
-    const arg = argv[i];
-    const next = argv[i + 1];
+  for (; i < norm.length; i += 1) {
+    const arg = norm[i];
+    const next = norm[i + 1];
     switch (arg) {
       case '--port':
         opts.port = intFlag('--port', next, 0, 65535);

@@ -75,6 +75,7 @@ function usage() {
     'Usage:',
     '  node tools/telemetry-export.mjs serve [--port <n>] [--out <file>] [--app <id>]',
     `      [--max-body <bytes>] [--allow-origin <origin>]...   (default port ${DEFAULT_PORT})`,
+  `      [--max-entries <n>] [--max-events-per-min <n>] [--dedupe-window <s>]  (server rate/size caps)`,
     '  node tools/telemetry-export.mjs push --file <dump.json> [--out <file>] [--app <id>] [--json]',
     '  node tools/telemetry-export.mjs dump --into <dumpfile> [--out <sink>] [--app <id>] [--json]',
     '      (JSONL sink -> re-ingestible batch dump; feed it back via push --file)',

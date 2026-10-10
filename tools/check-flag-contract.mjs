@@ -213,6 +213,29 @@ function extractInventories(src) {
     if (members.length === 0) continue;
     out.push({ name: m[1], members });
   }
+  // A subcommand-scoped parser that dispatches on a `switch (flag)` has no
+  // top-level Set to read, so it used to report "0 declared" and its real flags
+  // were never confirmed (telemetry-export.mjs: serve/push/snippet/dump/
+  // sync-fleet share one parseExportArgs switch). Treat that switch as a single
+  // synthetic inventory. The case body must ASSIGN or ACT on the flag; a case
+  // that only throws is a DELIBERATELY-REJECTED flag (telemetry-export rejects
+  // `--host` by throwing) and is not part of the contract, so it is excluded -
+  // otherwise a hard rejection would be reported as "declared but undocumented".
+  const SWITCH_RE = /\bswitch\s*\(\s*\w+\s*\)\s*\{([\s\S]*?)\n\s*\}/g;
+  SWITCH_RE.lastIndex = 0;
+  while ((m = SWITCH_RE.exec(src))) {
+    const body = m[1];
+    const members = [];
+    const CASE_RE = /case\s+('--[a-z0-9][a-z0-9-]*')\s*:\s*([^\n]*)/g;
+    let c;
+    while ((c = CASE_RE.exec(body))) {
+      const stmt = c[2] || '';
+      if (/\bthrow\b/.test(stmt)) continue; // rejected, not supported
+      members.push(c[1].slice(1, -1));
+    }
+    if (members.length === 0) continue;
+    out.push({ name: 'switch', members });
+  }
   return out;
 }
 
@@ -415,6 +438,42 @@ function runSelfTest() {
   `;
   const r9 = analyzeStatic(stripComments(foreign), '--limit');
   check('child-process flags are not orphans', r9.advisory, []);
+  // ---- switch-scoped parser: subcommand tools with no top-level Set --------
+  // telemetry-export.mjs dispatches on `switch (flag)` inside parseExportArgs,
+  // so a Set-only extractor reported "0 declared" and never confirmed its 14
+  // real flags. Two traps this must not regress on:
+  //   1. a case that only THROWS is a deliberately-rejected flag (its `--host`),
+  //      NOT part of the contract - including it would make the deep layer
+  //      report "declared but missing from --help" for a flag that is meant to
+  //      be refused;
+  //   2. a `switch` over a non-flag variable (e.g. `switch (kind)`) yields no
+  //      flag cases and must stay invisible, or every such switch becomes a
+  //      phantom empty inventory.
+  const switchSrc = `
+    function parseExportArgs(argv) {
+      for (let i = 0; i < rest.length; i += 1) {
+        const flag = rest[i];
+        switch (flag) {
+          case '--port': opts.port = next(); break;
+          case '--out': opts.out = next(); break;
+          case '--commit': opts.commit = true; break;
+          case '--host': throw new ExportError('not supported');
+          default: break;
+        }
+      }
+    }
+    const NON_FLAG = new Set(['a', 'b']);
+    switch (kind) { case 'x': break; default: break; }
+  `;
+  const rSwitch = analyzeStatic(stripComments(switchSrc), '--port --out --commit');
+  check('switch-scoped flags are declared', [...rSwitch.owner.keys()].sort(), ['--commit', '--out', '--port']);
+  check('switch inventory is not empty', rSwitch.inventories.some((i) => i.name === 'switch' && i.members.length === 3), true);
+  check('a throwing case is NOT declared (rejected flag)', rSwitch.owner.has('--host'), false);
+  check('a rejected flag is not an orphan issue', rSwitch.issues.filter((x) => /--host/.test(x)), []);
+  check('non-flag switch adds no phantom inventory', rSwitch.inventories.filter((i) => i.name === 'switch').length, 1);
+  check('a switch-scoped flag missing from --help is an issue',
+    analyzeStatic(stripComments(switchSrc), '--port --out').issues.some((x) => /--commit/.test(x) && /--help/.test(x)), true);
+
 
   // ---- behavioural layer (the --deep path, now a CI gate on both OS runners) ----
   //
