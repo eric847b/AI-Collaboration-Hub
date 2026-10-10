@@ -44,7 +44,7 @@ const SELF = fileURLToPath(import.meta.url);
 // Unknown flags, missing values, booleans given a value and stray positionals
 // all exit 2 instead of being silently ignored. No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--only']);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json']);
 const argv = process.argv.slice(2);
 const flags = {};
 const positionals = [];
@@ -83,7 +83,7 @@ flags[key] = value;
 function usage() {
 console.log(
 [
-'Usage: node tools/check-doc-facts.mjs [--only <file,...>] [--quiet]',
+'Usage: node tools/check-doc-facts.mjs [--only <file,...>] [--quiet] [--json] [--self-test]',
 '',
 'Verifies that count-bearing claims in AGENTS.md, docs/STATUS.md and',
 'docs/ROADMAP.md still match runtime truth (totals derived from the',
@@ -98,6 +98,8 @@ console.log(
 'Exit codes: 0 = every documented count still true, 1 = drift found,',
 '            2 = bad usage (also: no documents matched — never a clean pass).',
 'Unknown flags and unexpected arguments exit 2.',
+  '  --json            emit a schema-1 report instead of human lines',
+
 ].join('\n'),
 );
 }
@@ -313,6 +315,36 @@ check('--only without a value exits 2', cli(['--only']).code, 2);
 check('boolean given a value exits 2', cli(['--quiet=1']).code, 2);
 check('--only=<bad path> exits 2 (no documents matched)', cli(['--only=nope.md']).code, 2);
 
+// ---- --json: implemented, documented, and parseable ---------------------
+// A declared flag that is accepted but does nothing is precisely the defect
+// class this tool exists to catch, so it gets an implementation test rather
+// than an "it exits 0" test — a no-op would still exit 0.
+{
+const r = cli(['--json', '--quiet']);
+let parsed = null;
+try {
+// Find the JSON line explicitly instead of using .pop(): with --json alone
+// the human summary follows, so .pop() would parse the prose and "pass" by
+// reporting null — a test that cannot fail. The JSON object is one line.
+parsed = JSON.parse(r.out.split('\n').find((l) => l.trim().startsWith('{')));
+} catch {
+parsed = null;
+}
+check('--json --quiet emits a schema-1 object', parsed && parsed.schema, 1);
+check('--json reports liveTotals', parsed && typeof parsed.liveTotals?.checkCli, 'number');
+check('--json agrees with the human path on drift count', parsed && parsed.driftedCount, 0);
+check('--json is listed in --help', cli(['--help']).out.includes('--json'), true);
+check('--json alone still emits parseable JSON (prose may follow)', (() => {
+try {
+return JSON.parse(cli(['--json']).out.split('\n').find((l) => l.trim().startsWith('{'))).schema;
+} catch {
+return null;
+}
+})(), 1);
+}
+check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2);
+
+
 const failed = cases.filter((c) => !c.pass);
 for (const c of failed) {
 console.error(`FAIL  ${c.name}`);
@@ -326,6 +358,8 @@ process.exit(failed.length > 0 ? 1 : 0);
 if (flags['--self-test'] === true) runSelfTest();
 
 // ── Main ───────────────────────────────────────────────────────────────
+  const asJson = flags['--json'] === true;
+
 const selected = flags['--only']
 ? String(flags['--only']).split(',').map((s) => s.trim()).filter(Boolean)
 : DOC_FILES;
@@ -385,9 +419,23 @@ denominator: null,
 function formatHint(d, cli, flag) {
   return d.denominator === null ? '' : ` (live totals: ${cli} / ${flag})`;
 }
-
+// Machine-readable path. Emitted BEFORE the human lines so a consumer can
+// parse stdout without having to skip prose, and so --json alone still works
+// even when --quiet suppresses the summary.
+if (asJson) {
+console.log(
+JSON.stringify({
+schema: 1,
+documents: present.length,
+liveTotals: { checkCli: cliTotal, flagContract: flagTotal },
+drifted: drifted.map((d) => ({ file: d.file, claimed: d.claimed, subject: d.subject ?? null })),
+driftedCount: drifted.length,
+ok: drifted.length === 0,
+}),
+);
+}
 for (const d of drifted) {
-      const hint = formatHint(d, cliTotal, flagTotal);
+  const hint = formatHint(d, cliTotal, flagTotal);
 console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
 }
 if (!quiet) {

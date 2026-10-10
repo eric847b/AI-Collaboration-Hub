@@ -23,6 +23,17 @@
  * So this tool extracts CANDIDATE flags from each tool's own source (it cannot
  * miss one) and judges each candidate by probing real behaviour. Nothing to
  * keep in sync.
+ * DO NOT re-derive "is this flag implemented?" by grepping source. A source-regex
+ * sweep was attempted and every hit was a false positive: the repo uses FOUR
+ * distinct consumption shapes — `flags[name]` (check-doc-facts, ops-dashboard),
+ * `opt(name,def)` (secret-scan, workflow-audit), `has(flag)` (coverage-trend),
+ * and `argv.includes(flag)` (cross-repo-tests) — so a regex matching only one
+ * reads `--ci` as "never read" even when line 32 literally calls
+ * `argv.includes('--ci')`. Accept-vs-effect is decided BEHAVIOURALLY here (the
+ * --deep layer runs each flag); it cannot be decided reliably from text. If you
+ * are tempted to statically detect no-op flags, trust this tool instead — it is
+ * strictly more accurate and already wired into CI.
+
  *
  * TWO LAYERS, DELIBERATELY UNEVEN:
  * 1. STATIC (default) — no tool runs beyond a single `--help`. Catches a flag
