@@ -525,7 +525,7 @@ async function main() {
   const tools = [
     ...fs
       .readdirSync(TOOLS_DIR)
-      .filter((f) => /\.(mjs|cjs)$/.test(f))
+      .filter((f) => /\.(mjs|cjs)$/.test(f) && !f.startsWith('.'))
       .sort()
       .map((f) => `tools/${f}`),
     ...EXTRA_TOOLS,

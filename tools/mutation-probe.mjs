@@ -655,7 +655,8 @@ function main() {
       results: results.map((r) => ({ id: r.id, tool: r.tool, verdict: r.verdict, detail: r.detail })),
     }, null, 2));
   } else if (sel.quiet) {
-    console.log(caught.length + '/' + results.length + ' guards bite' + (survived.length ? ' - ' + survived.length + ' SURVIVED' : ''));
+    const gaps = bad.map((r) => r.verdict + ':' + r.id);
+    console.log(caught.length + '/' + results.length + ' guards bite' + (gaps.length ? ' - ' + gaps.join(', ') : ''));
   } else {
     console.log('# mutation probe');
     for (const r of results) console.log('  ' + TAG[r.verdict] + ' ' + r.id.padEnd(36) + ' ' + r.detail);
