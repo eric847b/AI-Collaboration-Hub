@@ -438,6 +438,21 @@ function runSelfTest() {
   `;
   const r9 = analyzeStatic(stripComments(foreign), '--limit');
   check('child-process flags are not orphans', r9.advisory, []);
+
+  // ---- --quiet must still surface the advisory TALLY -----------------------
+  // --quiet exists to cut per-tool noise, but an advisory is the only signal
+  // that a flag is parsed in source yet declared in no inventory - the exact
+  // regression the --deep behavioural layer catches. A --quiet consumer (CI)
+  // silently dropping this would lose that signal entirely. buildQuietReport
+  // renders the --quiet output from rows; this asserts the advisory count
+  // survives, and that a clean fleet prints no advisory line at all.
+  const quietRowWithAdvisory = [{ tool: 'x.mjs', ok: true, issues: [], advisory: r4.advisory }];
+  check('--quiet keeps the advisory tally', /advisory: 1 undeclared-in-source/.test(buildQuietReport(quietRowWithAdvisory)), true);
+  const quietRowClean = [{ tool: 'y.mjs', ok: true, issues: [], advisory: [] }];
+  check('--quiet prints no advisory line when there are none', buildQuietReport(quietRowClean).includes('advisory:'), false);
+  const quietRowFail = [{ tool: 'z.mjs', ok: false, issues: ['flag "--x" declared but missing from --help output'], advisory: [] }];
+  check('--quiet still prints a FAIL row with its issue', buildQuietReport(quietRowFail).includes('FAIL  z.mjs') && buildQuietReport(quietRowFail).includes('missing from --help'), true);
+
   // ---- switch-scoped parser: subcommand tools with no top-level Set --------
   // telemetry-export.mjs dispatches on `switch (flag)` inside parseExportArgs,
   // so a Set-only extractor reported "0 declared" and never confirmed its 14
@@ -578,6 +593,37 @@ function classifyBareProbe(bare) {
   if (nonZero && saysMissingValue) return { kind: 'value', next: 'equals' };
   if (nonZero && saysUnknown) return { kind: 'ambiguous', next: 'space' };
   return { kind: 'boolean', next: null };
+}
+
+/**
+ * Pure renderer for the --quiet report, extracted so runSelfTest() drives the
+ * EXACT production path (the analyzeStatic pattern) instead of a copy that can
+ * silently drift. --quiet shows only what a human must act on: failing tools
+ * with their issues, ONE advisory tally, and the pass/fail count.
+ *
+ * The advisory tally is load-bearing, not decoration. An advisory = "flag used
+ * in source but declared in no inventory" - the exact regression the --deep
+ * behavioural layer exists to catch. A --quiet consumer (a noise-reduced CI
+ * gate) that silently dropped this would lose the only signal that a flag
+ * regressed to undeclared, so it stays even though per-tool prose does not.
+ */
+function buildQuietReport(rows) {
+  const failed = rows.filter((x) => !x.ok).length;
+  const lines = [];
+  for (const r of rows.filter((x) => !x.ok)) {
+    lines.push(`FAIL  ${path.basename(r.tool)}`);
+    for (const i of r.issues) lines.push(`        ${i}`);
+  }
+  const advisoryTools = rows.filter((x) => x.advisory.length > 0);
+  if (advisoryTools.length) {
+    const totalAdv = advisoryTools.reduce((n, x) => n + x.advisory.length, 0);
+    lines.push(
+      `advisory: ${totalAdv} undeclared-in-source flag(s) across ${advisoryTools.length} tool(s) ` +
+        `(heuristics only, never a failure) - run without --quiet to list them, with --deep to confirm behaviour`
+    );
+  }
+  lines.push(`check-flag-contract: ${rows.length - failed}/${rows.length} tools pass the hard checks.`);
+  return lines.join('\n');
 }
 
 async function main() {
@@ -752,15 +798,7 @@ async function main() {
   if (asJson) {
     console.log(JSON.stringify({ schema: 1, mode: 'check-flag-contract', deep, rows, failed }, null, 2));
   } else if (quiet) {
-    // Quiet prints only what a human must act on: failing tools, their issues,
-    // and the tally. Without this branch `--quiet` parsed and was documented but
-    // changed nothing — a no-op flag, which is the exact failure class this tool
-    // exists to catch, found by this tool's own checker on itself.
-    for (const r of rows.filter((x) => !x.ok)) {
-      console.log(`FAIL  ${path.basename(r.tool)}`);
-      for (const i of r.issues) console.log(`        ${i}`);
-    }
-    console.log(`check-flag-contract: ${rows.length - failed}/${rows.length} tools pass the hard checks.`);
+    console.log(buildQuietReport(rows));
   } else {
     console.log(`\n# flag contract (${deep ? 'static + behavioural' : 'static only'})`);
     for (const r of rows) {
