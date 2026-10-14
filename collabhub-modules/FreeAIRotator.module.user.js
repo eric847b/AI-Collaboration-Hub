@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Free-AI Seamless Rotator
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Never-ending free AI: rotates across a pool of free endpoints on 429/5xx/exhaustion so work never pauses. Expanded with Pollinations no-key.
+// @version      1.2
+// @description  Never-ending free AI with fleet context. Local + Pollinations no-key + free tiers. "Your choice" menu for continuous development.
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -20,11 +20,12 @@
 (function () {
   'use strict';
   const NS = 'freeai_rot_';
+  const FLEET_CONTEXT =
+    'Fleet context: AI-Collaboration-Hub (FreeAIRotator), singularity-operator (FreeAIClient + Auto-Evolve), autonomous-github-agent (Catalyst). ' +
+    'Free pool: local Ollama/LM Studio/LocalAI → Pollinations no-key → Groq/OpenRouter/Together/HF/Gemini free tiers. ' +
+    'Goal: highest-return continuous development, zero extra cost, never pause.';
 
-  // ---- Provider pool (free tiers). Keys per provider in GM storage, never hardcoded. ----
   function providers() {
-    // Permanent-free LOCAL providers (your own hardware, no key, never expires).
-    // If a local server is off, failover is instant to the next lane.
     return [
       {
         name: 'ollama',
@@ -62,7 +63,6 @@
         }),
         extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
       },
-      // Pollinations free tier — no API key required.
       {
         name: 'pollinations',
         endpoint: 'https://text.pollinations.ai/openai',
@@ -75,7 +75,6 @@
         }),
         extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || o.text || '',
       },
-      // Hugging Face Inference API (free public models; needs a free HF_API_KEY).
       {
         name: 'hf-free',
         endpoint:
@@ -157,7 +156,6 @@
     ];
   }
 
-  // ---- Transport: GM_xmlhttpRequest → {status, json} ----
   function gmRequest(url, { method, headers, body }) {
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
@@ -179,7 +177,6 @@
     });
   }
 
-  // ---- Core rotator (seamless failover, no pause) ----
   const rotator = {
     failCooldowns: new Map(),
     tally: { calls: 0, failures: 0, rotations: 0 },
@@ -205,7 +202,7 @@
         if (!p) {
           await new Promise((r) => setTimeout(r, 500));
           continue;
-        } // minimal wait, then retry
+        }
         this.tally.calls++;
         try {
           const res = await gmRequest(p.endpoint, {
@@ -226,7 +223,6 @@
     },
   };
 
-  // ---- Page injection: floating button -> docked result card ----
   function attachUI() {
     if (document.getElementById('freeai-rotator-btn')) return;
     const btn = document.createElement('button');
@@ -249,6 +245,7 @@
     btn.addEventListener('click', () => askAndRender());
     document.body.appendChild(btn);
   }
+
   function pageContext() {
     const title = document.title || '';
     const sel = window.getSelection ? window.getSelection().toString().trim() : '';
@@ -261,8 +258,19 @@
       'Summarize the selected text, or answer anything.'
     );
   }
+
+  function yourChoicePrompt() {
+    return (
+      FLEET_CONTEXT +
+      '\n\nYour choice. Highest-return root action first. Improve zero-cost continuous development and software that fixes itself. Produce real measurable progress. Keep full fleet awareness.'
+    );
+  }
+
   function askAndRender(promptText) {
-    const text = promptText != null ? promptText : window.prompt('FreeAI prompt:', pageContext());
+    const text =
+      promptText != null
+        ? promptText
+        : window.prompt('FreeAI prompt (or leave default for page context):', pageContext());
     if (!text) return;
     btnBusy(true);
     hideCard();
@@ -275,6 +283,7 @@
       .catch((e) => showCard('✗ ' + e.message, '—', null))
       .finally(() => btnBusy(false));
   }
+
   function btnBusy(on) {
     const btn = document.getElementById('freeai-rotator-btn');
     if (btn) {
@@ -282,10 +291,12 @@
       btn.disabled = on;
     }
   }
+
   function hideCard() {
     const c = document.getElementById('freeai-rotator-card');
     if (c) c.remove();
   }
+
   function showCard(text, provider, tally) {
     hideCard();
     const card = document.createElement('div');
@@ -322,9 +333,8 @@
     document.body.appendChild(card);
   }
 
-  // ---- Menu: set key, run prompt ----
   function runPrompt() {
-    const p = prompt('Prompt (TypeScript. Empty = default):', 'State what you are, in one line.');
+    const p = prompt('Prompt:', 'State what you are, in one line.');
     if (p === null) return;
     rotator
       .complete(p)
@@ -335,6 +345,21 @@
       .catch((e) => alert('✗ ' + e.message));
   }
 
+  function runYourChoice() {
+    btnBusy(true);
+    hideCard();
+    rotator
+      .complete(yourChoicePrompt())
+      .then((r) => {
+        GM_setValue(NS + 'last', '[' + r.provider + '] ' + r.text);
+        showCard(r.text, r.provider, r.tally);
+      })
+      .catch((e) => showCard('✗ ' + e.message, '—', null))
+      .finally(() => btnBusy(false));
+  }
+
+  GM_registerMenuCommand('🚀 Your choice (fleet context)', runYourChoice);
+  GM_registerMenuCommand('🤖 Run prompt (seamless rotation)', runPrompt);
   GM_registerMenuCommand('⚙ Set Groq Free API Key', () => {
     const k = prompt('Groq API key:', GM_getValue(NS + 'groq', ''));
     if (k) GM_setValue(NS + 'groq', k);
@@ -359,11 +384,10 @@
     const m = prompt('HF model (optional):', GM_getValue(NS + 'hf_model', ''));
     if (m) GM_setValue(NS + 'hf_model', m);
   });
-  GM_registerMenuCommand('🤖 Run prompt (seamless rotation)', runPrompt);
 
   attachUI();
 
   console.log(
-    '[FreeAI Rotator v1.1] ready. 💬 button injected; Pollinations no-key + free tiers active. Set keys via menu for cloud lanes.'
+    '[FreeAI Rotator v1.2] ready. 💬 button + 🚀 Your choice (fleet context). Pollinations no-key + free tiers active.'
   );
 })();
