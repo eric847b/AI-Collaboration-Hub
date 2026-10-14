@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Free-AI Seamless Rotator
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Never-ending free AI: rotates across a pool of free endpoints on 429/5xx/exhaustion so work never pauses.
+// @version      1.1
+// @description  Never-ending free AI: rotates across a pool of free endpoints on 429/5xx/exhaustion so work never pauses. Expanded with Pollinations no-key.
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -14,6 +14,7 @@
 // @connect      api.together.xyz
 // @connect      openrouter.ai
 // @connect      huggingface.co
+// @connect      text.pollinations.ai
 // ==/UserScript==
 /* globals GM_getValue, GM_setValue, GM_setClipboard, GM_registerMenuCommand, GM_xmlhttpRequest */
 (function () {
@@ -60,6 +61,19 @@
           temperature: 0.7,
         }),
         extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || '',
+      },
+      // Pollinations free tier — no API key required.
+      {
+        name: 'pollinations',
+        endpoint: 'https://text.pollinations.ai/openai',
+        model: 'openai',
+        headers: () => ({ 'Content-Type': 'application/json' }),
+        body: (text) => ({
+          model: 'openai',
+          messages: [{ role: 'user', content: text }],
+          temperature: 0.7,
+        }),
+        extract: (o) => (o.choices && o.choices[0] && o.choices[0].message.content) || o.text || '',
       },
       // Hugging Face Inference API (free public models; needs a free HF_API_KEY).
       {
@@ -350,7 +364,6 @@
   attachUI();
 
   console.log(
-    '[FreeAI Rotator] ready. 💬 button injected; set a free key via the menu, then click it.'
+    '[FreeAI Rotator v1.1] ready. 💬 button injected; Pollinations no-key + free tiers active. Set keys via menu for cloud lanes.'
   );
-  console.log('[FreeAI Rotator] ready. Use the userscript menu (⚙ / 🤖).');
 })();

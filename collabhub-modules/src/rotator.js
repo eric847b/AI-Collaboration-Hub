@@ -13,6 +13,8 @@
  *   const { FreeAIRotator } = require('./src/rotator');
  *   const rotator = new FreeAIRotator({ providers, request: myFetcher });
  *   const out = await rotator.complete('summarize this');
+ *
+ * Expanded 2026-10-14: Pollinations no-key + more free lanes for continuous development.
  */
 
 function delay(ms) {
@@ -26,10 +28,10 @@ function delay(ms) {
 //   1. Permanent-free LOCAL endpoints (Ollama, LM Studio, LocalAI) — your own
 //      hardware: no key, quota that never expires and never runs out. If the
 //      local server is off, the rotator failovers instantly to the next lane.
-//   2. Cloud free tiers (Groq, Gemini, Together, OpenRouter) — rotated among all
-//      of them so a rate-limited key never pauses work.
+//   2. Cloud free tiers (Pollinations no-key, Groq, Gemini, Together, OpenRouter,
+//      Hugging Face) — rotated among all of them so a rate-limited key never pauses work.
 //
-// Need more (e.g. up to 25)? Set FREE_AI_PROVIDERS_JSON to a JSON array of
+// Need more (e.g. up to 25+)? Set FREE_AI_PROVIDERS_JSON to a JSON array of
 // provider objects and it *replaces* this pool entirely.
 function defaultProviders() {
   if (process.env.FREE_AI_PROVIDERS_JSON) {
@@ -80,6 +82,21 @@ function defaultProviders() {
       }),
       extract: (body) => body.choices?.[0]?.message?.content || '',
     },
+    // Pollinations free tier — no API key required for basic OpenAI-compatible chat.
+    // text.pollinations.ai/openai (rate-limited by IP, zero auth for continuous light use).
+    {
+      name: 'pollinations',
+      free: true,
+      endpoint: process.env.POLLINATIONS_URL || 'https://text.pollinations.ai/openai',
+      model: process.env.POLLINATIONS_MODEL || 'openai',
+      headers: () => ({ 'Content-Type': 'application/json' }),
+      body: (text, model) => ({
+        model: model || process.env.POLLINATIONS_MODEL || 'openai',
+        messages: [{ role: 'user', content: text }],
+        temperature: 0.7,
+      }),
+      extract: (body) => body.choices?.[0]?.message?.content || body.text || '',
+    },
     // Hugging Face Inference API — free public models (needs a free HF_API_KEY).
     {
       name: 'hf-free',
@@ -97,9 +114,8 @@ function defaultProviders() {
       extract: (body) =>
         (Array.isArray(body) ? body[0]?.generated_text : body.generated_text) || '',
     },
-    // Add more free endpoints below (same shape) — the rotator will round-robin
-    // and fail over between all of them seamlessly.
     {
+      name: 'groq-free',
       free: true,
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
@@ -156,8 +172,7 @@ function defaultProviders() {
       }),
       extract: (body) => body.choices?.[0]?.message?.content || '',
     },
-    // Add more free endpoints below (same shape) — the rotator will round-robin
-    // and fail over between all of them seamlessly.
+    // Additional free lanes can be appended here or via FREE_AI_PROVIDERS_JSON.
   ];
 }
 
