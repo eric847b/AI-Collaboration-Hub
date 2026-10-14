@@ -37,21 +37,23 @@ assistant is available on docs, code, email, GitHub PRs — anywhere.
 
 ### Free providers in the default pool (keys via env / GM, never hardcoded)
 
-| Provider          | Env / GM key         | Model                                         |
-| ----------------- | -------------------- | --------------------------------------------- |
-| Ollama (local)    | `OLLAMA_MODEL`       | `phi3:mini`                                   |
-| LM Studio (local) | `LMSTUDIO_MODEL`     | `phi-3-mini-4k`                               |
-| LocalAI (local)   | `LOCALAI_MODEL`      | `phi-3-mini-4k`                               |
-| Hugging Face      | `HF_API_KEY`         | `mistralai/Mistral-7B-Instruct-v0.2`          |
-| Groq (free)       | `GROQ_API_KEY`       | `llama-3.3-70b-versatile`                     |
-| Google Gemini     | `GOOGLE_API_KEY`     | `gemini-1.5-flash`                            |
-| Together          | `TOGETHER_API_KEY`   | `meta-llama/Meta-Llama-3.1-8b-instruct-turbo` |
-| OpenRouter (free) | `OPENROUTER_API_KEY` | `meta-llama/llama-3-8b:free`                  |
+| Provider              | Env / GM key         | Model                                         | Notes                          |
+| --------------------- | -------------------- | --------------------------------------------- | ------------------------------ |
+| Ollama (local)        | `OLLAMA_MODEL`       | `phi3:mini`                                   | Permanent free, no key         |
+| LM Studio (local)     | `LMSTUDIO_MODEL`     | `phi-3-mini-4k`                               | Permanent free, no key         |
+| LocalAI (local)       | `LOCALAI_MODEL`      | `phi-3-mini-4k`                               | Permanent free, no key         |
+| **Pollinations**      | none                 | `openai`                                      | **No API key required**        |
+| Hugging Face          | `HF_API_KEY`         | `mistralai/Mistral-7B-Instruct-v0.2`          | Free public models             |
+| Groq (free)           | `GROQ_API_KEY`       | `llama-3.3-70b-versatile`                     | Free tier                      |
+| Google Gemini         | `GOOGLE_API_KEY`     | `gemini-1.5-flash`                            | Free tier                      |
+| Together              | `TOGETHER_API_KEY`   | `meta-llama/Meta-Llama-3.1-8b-instruct-turbo` | Free tier                      |
+| OpenRouter (free)     | `OPENROUTER_API_KEY` | `meta-llama/llama-3-8b:free`                  | Free models                    |
 
 > **Permanent-free first:** local providers (Ollama/LM Studio/LocalAI) run on
-> your own hardware — no key, quota that never expires. If a local server is
-> off, the rotator skips it instantly and moves to the next lane. Cloud free
-> tiers rotate behind them so a rate-limited key never pauses work.
+> your own hardware — no key, quota that never expires. Pollinations provides a
+> zero-key cloud lane. If a local server is off, the rotator skips it instantly
+> and moves to the next lane. Cloud free tiers rotate behind them so a rate-limited
+> key never pauses work.
 
 **Scale to 25+:** export a JSON array of provider objects in
 `FREE_AI_PROVIDERS_JSON` (shape `{name, endpoint, headers, body, extract}`) to
@@ -61,3 +63,7 @@ Ready to use: `npm test` — then start a local server or set any free key, e.g.
 `export GROQ_API_KEY=...`, and run `npm run ai`. The rotator round-robins
 across all configured providers and skips any that 429/5xx/throw, so work
 keeps moving indefinitely.
+
+**2026-10-14 upgrade:** Pollinations no-key endpoint added for continuous
+development capacity. All autonomous agents and self-evolve loops can now use
+an expanded free pool with zero extra cost.
