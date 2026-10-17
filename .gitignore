@@ -82,3 +82,14 @@ LocalRepoReview.txt
 
 # orphaned gitlink removed 2026-09-14 (no .gitmodules mapping existed); dir lives as a local working mirror of eric847b/modular-hub-modernization
 modular-hub-modernization/
+
+# Machine-local AI tool configs (absolute local paths)
+.codex/
+.mcp.json
+
+# Temp lockfile-regen logs
+third-door-blink-controller/.npm-lockgen*.log
+
+# mutation-probe / tmp scratch files
+tools/.mutation-probe-*
+tools/.tmp-*

@@ -200,6 +200,46 @@ function stripComments(src) {
     .replace(/(^|\s)\/\/[^\n]*/g, '$1 ');
 }
 
+// A subcommand-scoped parser that dispatches on a `switch (flag)` has no
+// top-level Set to read, so it used to report "0 declared" and its real flags
+// were never confirmed (telemetry-export.mjs: serve/push/snippet/dump/
+// sync-fleet share one parseExportArgs switch). Treat that switch as a single
+// synthetic inventory. The case body must ASSIGN or ACT on the flag; a case
+// that only throws is a DELIBERATELY-REJECTED flag (telemetry-export rejects
+// `--host` by throwing) and is not part of the contract, so it is excluded -
+// otherwise a hard rejection would be reported as "declared but undocumented".
+// Find each `switch (x) {`, then brace-count to its TRUE matching close.
+// A lazy `[\s\S]*?\n\s*\}` is wrong: a case that opens a nested block
+// (`case '--path': { ... }`) closes on its own line, so the lazy match stops
+// there and drops every later case. That is exactly how telemetry-collector's
+// flags (a nested `--path` block followed by 8 more cases) were truncated to
+// the first three. Counting braces to depth 0 captures the whole switch body.
+function extractSwitchBodies(src) {
+  const SWITCH_OPEN_RE = /\bswitch\s*\(\s*\w+\s*\)\s*\{/g;
+  const results = [];
+  let open;
+  while ((open = SWITCH_OPEN_RE.exec(src))) {
+    let depth = 1;
+    let i = open.index + open[0].length;
+    let quote = null;
+    for (; i < src.length && depth > 0; i += 1) {
+      const ch = src[i];
+      if (quote) {
+        if (ch === '\\') i += 1;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue; }
+      if (ch === '{') depth += 1;
+      else if (ch === '}') depth -= 1;
+    }
+    const body = src.slice(open.index + open[0].length, depth === 0 ? i - 1 : i);
+    const head = open[0].replace(/\s*\{\s*$/, '').trim();
+    results.push({ open: open[0], head, body });
+  }
+  return results;
+}
+
 function extractInventories(src) {
   const out = [];
   let m;
@@ -213,41 +253,22 @@ function extractInventories(src) {
     if (members.length === 0) continue;
     out.push({ name: m[1], members });
   }
-  // A subcommand-scoped parser that dispatches on a `switch (flag)` has no
-  // top-level Set to read, so it used to report "0 declared" and its real flags
-  // were never confirmed (telemetry-export.mjs: serve/push/snippet/dump/
-  // sync-fleet share one parseExportArgs switch). Treat that switch as a single
-  // synthetic inventory. The case body must ASSIGN or ACT on the flag; a case
-  // that only throws is a DELIBERATELY-REJECTED flag (telemetry-export rejects
-  // `--host` by throwing) and is not part of the contract, so it is excluded -
-  // otherwise a hard rejection would be reported as "declared but undocumented".
-  // Find each `switch (x) {`, then brace-count to its TRUE matching close.
-  // A lazy `[\s\S]*?\n\s*\}` is wrong: a case that opens a nested block
-  // (`case '--path': { ... }`) closes on its own line, so the lazy match stops
-  // there and drops every later case. That is exactly how telemetry-collector's
-  // flags (a nested `--path` block followed by 8 more cases) were truncated to
-  // the first three. Counting braces to depth 0 captures the whole switch body.
-  const SWITCH_OPEN_RE = /\bswitch\s*\(\s*\w+\s*\)\s*\{/g;
-  let open;
-  while ((open = SWITCH_OPEN_RE.exec(src))) {
-    let depth = 1;
-    let i = open.index + open[0].length;
-    for (; i < src.length && depth > 0; i += 1) {
-      if (src[i] === '{') depth += 1;
-      else if (src[i] === '}') depth -= 1;
-    }
-    const body = src.slice(open.index + open[0].length, depth === 0 ? i - 1 : i);
-    const members = [];
-    const CASE_RE = /case\s+('--[a-z0-9][a-z0-9-]*')\s*:\s*([^\n]*)/g;
-    let c;
-    while ((c = CASE_RE.exec(body))) {
-      const stmt = c[2] || '';
-      if (/\bthrow\b/.test(stmt)) continue; // rejected, not supported
-      members.push(c[1].slice(1, -1));
-    }
-    if (members.length === 0) continue;
-    out.push({ name: 'switch', members });
+const seenHeaders = new Map();
+const switchBodies = extractSwitchBodies(src);
+for (const { head, body } of switchBodies) {
+  const members = [];
+  const CASE_RE = /case\s+('--[a-z0-9][a-z0-9-]*')\s*:\s*([^\n]*)/g;
+  let c;
+  while ((c = CASE_RE.exec(body))) {
+    const stmt = c[2] || '';
+    if (/\bthrow\b/.test(stmt)) continue; // rejected, not supported
+    members.push(c[1].slice(1, -1));
   }
+  if (members.length === 0) continue;
+  const headerCount = seenHeaders.get(head) || 0;
+  seenHeaders.set(head, headerCount + 1);
+  out.push({ name: headerCount === 0 ? head : `${head}#${headerCount + 1}`, members });
+}
   return out;
 }
 
@@ -494,10 +515,10 @@ function runSelfTest() {
   `;
   const rSwitch = analyzeStatic(stripComments(switchSrc), '--port --out --commit');
   check('switch-scoped flags are declared', [...rSwitch.owner.keys()].sort(), ['--commit', '--out', '--port']);
-  check('switch inventory is not empty', rSwitch.inventories.some((i) => i.name === 'switch' && i.members.length === 3), true);
+  check('switch inventory is named after its dispatch header', rSwitch.inventories.some((i) => i.name === 'switch (flag)' && i.members.length === 3), true);
   check('a throwing case is NOT declared (rejected flag)', rSwitch.owner.has('--host'), false);
   check('a rejected flag is not an orphan issue', rSwitch.issues.filter((x) => /--host/.test(x)), []);
-  check('non-flag switch adds no phantom inventory', rSwitch.inventories.filter((i) => i.name === 'switch').length, 1);
+  check('non-flag switch adds no phantom inventory', rSwitch.inventories.filter((i) => i.name.startsWith('switch')).length, 1);
   check('a switch-scoped flag missing from --help is an issue',
     analyzeStatic(stripComments(switchSrc), '--port --out').issues.some((x) => /--commit/.test(x) && /--help/.test(x)), true);
 
@@ -523,16 +544,60 @@ function runSelfTest() {
   check('nested-block case does not truncate the switch', [...rNested.owner.keys()].sort(),
     ['--keep', '--limit', '--out', '--path', '--port']);
   // A brace inside a string literal (an error message) must not be counted as a
-  // block delimiter, or the depth would close early and lose trailing cases.
-  const braceInStringSrc = `
+  // block delimiter. The BALANCED case (the old fixture) is kept for history,
+  // but braces that cancel out inside strings cannot pin quote-tracking -
+  // 'use {braces} carefully' passes even a naive counter. Quote-awareness is
+  // pinned instead by the UNBALANCED and ESCAPED fixtures below.
+  const balancedSrc = `
     switch (arg) {
       case '--a': throw new Error('use {braces} carefully');
       case '--b': opts.b = next(); break;
     }
   `;
-  const rBrace = analyzeStatic(stripComments(braceInStringSrc), '--b');
-  // --a throws (rejected) so it is excluded; --b survives the string-literal brace.
-  check('brace inside a string literal does not miscount depth', [...rBrace.owner.keys()], ['--b']);
+  const rBal = analyzeStatic(stripComments(balancedSrc), '--b');
+  check('balanced-brace fixture is kept for history', [...rBal.owner.keys()], ['--b']);
+
+  // UNBALANCED brace inside a string: 'unexpected } in message'. A pure brace
+  // counter deducts that `}` and hits depth 0 right after case --a, so every
+  // case after it vanishes from the body. This fixture FAILS under plain
+  // counting and PASSES only with quote-aware depth tracking.
+  const unbalancedSrc = `
+    switch (arg) {
+      case '--a': throw new Error('unexpected } in message');
+      case '--b': opts.b = next(); break;
+      case '--c': opts.c = next(); break;
+    }
+  `;
+  const rUnbal = analyzeStatic(stripComments(unbalancedSrc), '--b --c');
+  check('unbalanced brace inside a string cannot close the body early',
+    [...rUnbal.owner.keys()].sort(), ['--b', '--c']);
+
+  // ESCAPED quote inside a string: the literal 'it\'s { broken' keeps quote
+  // state through the middle quote, so the trailing { never becomes a
+  // delimiter and --c survives.
+  const escapeSrc = `
+    switch (arg) {
+      case '--a': opts.a = 'it\'s { broken';
+      case '--c': opts.c = next(); break;
+    }
+  `;
+  const rEscape = analyzeStatic(stripComments(escapeSrc), '--a --c');
+  check('escaped quote keeps quote state (trailing case survives)',
+    [...rEscape.owner.keys()].sort(), ['--a', '--c']);
+
+  // DIRECT unit coverage of the now-module-scope helper: body excludes the
+  // switch's closing brace; head carries the trimmed header.
+  const pair = extractSwitchBodies("switch (x) { case '--a': f(); }")[0];
+  check('helper body excludes the closing brace', pair && pair.body, " case '--a': f(); ");
+  check('helper head is the trimmed header', pair && pair.head, 'switch (x)');
+  const dupInv = extractInventories(
+    "switch (x) { case '--a': f(); } switch (x) { case '--b': g(); }"
+  );
+  check(
+    'duplicate switch headers get #2 suffixes',
+    dupInv.map((inv) => inv.name),
+    ['switch (x)', 'switch (x)#2']
+  );
 
 
   // ---- behavioural layer (the --deep path, now a CI gate on both OS runners) ----
