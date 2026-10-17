@@ -1,6 +1,6 @@
 {
   "name": "collabhub-modules",
-  "version": "25.0",
+  "version": "25.1",
   "engines": {
     "node": ">=26.0.0"
   },

@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,7 @@ import { fileURLToPath } from 'node:url';
  *   node tools/check-doc-links.mjs            # report + exit 1 on broken links
  *   node tools/check-doc-links.mjs --quiet    # only print broken links
  *   node tools/check-doc-links.mjs --help     # usage (Round 12 D: unknown flags exit 2)
+ *   node tools/check-doc-links.mjs --self-test # prove the scanners fire (15 checks)
  *
  * Skips: node_modules/.git/build/dist/.venv/docs/api (generated), external URLs, pure anchors.
  */
@@ -19,7 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Boolean flags only; unknown flags and stray positionals exit 2 instead
 // of being silently ignored. No stdin prompts, ever.
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--quiet']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -54,6 +56,7 @@ function usage() {
       '',
       'Flags:',
       '  --quiet   only print broken links (no summary line)',
+      '  --self-test prove the scanners fire on synthetic fixtures and exit',
       '  --help    print this text and exit 0',
       '',
       'Exit codes: 0 = all links resolve, 1 = broken links found, 2 = bad usage.',
@@ -95,24 +98,113 @@ function walk(dir, out) {
   return out;
 }
 
+/**
+ * Pure link scanners, extracted from the main loop so --self-test drives the
+ * EXACT production path instead of a copy that can silently drift.
+ */
+function isCheckableLink(raw) {
+  const r = raw.trim();
+  if (!r || r.startsWith('#') || /^[a-z]+:/i.test(r)) return false; // anchors, http(s):, mailto:, etc.
+  return decodeURIComponent(r.split('#')[0]).length > 0;
+}
+
+function scanLinks(text, fileAbs) {
+  const rows = [];
+  LINK_RE.lastIndex = 0;
+  let m;
+  while ((m = LINK_RE.exec(text)) !== null) {
+    const raw = m[1].trim();
+    if (!isCheckableLink(raw)) continue;
+    const target = decodeURIComponent(raw.split('#')[0]);
+    const abs = path.resolve(path.dirname(fileAbs), target);
+    rows.push({ raw, target, abs, exists: fs.existsSync(abs) });
+  }
+  return rows;
+}
+
+/**
+ * Self-test: drive the REAL scanners with synthetic Markdown and assert the
+ * classification, so a green run is evidence rather than an assumption. Covers
+ * the four link kinds that must be SKIPPED (anchor, http/https/mailto), a
+ * resolvable target, a missing target, #anchor stripping, the optional "title"
+ * suffix, percent-encoding, and the non-interactive CLI contract (--help exit 0,
+ * unknown flag / stray positional exit 2). Dispatched BELOW the const
+ * declarations because it reaches LINK_RE/ROOT (temporal dead zone).
+ */
+function runSelfTest() {
+  const cases = [];
+  const check = (name, actual, expected) =>
+    cases.push({ name, pass: JSON.stringify(actual) === JSON.stringify(expected), actual, expected });
+
+  // ---- pure classification (no filesystem) ----
+  check('anchor-only is skipped', isCheckableLink('#section'), false);
+  check('http is skipped', isCheckableLink('http://x.example/a.md'), false);
+  check('https is skipped', isCheckableLink('https://x.example/a.md'), false);
+  check('mailto is skipped', isCheckableLink('mailto:a@b.c'), false);
+  check('relative path is checkable', isCheckableLink('./docs/x.md'), true);
+  check('bare filename is checkable', isCheckableLink('AGENTS.md'), true);
+  check('empty target is skipped', isCheckableLink(''), false);
+
+  // ---- scanLinks against a real file (this tool's own directory) ----
+  const selfDir = path.join(ROOT, 'tools');
+  const rows = scanLinks(
+    [
+      '[ok](TOOLING_GUIDE.md)', // real file next to the synthetic doc
+      '[missing](definitely/not/here.md)', // never exists
+      '[email](mailto:a@b.c)', // skipped
+      '[anchor](#top)', // skipped
+      '[web](https://example.com/x.md)', // skipped
+      '[titled](TOOLING_GUIDE.md "T")', // title suffix, real target
+      '[anchored](TOOLING_GUIDE.md#sec)', // #stripped, real target
+      '[encoded](TOOLING%5F%47UIDE.md)', // decodeURIComponent -> TOOLING_GUIDE.md
+    ].join('\n'),
+    path.join(selfDir, 'SYNTHETIC.md'),
+  );
+  check('scanLinks counts only checkable links', rows.length, 5);
+  check('scanLinks keeps the resolvable targets', rows.filter((r) => r.exists).length, 4);
+  check('scanLinks flags the missing target', rows.filter((r) => !r.exists).map((r) => r.raw), [
+    'definitely/not/here.md',
+  ]);
+  check('anchor is stripped from the path', rows.some((r) => r.target === 'TOOLING_GUIDE.md'), true);
+  check('percent-encoding is decoded', rows.some((r) => r.raw.includes('%5F') && r.target === 'TOOLING_GUIDE.md'), true);
+
+  // ---- CLI contract, end to end (the child runs WITHOUT --self-test) ----
+  const cli = (args) => {
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...args], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      timeout: 60000,
+    });
+    return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+  };
+  check('--help exits 0', cli(['--help']).code, 0);
+  check('unknown flag exits 2', cli(['--nope']).code, 2);
+  check('unexpected positional exits 2', cli(['extra']).code, 2);
+
+  const failed = cases.filter((c) => !c.pass);
+  for (const c of failed) {
+    console.error(`FAIL  ${c.name}`);
+    console.error(`      expected ${JSON.stringify(c.expected)}`);
+    console.error(`      actual   ${JSON.stringify(c.actual)}`);
+  }
+  console.log(`check-doc-links self-test: ${cases.length - failed.length}/${cases.length} passed`);
+  process.exit(failed.length > 0 ? 1 : 0);
+}
+
+// Dispatched here, BELOW the const declarations: runSelfTest() reaches LINK_RE/ROOT.
+if (flags['--self-test'] === true) runSelfTest();
+
 const files = walk(ROOT, []);
 let broken = 0;
 let checked = 0;
 for (const file of files) {
   const relFile = path.relative(ROOT, file).split(path.sep).join('/');
   const text = fs.readFileSync(file, 'utf8');
-  let m;
-  LINK_RE.lastIndex = 0;
-  while ((m = LINK_RE.exec(text)) !== null) {
-    const raw = m[1].trim();
-    if (!raw || raw.startsWith('#') || /^[a-z]+:/i.test(raw)) continue; // anchors, http(s):, mailto:, etc.
-    const target = decodeURIComponent(raw.split('#')[0]);
-    if (!target) continue;
+  for (const row of scanLinks(text, file)) {
     checked += 1;
-    const abs = path.resolve(path.dirname(file), target);
-    if (!fs.existsSync(abs)) {
+    if (!row.exists) {
       broken += 1;
-      console.log(`BROKEN  ${relFile}  ->  ${raw}`);
+      console.log(`BROKEN  ${relFile}  ->  ${row.raw}`);
     }
   }
 }
