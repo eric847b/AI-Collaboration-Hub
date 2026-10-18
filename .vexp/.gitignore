@@ -18,3 +18,13 @@ stop-gate-*.done
 idle-gate-*.done
 task-*.txt
 coverage.json
+edit-hints/
+search-hints/
+read-hints/
+vexp-report.md
+daemon-job-warning
+mcp.token
+backups/
+daily-limit.json
+git-hooks.declined
+building

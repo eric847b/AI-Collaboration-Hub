@@ -97,6 +97,93 @@
           "bytes": 117890
         }
       ]
+    },
+    {
+      "timestamp": "2026-10-18T21:34:22.457Z",
+      "gitSha": "6d8313a7451d584225706a173890cb68b89c06de",
+      "note": "post-branch collection (26 workflows)",
+      "files": 1629,
+      "bytes": 11494703,
+      "maxFileMb": 1,
+      "offenders": [
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+          "bytes": 217900,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/build/package-lock.json",
+          "bytes": 36020,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Archive/packages/11_- AI Remote Desktop Advanced Caching Strategies.zip",
+          "bytes": 895,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/build/vite.config.js",
+          "bytes": 839,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/build/package.json",
+          "bytes": 532,
+          "kind": "pattern"
+        },
+        {
+          "path": "AI-Collaboration-Hub/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+          "bytes": 257,
+          "kind": "pattern"
+        },
+        {
+          "path": "self-evolve-dash/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+          "bytes": 257,
+          "kind": "pattern"
+        }
+      ],
+      "top": [
+        {
+          "path": "third-door-blink-controller/package-lock.json",
+          "bytes": 660550
+        },
+        {
+          "path": "nexus-infinity-hub/e2e/visual.spec.js-snapshots/home-linux.png",
+          "bytes": 471801
+        },
+        {
+          "path": "ai-chat-websites/package-lock.json",
+          "bytes": 341357
+        },
+        {
+          "path": "nexus-infinity-hub/package-lock.json",
+          "bytes": 331437
+        },
+        {
+          "path": "self-evolve-dash/package-lock.json",
+          "bytes": 287001
+        },
+        {
+          "path": "nexus-infinity-hub/bun.lockb",
+          "bytes": 265658
+        },
+        {
+          "path": "self-evolve-dash/e2e/visual.spec.js-snapshots/home-linux.png",
+          "bytes": 239336
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+          "bytes": 217900
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/Unified-AI-Assistant-Suite.user.js",
+          "bytes": 197236
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Hub Control Panel.html",
+          "bytes": 117890
+        }
+      ]
     }
   ]
 }

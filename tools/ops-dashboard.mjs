@@ -245,6 +245,50 @@ function coverageSection() {
   return { id: 'coverage', lines };
 }
 
+function repoBloatSection() {
+  // Tracked-repo bloat ledger (tools/repo-bloat.mjs): what gets COMMITTED,
+  // not what builds produce. Mirrors the bundle section's shape but reads
+  // the snapshots array + accepted ratchet set from repo-bloat-history.json.
+  const lines = [];
+  const ledger = readJsonSafe(path.join('docs', 'metrics', 'repo-bloat-history.json'));
+  const snaps = ledger && Array.isArray(ledger.snapshots) ? ledger.snapshots : [];
+  if (snaps.length === 0) {
+    lines.push('## Repo Bloat', '', '_Empty — seed with `npm run bloat:collect` (tracked-files ledger + regression gate)._', '');
+    return { id: 'repo-bloat', lines };
+  }
+  const GRAINS = ' .:-=+*#%@';
+  const spark = (series) => {
+    const nums = series.filter((v) => v !== null && v !== undefined);
+    if (nums.length === 0) return '(no data)';
+    const lo = Math.min(...nums);
+    const hi = Math.max(...nums);
+    const span = hi - lo || 1;
+    return series
+      .map((v) => {
+        if (v === null || v === undefined) return ' ';
+        const i = Math.min(GRAINS.length - 1, Math.floor(((v - lo) / span) * (GRAINS.length - 1)));
+        return GRAINS[i];
+      })
+      .join('');
+  };
+  const latest = snaps[snaps.length - 1];
+  const prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
+  const growth = prev && prev.bytes > 0 ? ((latest.bytes - prev.bytes) / prev.bytes) * 100 : null;
+  const accepted = Array.isArray(ledger.accepted) ? ledger.accepted : [];
+  const offenders = Array.isArray(latest.offenders) ? latest.offenders : [];
+  lines.push(`## Repo Bloat (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
+  lines.push(`- tracked: ${latest.files} files, ${human(latest.bytes)}${growth === null ? '' : ` (${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% vs prev; gate fails above 10%)`}`);
+  lines.push(`- offenders: ${offenders.length} currently tracked, all in the accepted ratchet set (${accepted.length} paths accepted — new ones fail \`check\` until reviewed)`);
+  lines.push(`- bytes trend: \`${spark(snaps.map((s) => s.bytes))}\` · files trend: \`${spark(snaps.map((s) => s.files))}\``);
+  if (offenders.length > 0) {
+    lines.push('', '| Offender | Kind | Size |', '|----------|------|-----:|');
+    for (const o of offenders.slice(0, 5)) lines.push(`| \`${o.path}\` | ${o.kind} | ${human(o.bytes)} |`);
+    if (offenders.length > 5) lines.push(`| … and ${offenders.length - 5} more | | |`);
+  }
+  lines.push('', '_Gate: `npm run bloat:check` · history: `npm run bloat:report` · ledger: `docs/metrics/repo-bloat-history.json`._', '');
+  return { id: 'repo-bloat', lines };
+}
+
 function flakeSection() {
   const lines = [];
   const fmt = (v) => (v === null || v === undefined ? 'n/a' : `${Number(v).toFixed(1)}%`);
@@ -363,7 +407,7 @@ function machineReportsSection() {
 // stale so the failure is always actionable ("regenerate the dashboard").
 
 const MARKER_RE = /^<!-- ops-section:([a-z0-9-]+) ts:(\S+) -->$/;
-const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports', 'telemetry'];
+const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'repo-bloat', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports', 'telemetry'];
 
 function parseFreshness(raw) {
   const stamps = new Map();
@@ -547,6 +591,7 @@ const sections = [
   toolingSection(),
   bundleSection(),
   coverageSection(),
+  repoBloatSection(),
   flakeSection(),
   toolOutputSection('parity', 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check'),
   toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
