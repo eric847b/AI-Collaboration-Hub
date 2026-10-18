@@ -1,0 +1,33 @@
+# repo-bloat-gate.yml — tracked-repo bloat regression gate (tools/repo-bloat.mjs).
+#
+# WHY: the bundle/perf workflows gate build OUTPUT; this gates what gets
+# COMMITTED. `check` measures every git-tracked file in the checkout against
+# the committed ledger (docs/metrics/repo-bloat-history.json): tracked-bytes
+# growth strictly beyond 10% (shrink never fails), or offenders outside the
+# accepted ratchet set, fail the PR. The fix is always explicit: remove the
+# bloat, or review it and re-baseline with `npm run bloat:collect` in the same
+# PR — the ratchet IS the review, matching workflow-audit's baseline ledger.
+# The self-test runs first so a broken guard can never gate anything.
+name: Repo Bloat Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: repo-bloat-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  repo-bloat:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Self-test the gate first
+        run: node tools/repo-bloat.mjs --self-test
+      - name: Check tracked-repo bloat against the committed ledger
+        run: node tools/repo-bloat.mjs check

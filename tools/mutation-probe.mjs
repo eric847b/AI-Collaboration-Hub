@@ -381,6 +381,62 @@ const PROBES = [
     from: '  const newOffenders = offenders.filter((o) => !acceptedSet.has(o.path));',
     to: '  const newOffenders = offenders.filter((o) => acceptedSet.has(o.path));',
   },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-probeverdict-ok-returns-ok',
+    why: 'probeVerdict must map ok to ok - making ok fall through to warn would let a failing check read as healthy',
+    from: 'if (probe.status === \'ok\') return \'ok\';',
+    to: 'if (false) return \'ok\';',
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-probeverdict-fail-returns-fail',
+    why: 'probeVerdict must map fail to fail - making fail fall through to warn would hide real failures',
+    from: 'if (probe.status === \'fail\') return \'fail\';',
+    to: 'if (false) return \'fail\';',
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-probeverdict-warn-fallback',
+    why: 'probeVerdict must map warn/skip/absent to warn - returning ok would make every degraded check look healthy',
+    from: "return 'warn'; // warn, skip, absent, anything else",
+    to: "return 'ok'; // warn, skip, absent, anything else",
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-engines-boundary-is-inclusive',
+    why: 'runtime exactly at the engines minimum must be ok - a strict > turns the accepted boundary into a warn',
+    from: 'return compareSemver(runtime, min) >= 0',
+    to: 'return compareSemver(runtime, min) > 0',
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-unknown-flag-is-an-error',
+    why: 'an unknown flag must be recorded as a usage error - swallowing it lets typos run silently instead of exiting 2',
+    from: 'default: errors.push(`unknown flag: ${arg}`); break;',
+    to: 'default: break;',
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-probeverdict-ok-returns-ok',
+    why: 'probeVerdict must map ok to ok - weakening it lets a passing check report warn instead of ok',
+    from: "if (probe.status === 'ok') return 'ok';",
+    to: "if (probe.status === 'ok') return 'warn';",
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-probeverdict-fail-returns-fail',
+    why: 'probeVerdict must map fail to fail - weakening it lets a failing check report ok instead of fail',
+    from: "if (probe.status === 'fail') return 'fail';",
+    to: "if (probe.status === 'fail') return 'ok';",
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-probeverdict-warn-fallback',
+    why: 'probeVerdict fallback must map warn/skip/absent to warn - hardening it to ok hides real problems',
+    from: "return 'warn'; // warn, skip, absent, anything else",
+    to: "return 'ok'; // warn, skip, absent, anything else",
+  },
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */
