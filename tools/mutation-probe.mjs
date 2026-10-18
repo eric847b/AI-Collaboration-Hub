@@ -360,6 +360,27 @@ const PROBES = [
     from: "const failed = at('fail');",
     to: 'const failed = 0;',
   },
+  {
+    tool: 'repo-bloat.mjs',
+    id: 'bloat-growth-boundary-strict-greater',
+    why: 'growth EXACTLY at the threshold must pass - >= turns the boundary into a fail and the gate into a trap',
+    from: '    regressed = growthPct > opts.thresholdPct;',
+    to: '    regressed = growthPct >= opts.thresholdPct;',
+  },
+  {
+    tool: 'repo-bloat.mjs',
+    id: 'bloat-pattern-detector-fires',
+    why: 'the bloat-pattern detector must actually flag zips/dist trees, or every offender slides through',
+    from: '  return BLOAT_PATTERNS.some((re) => re.test(rel));',
+    to: '  return false;',
+  },
+  {
+    tool: 'repo-bloat.mjs',
+    id: 'bloat-new-offender-ratchet',
+    why: 'the ratchet must fail on offenders NOT in the accepted set - inverting it would fail the debt we track and pass the fresh bloat',
+    from: '  const newOffenders = offenders.filter((o) => !acceptedSet.has(o.path));',
+    to: '  const newOffenders = offenders.filter((o) => acceptedSet.has(o.path));',
+  },
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */

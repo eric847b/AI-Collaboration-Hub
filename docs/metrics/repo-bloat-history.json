@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "tool": "repo-bloat",
+  "accepted": [
+    "AI-Collaboration-Hub/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+    "ai-chat-websites/Archive/packages/11_- AI Remote Desktop Advanced Caching Strategies.zip",
+    "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+    "ai-chat-websites/Userscripts/build/package-lock.json",
+    "ai-chat-websites/Userscripts/build/package.json",
+    "ai-chat-websites/Userscripts/build/vite.config.js",
+    "self-evolve-dash/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz"
+  ],
+  "snapshots": [
+    {
+      "timestamp": "2026-10-18T01:21:13.456Z",
+      "gitSha": "db978ccf1d1c7e3d675d984478595c73e2709c93",
+      "note": "initial baseline (tool introduction)",
+      "files": 1626,
+      "bytes": 11445189,
+      "maxFileMb": 1,
+      "offenders": [
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+          "bytes": 217900,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/build/package-lock.json",
+          "bytes": 36020,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Archive/packages/11_- AI Remote Desktop Advanced Caching Strategies.zip",
+          "bytes": 895,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/build/vite.config.js",
+          "bytes": 839,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/build/package.json",
+          "bytes": 532,
+          "kind": "pattern"
+        },
+        {
+          "path": "AI-Collaboration-Hub/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+          "bytes": 257,
+          "kind": "pattern"
+        },
+        {
+          "path": "self-evolve-dash/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+          "bytes": 257,
+          "kind": "pattern"
+        }
+      ],
+      "top": [
+        {
+          "path": "third-door-blink-controller/package-lock.json",
+          "bytes": 660550
+        },
+        {
+          "path": "nexus-infinity-hub/e2e/visual.spec.js-snapshots/home-linux.png",
+          "bytes": 471801
+        },
+        {
+          "path": "ai-chat-websites/package-lock.json",
+          "bytes": 341357
+        },
+        {
+          "path": "nexus-infinity-hub/package-lock.json",
+          "bytes": 331437
+        },
+        {
+          "path": "self-evolve-dash/package-lock.json",
+          "bytes": 287001
+        },
+        {
+          "path": "nexus-infinity-hub/bun.lockb",
+          "bytes": 265658
+        },
+        {
+          "path": "self-evolve-dash/e2e/visual.spec.js-snapshots/home-linux.png",
+          "bytes": 239336
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+          "bytes": 217900
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/Unified-AI-Assistant-Suite.user.js",
+          "bytes": 197236
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Hub Control Panel.html",
+          "bytes": 117890
+        }
+      ]
+    }
+  ]
+}
