@@ -27,7 +27,7 @@ npm run quality  # full catalyst series (run-quality.ps1): bootstrap → checks 
 Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll any root folder with
 `package.json` (Node) or `requirements.txt` (Python) — no hardcoded lists.
 
-### CI — 25 root workflows in `.github/workflows/`
+### CI — 26 root workflows in `.github/workflows/`
 `ai-guardian-suite-ci` · `all-projects-sanity` · `autonomous-agent` · `branch-cleanup` ·
 `ci-self-heal` · `collabhub-modules-test` · `dependency-review` · `generate-docs` ·
 `lint-autofix` · `lockfile-validation` · `nexus-agent-cron` · `nexus-enforce` · `python-checks` ·
@@ -35,13 +35,15 @@ Auto-discovery: `bootstrap.ps1`, `workspace-gate.ps1`, `run-quality.ps1` enroll 
 `workflow-lint` — plus `performance-monitoring`, `node-matrix`, `e2e-smoke` (+ load-test step),
 `multi-os-gate` (Windows hard gate / Linux informational), `playwright-e2e` (full-browser E2E;
 all added 2026-09-14), `ops-dashboard-refresh` (daily dashboard cron + manual dispatch, gate +
-regen + freshness check + change-only commit; added 2026-09-19).
+regen + freshness check + change-only commit; added 2026-09-19), `repo-bloat-gate`
+(tracked-repo bloat gate: `--self-test` then `check` on PRs/dispatch; SHA-pinned,
+least-privilege, concurrency + 10-min timeout; added 2026-10-17).
 
-All 70 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
+All 71 `uses:` action pins are full commit SHAs with the original ref as a trailing comment
 (`owner/repo@<sha> # <ref>`) — WF005 supply-chain debt zeroed 2026-09-15 by the `workflow-audit`
 ratchet (ledger 119 → 51 accepted findings; nested standalone-repo workflows remain mirror-owned;
 `ops-dashboard-refresh` added 2026-09-19 SHA-pinned from day one).
-All 25 root workflows also carry least-privilege top-level `permissions:`, job `timeout-minutes`
+All 26 root workflows also carry least-privilege top-level `permissions:`, job `timeout-minutes`
 (30) and top-level `concurrency:` groups — WF008/WF009/WF006 debt zeroed 2026-09-15, ratchet
 ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legitimate privileged
 `ci-self-heal` trigger; `cancel-in-progress: true` only on the 6 PR-only flows, `false` on the
