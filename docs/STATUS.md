@@ -98,12 +98,11 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 ## Last gate run
 
 ```
-| 2026-10-17 — tools/workspace-gate.ps1 v3 (after repo-bloat.mjs landed)
+| 2026-10-18 — tools/workspace-gate.ps1 v3 (after repo-bloat dashboard/CI wiring)
 Passed=25  Failed=0  Warnings=1
   warn: node v24.14.0 < engines requirement >= 26 (accepted local delta - see docs/STATUS.md 'Node runtime delta'; npm is not engine-strict)
-  warn: ops dashboard stale or missing timestamps (warn-only freshness step, by design)
-  warn: node v24.14.0 < engines requirement >= 26 (accepted local delta - see docs/STATUS.md 'Node runtime delta'; npm is not engine-strict)
 Status: PASS
+(26 workflows present · actionlint clean · workflow-audit within accepted debt · dashboard sections fresh · --check-cli contract green)
 ```
 
 **Completed rounds:** 11 (Rounds 1-11 all ✅ as of 2026-09-19)
