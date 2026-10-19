@@ -47,7 +47,7 @@ All 26 root workflows also carry least-privilege top-level `permissions:`, job `
 (30) and top-level `concurrency:` groups — WF008/WF009/WF006 debt zeroed 2026-09-15, ratchet
 ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legitimate privileged
 `ci-self-heal` trigger); `cancel-in-progress: true` on 9 PR-gated flows, `false` on
-16 scheduled/agent crons (incl. `repo-bloat-gate` since 2026-10-18) so mid-run work is never killed.
+17 scheduled/agent crons (incl. `repo-bloat-gate` since 2026-10-18, `ops-dashboard-refresh` fixed 2026-10-19) so mid-run work is never killed.
 
 
 ### Local tooling

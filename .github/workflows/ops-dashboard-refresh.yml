@@ -15,8 +15,7 @@ on:
 # Prevent duplicate runs
 concurrency:
   group: ops-dashboard-refresh
-  # Deliberately cancel-in-progress: false (fleet convention for scheduled flows —
-  # never kill a mid-run dashboard refresh; duplicate triggers just queue up).
+  cancel-in-progress: false # scheduled flow — never kill mid-run refresh; duplicates queue
 
 permissions:
   contents: write  # For committing dashboard updates
