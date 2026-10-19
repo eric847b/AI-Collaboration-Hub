@@ -37,7 +37,7 @@
     "expo": "~58.0.12",
     "expo-av": "~16.0.8",
     "expo-blur": "~58.0.3",
-    "expo-camera": "^57.0.6",
+    "expo-camera": "^58.0.11",
     "expo-constants": "~58.0.9",
     "expo-font": "~57.0.0",
     "expo-haptics": "~57.0.3",
