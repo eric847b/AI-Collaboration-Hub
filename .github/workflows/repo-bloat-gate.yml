@@ -13,10 +13,16 @@ name: Repo Bloat Gate
 on:
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Weekly ratchet exercise (Mon 05:17 UTC) — without a schedule the gate only
+    # runs when a PR touches tracked files, so a dormant week silently skips it.
+    - cron: '17 5 * * 1'
 
 concurrency:
   group: repo-bloat-${{ github.ref }}
-  cancel-in-progress: true
+  # false per the workspace convention: `cancel-in-progress: true` is reserved
+  # for PR-only flows; a scheduled flow must never kill mid-run work.
+  cancel-in-progress: false
 
 permissions:
   contents: read

@@ -41,7 +41,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '1.0.0';
+const TOOL_VERSION = '1.1.0';
 const DEFAULT_LEDGER = path.join('docs', 'metrics', 'repo-bloat-history.json');
 const DEFAULT_THRESHOLD_PCT = 10;
 const DEFAULT_MAX_FILE_MB = 1;
@@ -56,6 +56,7 @@ const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
   ['--strict', 'promote warn to fail'],
+  ['--quiet', 'verdict/summary line only (no detail rows)'],
   ['--ledger <path>', 'ledger file (default docs/metrics/repo-bloat-history.json)'],
   ['--note <text>', 'free-text note stored with a collect snapshot'],
   ['--threshold <pct>', 'max tolerated tracked-bytes growth, percent (default 10)'],
@@ -228,7 +229,7 @@ export function saveLedger(ledgerPath, data) {
 
 export function parseArgs(argv) {
   const opts = {
-    strict: false, selfTest: false, help: false, version: false,
+    strict: false, quiet: false, selfTest: false, help: false, version: false,
     ledger: DEFAULT_LEDGER, note: null, thresholdPct: DEFAULT_THRESHOLD_PCT,
     maxFileMb: DEFAULT_MAX_FILE_MB, limit: null, out: null, command: null,
   };
@@ -246,6 +247,7 @@ export function parseArgs(argv) {
     };
     switch (bare) {
       case '--strict':
+      case '--quiet':
       case '--self-test':
       case '--help':
       case '-h':
@@ -253,6 +255,7 @@ export function parseArgs(argv) {
       case '-V': {
         if (inlineValue !== null) { errors.push(`flag ${bare} takes no value`); break; }
         if (bare === '--strict') opts.strict = true;
+        else if (bare === '--quiet') opts.quiet = true;
         else if (bare === '--self-test') opts.selfTest = true;
         else if (bare === '--help' || bare === '-h') opts.help = true;
         else opts.version = true;
@@ -371,24 +374,26 @@ export function cmdCheck(opts, io, deps) {
   }
   const baseline = ledger && ledger.snapshots.length ? ledger.snapshots[ledger.snapshots.length - 1] : null;
   const verdict = evaluate({ current, baseline, accepted: ledger ? ledger.accepted : [], opts });
-  io.stdout(`repo-bloat v${TOOL_VERSION} — check (ledger: ${opts.ledger})\n`);
+  if (!opts.quiet) io.stdout(`repo-bloat v${TOOL_VERSION} — check (ledger: ${opts.ledger})\n`);
   if (!baseline) {
-    io.stdout('  no baseline recorded — run `collect` to seed the ledger (advisory until then)\n');
-    io.stdout(`  current  ${current.files} files, ${human(current.bytes)}, ${current.offenders.length} offender(s)\n`);
+    if (!opts.quiet) io.stdout('  no baseline recorded — run `collect` to seed the ledger (advisory until then)\n');
+    if (!opts.quiet) io.stdout(`  current  ${current.files} files, ${human(current.bytes)}, ${current.offenders.length} offender(s)\n`);
     io.stdout('repo-bloat: WARN — no baseline; growth is ungated.\n');
     return 0;
   }
   const g = verdict.growthPct === null ? 'n/a' : `${verdict.growthPct >= 0 ? '+' : ''}${verdict.growthPct.toFixed(1)}%`;
-  io.stdout(`  baseline ${baseline.files} files, ${human(baseline.bytes)} (${baseline.timestamp})\n`);
-  io.stdout(`  current  ${current.files} files, ${human(current.bytes)} (growth ${g}, threshold ${opts.thresholdPct}%)\n`);
-  for (const o of verdict.newOffenders.slice(0, 10)) io.stdout(`  NEW      ${o.kind.padEnd(16)} ${human(o.bytes).padStart(10)}  ${o.path}\n`);
-  if (verdict.newOffenders.length > 10) io.stdout(`  ... and ${verdict.newOffenders.length - 10} more new offenders\n`);
+  if (!opts.quiet) io.stdout(`  baseline ${baseline.files} files, ${human(baseline.bytes)} (${baseline.timestamp})\n`);
+  if (!opts.quiet) io.stdout(`  current  ${current.files} files, ${human(current.bytes)} (growth ${g}, threshold ${opts.thresholdPct}%)\n`);
+  if (!opts.quiet) {
+    for (const o of verdict.newOffenders.slice(0, 10)) io.stdout(`  NEW      ${o.kind.padEnd(16)} ${human(o.bytes).padStart(10)}  ${o.path}\n`);
+    if (verdict.newOffenders.length > 10) io.stdout(`  ... and ${verdict.newOffenders.length - 10} more new offenders\n`);
+  }
   if (verdict.level === 'fail') {
     const why = [];
     if (verdict.regressed) why.push(`tracked bytes grew ${g} > threshold ${opts.thresholdPct}%`);
     if (verdict.newOffenders.length) why.push(`${verdict.newOffenders.length} new offender(s) not in the accepted set`);
     io.stdout(`repo-bloat: FAIL — ${why.join('; ')}.\n`);
-    io.stdout('  fix: remove the bloat from git (git rm --cached <file>), or review it and re-run `collect` to accept.\n');
+    if (!opts.quiet) io.stdout('  fix: remove the bloat from git (git rm --cached <file>), or review it and re-run `collect` to accept.\n');
     return 1;
   }
   if (verdict.level === 'warn') {
@@ -420,6 +425,7 @@ export function cmdReport(opts, io, deps) {
     ? ledger.snapshots[ledger.snapshots.length - shown.length - 1]
     : null;
   for (const s of shown) {
+    if (opts.quiet) { prev = s; continue; }
     const delta = prev === null || prev.bytes === 0 ? '   n/a' : `${(((s.bytes - prev.bytes) / prev.bytes) * 100).toFixed(1).padStart(6)}%`;
     io.stdout(`  ${s.timestamp}  ${String(s.files).padStart(5)} files  ${human(s.bytes).padStart(11)}  ${delta}${s.note ? `  ${s.note}` : ''}\n`);
     prev = s;
@@ -559,7 +565,7 @@ export function runSelfTest(io) {
 
   // D-contract: bad usage exits 2, never runs a command.
   for (const bad of [['--bogus'], ['check', '--threshold'], ['check', '--threshold', 'abc'],
-    ['check', '--limit', '1.5'], ['--strict=1'], ['collect', 'extra', 'positional']]) {
+    ['check', '--limit', '1.5'], ['--strict=1'], ['--quiet=1', 'check'], ['collect', 'extra', 'positional']]) {
     const r = runCapture(bad);
     check(`bad usage exits 2: ${bad.join(' ')}`, r.code === 2, `got ${r.code}`);
   }
@@ -632,6 +638,10 @@ export function runSelfTest(io) {
     check('accepted offender: --strict exits 1', strict.code === 1);
     const nonStrict = runCapture(['check', '--ledger', 'L.json'], fakeWorld({ bytes: 1000, offenders: [{ path: 'a/b.zip', bytes: 10, kind: 'pattern' }], ledger: seeded }).deps);
     check('same offenders without --strict stay 0', nonStrict.code === 0);
+    const quietOk = runCapture(['check', '--ledger', 'L.json', '--quiet'], fakeWorld({ bytes: 1000, offenders: [{ path: 'a/b.zip', bytes: 10, kind: 'pattern' }], ledger: seeded }).deps);
+    check('check --quiet prints verdict only (no detail rows)', quietOk.code === 0 && quietOk.out.startsWith('repo-bloat:') && !quietOk.out.includes('baseline '));
+    const quietBad = runCapture(['check', '--ledger', 'L.json', '--quiet'], fakeWorld({ bytes: 2000, offenders: [{ path: 'a/b.zip', bytes: 10, kind: 'pattern' }], ledger: seeded }).deps);
+    check('check --quiet keeps FAIL verdict + exit 1', quietBad.code === 1 && quietBad.out.includes('repo-bloat: FAIL') && !quietBad.out.includes('  baseline'));
     const noBaseRun = runCapture(['check', '--ledger', 'missing.json'], fakeWorld({ bytes: 1000 }).deps);
     check('check with no ledger warns, exit 0', noBaseRun.code === 0 && noBaseRun.out.includes('no baseline'));
     const corruptWorld = fakeWorld({ bytes: 1000 });
@@ -643,6 +653,8 @@ export function runSelfTest(io) {
     const seeded = { version: 1, tool: 'repo-bloat', accepted: [], snapshots: [snap(1000), snap(1100)] };
     const r = runCapture(['report', '--ledger', 'L.json', '--limit', '1'], fakeWorld({ ledger: seeded }).deps);
     check('report exits 0 and prints rows', r.code === 0 && r.out.includes('snapshot(s)'));
+    const rQuiet = runCapture(['report', '--ledger', 'L.json', '--quiet'], fakeWorld({ ledger: seeded }).deps);
+    check('report --quiet prints summary only (no rows)', rQuiet.code === 0 && rQuiet.out.includes('snapshot(s)') && !rQuiet.out.includes('2026-10-01T00:00:00Z'));
     const r2 = runCapture(['report', '--ledger', 'L.json'], fakeWorld({ ledger: null }).deps);
     check('report without ledger exits 0 with guidance', r2.code === 0 && r2.out.includes('collect'));
     const md = runCapture(['markdown', '--ledger', 'L.json'], fakeWorld({ ledger: seeded }).deps);
