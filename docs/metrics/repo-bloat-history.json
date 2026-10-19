@@ -271,6 +271,78 @@
           "bytes": 117890
         }
       ]
+    },
+    {
+      "timestamp": "2026-10-19T15:45:40.015Z",
+      "gitSha": "474ca8cc1b4531fe07f4852a6d5d86745001ee5d",
+      "note": "re-baseline after build/ false-positive fix (reviewable source configs no longer offenders)",
+      "files": 1629,
+      "bytes": 11502816,
+      "maxFileMb": 1,
+      "offenders": [
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+          "bytes": 217900,
+          "kind": "pattern"
+        },
+        {
+          "path": "ai-chat-websites/Archive/packages/11_- AI Remote Desktop Advanced Caching Strategies.zip",
+          "bytes": 895,
+          "kind": "pattern"
+        },
+        {
+          "path": "AI-Collaboration-Hub/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+          "bytes": 257,
+          "kind": "pattern"
+        },
+        {
+          "path": "self-evolve-dash/.grok/skills/self-evolve-dash/scripts/self_evolve.py.gz",
+          "bytes": 257,
+          "kind": "pattern"
+        }
+      ],
+      "top": [
+        {
+          "path": "third-door-blink-controller/package-lock.json",
+          "bytes": 660550
+        },
+        {
+          "path": "nexus-infinity-hub/e2e/visual.spec.js-snapshots/home-linux.png",
+          "bytes": 471801
+        },
+        {
+          "path": "ai-chat-websites/package-lock.json",
+          "bytes": 341357
+        },
+        {
+          "path": "nexus-infinity-hub/package-lock.json",
+          "bytes": 331031
+        },
+        {
+          "path": "self-evolve-dash/package-lock.json",
+          "bytes": 285733
+        },
+        {
+          "path": "nexus-infinity-hub/bun.lockb",
+          "bytes": 265658
+        },
+        {
+          "path": "self-evolve-dash/e2e/visual.spec.js-snapshots/home-linux.png",
+          "bytes": 239336
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Modules/Archive.zip",
+          "bytes": 217900
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/Unified-AI-Assistant-Suite.user.js",
+          "bytes": 197236
+        },
+        {
+          "path": "ai-chat-websites/Userscripts/AI Chat Userscript Studio/Userscript Suite/Hub Control Panel.html",
+          "bytes": 117890
+        }
+      ]
     }
   ]
 }

@@ -18,8 +18,10 @@
 // appends snapshots to a ledger, and fails `check` when the repo GREW beyond
 // the threshold or when offenders appear that the accepted set does not cover.
 //
-// RATCHET, NOT ABSOLUTE PURITY: the workspace already tracks 5 pattern
-// offenders (2 zips + 3 files under ai-chat-websites/Userscripts/build/), and
+// RATCHET, NOT ABSOLUTE PURITY: the workspace already tracks 4 pattern
+// offenders (2 zips + 2 `.grok` `.py.gz` files — the 3 reviewable source configs
+// formerly flagged under `ai-chat-websites/Userscripts/build/` no longer match
+// after the build/ false-positive fix), and
 // lockfiles alone approach the megabyte scale. A purity gate would be red on
 // day one and get disabled. So, like the workflow-audit baseline ledger, the
 // first `collect` SEEDS the accepted set; from then on `check` gates drift
@@ -76,7 +78,11 @@ const FLAG_DECLARATIONS = [
  */
 export const BLOAT_PATTERNS = [
   /(^|\/)node_modules\//,
-  /(^|\/)(dist|build|out|\.output|release|coverage|\.next|\.vite|\.cache)\//,
+  // NOTE: bare `build/` is INTENTIONALLY absent here. `ai-chat-websites/Userscripts/build/`
+  // is reviewable source tooling (package.json, vite.config.js) — not build output.
+  // Real outputs under a build dir are still caught via the `dist/` arm below
+  // (e.g. `Userscripts/build/dist/*.js`), plus the archive/binary arms.
+  /(^|\/)(dist|out|\.output|release|coverage|\.next|\.vite|\.cache)\//,
   /\.(log|tmp|temp|swp|bak|orig|rej)$/,
   /\.(zip|tar|tgz|gz|bz2|7z|rar)$/,
   /\.(mp4|mov|avi|mkv|webm|wav|mp3|flac)$/,
@@ -580,6 +586,8 @@ export function runSelfTest(io) {
   check('human rejects garbage', human(NaN) === '?');
   check('isBloatPath flags a zip', isBloatPath('ai-chat-websites/Archive/x.zip'));
   check('isBloatPath flags dist/', isBloatPath('app/dist/assets/app.js'));
+  check('isBloatPath flags build/dist output', isBloatPath('ai-chat-websites/Userscripts/build/dist/unified-suite-v3.js'));
+  check('isBloatPath ignores reviewable source under build/', !isBloatPath('ai-chat-websites/Userscripts/build/vite.config.js'));
   check('isBloatPath flags node_modules/', isBloatPath('app/node_modules/x/y.js'));
   check('isBloatPath flags coverage/', isBloatPath('app/coverage/lcov.info'));
   check('isBloatPath flags .log', isBloatPath('debug.log'));
