@@ -95,6 +95,7 @@ console.log(
 '  --quiet            only print drifted facts (no summary line)',
 '  --json             emit a schema-1 report instead of human lines',
 '  --list             enumerate EVERY count-bearing claim found (ok / stale / illustration)',
+  '                   plus a by-subject footer; with --json emits claims[] + claimSummary',
 '  --self-test        prove the checkers fire on synthetic fixtures and exit',
 '  --help             print this text and exit 0',
 '',
@@ -430,6 +431,10 @@ check('--json --quiet emits a schema-1 object', parsed && parsed.schema, 1);
 check('--json reports liveTotals', parsed && typeof parsed.liveTotals?.checkCli, 'number');
 check('--json agrees with the human path on drift count', parsed && parsed.driftedCount, 0);
 check('--json is listed in --help', cli(['--help']).out.includes('--json'), true);
+// Discoverability is contract: a help line that drops the matrix details
+// silently shrinks what a reader knows exists (memoized argv, no new spawn).
+check('--help describes the claim matrix (by-subject footer + claimSummary)',
+  (() => { const h = cli(['--help']).out; return h.includes('by-subject') && h.includes('claimSummary'); })(), true);
 check('--json alone still emits parseable JSON (prose may follow)', (() => {
 try {
 return JSON.parse(cli(['--json']).out.split('\n').find((l) => l.trim().startsWith('{'))).schema;

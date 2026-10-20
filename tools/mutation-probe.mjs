@@ -165,6 +165,13 @@ const PROBES = [
     to: '    b.total += 0;',
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-help-describes-the-matrix',
+    why: 'discoverability is contract - a help line that drops the by-subject/claimSummary details shrinks what a reader knows exists',
+    from: "plus a by-subject footer; with --json emits claims[] + claimSummary',",
+    to: "(matrix details removed by probe)",
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',
