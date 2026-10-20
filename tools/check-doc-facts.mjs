@@ -532,6 +532,25 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
     check('repeated argv hit the cli memo cache (3 calls, at most 1 spawn)',
       cliCalls - c0 === 3 && cliSpawns - s0 <= 1, true);
   }
+  // The second fact must be auditable like the first: one verdict line per
+  // document (count compared against the report's own documents field, so
+  // adding a doc to the corpus never breaks this check).
+  check('--list prints deep-claim verdicts for every document', (() => {
+    const line = cli(['--list', '--quiet']).out.split('\n').find((l) => l.startsWith('deep claims: '));
+    if (!line) return null;
+    const parts = line.slice('deep claims: '.length).split('; ');
+    const docs = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((x) => x.trim().startsWith('{'))).documents;
+    return parts.length === docs && parts.every((p) => /^(\S+) (agrees|drifts|silent)$/.test(p));
+  })(), true);
+  check('--json reports deepClaims for every document', (() => {
+    try {
+      const o = JSON.parse(cli(['--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
+      return Array.isArray(o.deepClaims) && o.deepClaims.length === o.documents
+        && o.deepClaims.every((c) => typeof c.file === 'string' && ['agrees', 'drifts', 'silent'].includes(c.verdict));
+    } catch {
+      return null;
+    }
+  })(), true);
 }
 
 
@@ -592,9 +611,16 @@ const subjects = [
 // exit-2 / exit-1 protections instead of crashing past them (the first
 // version of this block read every selected file before the filter and took
 // the whole tool down with an ENOENT on `--only=<missing>`).
-const listedClaims = list
-  ? present.flatMap((d) => enumerateClaims(fs.readFileSync(d.abs, 'utf8'), subjects, d.rel))
-  : null;
+// One read per document, shared by the claims enumeration, the deep-claim
+// verdicts and the drift findings below — the second fact this tool checks
+// ("CI runs --deep") used to be computed only inside the drift loop, so it
+// was INVISIBLE to --list unless it drifted.
+const docTexts = new Map(present.map((d) => [d.rel, fs.readFileSync(d.abs, 'utf8')]));
+const listedClaims = list ? present.flatMap((d) => enumerateClaims(docTexts.get(d.rel), subjects, d.rel)) : null;
+const deepVerdicts = present.map((d) => ({
+  file: d.rel,
+  verdict: deepClaimVerdict(docTexts.get(d.rel), workflowText),
+}));
 if (list) {
   const width = Math.max(4, ...listedClaims.map((c) => c.file.length));
   for (const c of listedClaims) {
@@ -613,6 +639,9 @@ if (list) {
           .join('; ')}`
       : '(no count-bearing claims found)',
   );
+  // The second fact, auditable like the first: every document's deep-claim
+  // verdict (agrees/drifts/silent), not only the ones that drifted.
+  console.log(`deep claims: ${deepVerdicts.map((v) => `${v.file} ${v.verdict}`).join('; ')}`);
 }
 const drifted = [];
 for (const doc of present) {
@@ -667,6 +696,7 @@ schema: 1,
 documents: present.length,
 liveTotals: { checkCli: cliTotal, flagContract: flagTotal },
 drifted: drifted.map((d) => driftedEntry(d, cliTotal, flagTotal)),
+deepClaims: deepVerdicts,
 driftedCount: drifted.length,
   ...(list ? { claims: listedClaims, claimSummary: buildClaimSummary(listedClaims) } : {}),
 ok: drifted.length === 0,

@@ -179,6 +179,13 @@ const PROBES = [
     to: 'liveTotals: null,',
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-list-emits-deep-verdicts',
+    why: 'the second fact (CI runs --deep) must be auditable like the first - a --list that cannot find its own deep line must fail, not go quiet',
+    from: "'deep claims: '",
+    to: "''",
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',
