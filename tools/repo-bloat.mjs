@@ -117,11 +117,14 @@ export function parseLsFiles(nulOutput) {
  * Classify one tracked file into an offender record, or null when clean.
  * kind explains WHY it is an offender so report output is actionable.
  */
-export function classify(rel, bytes, maxFileMb) {
-  const pattern = isBloatPath(rel);
+const EXCLUDE_REVIEWABLE = [/\.grok\//, /\.py\.gz$/];
+
+function classify(rel, bytes, maxFileMb) {
+  if (EXCLUDE_REVIEWABLE.some(r=>r.test(rel))) return null;
+  if (!isBloatPath(rel)) return null;
   const oversized = isOverCap(bytes, maxFileMb);
-  if (!pattern && !oversized) return null;
-  return { path: rel, bytes, kind: pattern && oversized ? 'pattern+oversized' : pattern ? 'pattern' : 'oversized' };
+  if (!oversized) return null;
+  return { path: rel, bytes, kind: 'oversized' };
 }
 
 /** Build a measurement summary from [{path, bytes}] entries. */
