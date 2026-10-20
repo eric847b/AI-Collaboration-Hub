@@ -144,6 +144,13 @@ const PROBES = [
     to: "check('INVARIANT-SHAPE derived flagTotal is cliTotal - 1', derived, cliTotal - 2);",
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-list-emits-verdict-rows',
+    why: '--list that parses but prints nothing still exits 0 - only an output-asserting self-test can catch a mute flag',
+    from: 'console.log(`${c.status.toUpperCase().padEnd(12)} ${c.file.padEnd(width)}  ${c.claimed.padEnd(7)} ${c.subject}`);',
+    to: '; // probe: rows suppressed',
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',

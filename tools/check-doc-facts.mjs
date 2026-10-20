@@ -430,6 +430,9 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
       return null;
     }
   })(), true);
+  // Pins the --list ordering defect: the block must run AFTER the existence
+  // guard, so a missing --only document exits 2 instead of ENOENT-crashing.
+  check('--list with --only=<missing> exits 2 (list block runs after the guards)', cli(['--only=nosuch.md', '--list']).code, 2);
 }
 
 
