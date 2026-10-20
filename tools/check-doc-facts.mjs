@@ -199,6 +199,25 @@ function enumerateClaims(text, subjects, relFile) {
 }
 
 /**
+ * Totals + per-subject matrix for enumerated claims — the shape `--list --json`
+ * reports as `claimSummary`. Derived from the SAME claims array it ships with,
+ * so the matrix cannot disagree with the rows a human reads; the self-test
+ * re-derives every total from the live report and compares both directions
+ * (overall and per subject), so a summary that drifts from its own claims
+ * fails CI instead of misleading a dashboard.
+ */
+function buildClaimSummary(claims) {
+  const s = { total: claims.length, ok: 0, stale: 0, illustration: 0, bySubject: {} };
+  for (const c of claims) {
+    s[c.status] += 1;
+    const b = (s.bySubject[c.subject] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });
+    b.total += 1;
+    b[c.status] += 1;
+  }
+  return s;
+}
+
+/**
 * Fact 2 — a doc may claim CI runs the `--deep` layer. That is only true while
 * the workflow actually invokes it, and "stays opt-in" was exactly the stale
 * claim that got left behind. Returns 'agrees' | 'drifts' | 'silent'.
@@ -366,9 +385,24 @@ check('extra tools are parsed from verify-tools', parseExtraTools(vt), ['.husky/
 check('a missing list yields no extras', parseExtraTools('const NOPE = 1;'), []);
 
 // ---- CLI contract, end to end (child runs WITHOUT --self-test) ----
+// Memoized: identical argv must not pay the process launch + full corpus
+// scan twice (~1.5 s each here). The counters are ASSERTED by the self-test
+// (3 calls cost at most 1 spawn), so silently dropping this cache or making
+// the cache stop recording spawns both fail CI rather than quietly making
+// the self-test slower or greener.
+const cliCache = new Map();
+let cliCalls = 0;
+let cliSpawns = 0;
 const cli = (args) => {
+cliCalls++;
+const key = JSON.stringify(args);
+const hit = cliCache.get(key);
+if (hit !== undefined) return hit;
+cliSpawns++;
 const r = spawnSync(process.execPath, [SELF, ...args], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
-return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+const res = { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+cliCache.set(key, res);
+return res;
 };
 check('--help exits 0', cli(['--help']).code, 0);
 check('unknown flag exits 2', cli(['--nope']).code, 2);
@@ -416,6 +450,20 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
   check('enumerateClaims labels dated evidence illustration', statuses('six stale `--check-cli` 19/19 claims'), ['illustration']);
   check('enumerateClaims skips a subject with no count', statuses('run `--check-cli` in CI'), []);
   check('enumerateClaims carries the owning file', enumerateClaims('`--check-cli` 19/19', SUBJ, 'docs/STATUS.md')[0].file, 'docs/STATUS.md');
+  // claimSummary as a pure function: totals and the by-subject matrix are
+  // derived, never hand-added — key order matters (check() compares via
+  // JSON.stringify), so this also pins the exact reported shape.
+  check('buildClaimSummary totals every claim overall and per subject', buildClaimSummary([
+    { file: 'a.md', subject: 's', claimed: '1/1', status: 'ok' },
+    { file: 'b.md', subject: 's', claimed: '9/9', status: 'stale' },
+    { file: 'c.md', subject: 't', claimed: '3/3', status: 'illustration' },
+  ]), {
+    total: 3, ok: 1, stale: 1, illustration: 1,
+    bySubject: {
+      s: { total: 2, ok: 1, stale: 1, illustration: 0 },
+      t: { total: 1, ok: 0, stale: 0, illustration: 1 },
+    },
+  });
   const listing = cli(['--list']).out;
   check('--list rows carry a verdict token, or an explicit empty footer',
     /^\s*(OK|STALE|ILLUSTRATION)\s/m.test(listing) ? true : /no count-bearing claims found/.test(listing), true);
@@ -433,6 +481,35 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
   // Pins the --list ordering defect: the block must run AFTER the existence
   // guard, so a missing --only document exits 2 instead of ENOENT-crashing.
   check('--list with --only=<missing> exits 2 (list block runs after the guards)', cli(['--only=nosuch.md', '--list']).code, 2);
+  // The matrix must mirror the rows: re-derive every overall AND per-subject
+  // total from the LIVE report, so a claimSummary that lies about its own
+  // claims array fails here rather than in a consumer's dashboard.
+  check('--list --json claimSummary mirrors its claims array', (() => {
+    try {
+      const o = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((x) => x.trim().startsWith('{')));
+      const s = o.claimSummary;
+      const cl = o.claims;
+      if (!s || !Array.isArray(cl)) return false;
+      return s.total === cl.length
+        && ['ok', 'stale', 'illustration'].every((k) => s[k] === cl.filter((c) => c.status === k).length)
+        && Object.keys(s.bySubject).length > 0
+        && Object.entries(s.bySubject).every(([sub, b]) => b.total === cl.filter((c) => c.subject === sub).length);
+    } catch {
+      return null;
+    }
+  })(), true);
+  // Memo-cache pin: three identical argv must cost at most ONE process
+  // launch. A dropped cache (or counters that stop recording) reverts the
+  // self-test to one ~1.5 s spawn per check — measured, not assumed.
+  {
+    const c0 = cliCalls;
+    const s0 = cliSpawns;
+    cli(['--help']);
+    cli(['--help']);
+    cli(['--help']);
+    check('repeated argv hit the cli memo cache (3 calls, at most 1 spawn)',
+      cliCalls - c0 === 3 && cliSpawns - s0 <= 1, true);
+  }
 }
 
 
@@ -442,7 +519,7 @@ console.error(`FAIL  ${c.name}`);
 console.error(`      expected ${JSON.stringify(c.expected)}`);
 console.error(`      actual   ${JSON.stringify(c.actual)}`);
 }
-console.log(`check-doc-facts self-test: ${cases.length - failed.length}/${cases.length} passed`);
+console.log(`check-doc-facts self-test: ${cases.length - failed.length}/${cases.length} passed (${cliSpawns} spawns / ${cliCalls} cli calls)`);
 process.exit(failed.length > 0 ? 1 : 0);
 }
 
@@ -547,7 +624,7 @@ documents: present.length,
 liveTotals: { checkCli: cliTotal, flagContract: flagTotal },
 drifted: drifted.map((d) => ({ file: d.file, claimed: d.claimed, subject: d.subject ?? null })),
 driftedCount: drifted.length,
-  ...(list ? { claims: listedClaims } : {}),
+  ...(list ? { claims: listedClaims, claimSummary: buildClaimSummary(listedClaims) } : {}),
 ok: drifted.length === 0,
 }),
 );

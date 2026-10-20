@@ -151,6 +151,13 @@ const PROBES = [
     to: '; // probe: rows suppressed',
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-cli-memo-is-not-a-noop',
+    why: 'a dropped memo cache silently reverts the self-test to one ~1.5s spawn per check - the counter check is what notices',
+    from: 'if (hit !== undefined) return hit;',
+    to: 'if (false) return hit;',
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',
