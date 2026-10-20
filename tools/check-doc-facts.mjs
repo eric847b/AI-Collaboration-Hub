@@ -8,6 +8,7 @@
 *   node tools/check-doc-facts.mjs --quiet    # only print drifted facts
 *   node tools/check-doc-facts.mjs --help     # usage (Round 12 D: unknown flags exit 2)
 *   node tools/check-doc-facts.mjs --self-test # prove the checkers fire on fixtures
+ *   node tools/check-doc-facts.mjs --list     # every count-bearing claim + verdict
 *
 * WHY (real drift found 2026-10-01, not hypothetical): after the CLI-contract
 * work, STATUS.md, ROADMAP.md and AGENTS.md all still claimed `--check-cli` was
@@ -44,7 +45,7 @@ const SELF = fileURLToPath(import.meta.url);
 // Unknown flags, missing values, booleans given a value and stray positionals
 // all exit 2 instead of being silently ignored. No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--only']);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json', '--list']);
 const argv = process.argv.slice(2);
 const flags = {};
 const positionals = [];
@@ -83,7 +84,7 @@ flags[key] = value;
 function usage() {
 console.log(
 [
-'Usage: node tools/check-doc-facts.mjs [--only <file,...>] [--quiet] [--json] [--self-test]',
+'Usage: node tools/check-doc-facts.mjs [--only <file,...>] [--quiet] [--json] [--list] [--self-test]',
 '',
 'Verifies that count-bearing claims in AGENTS.md, docs/STATUS.md and',
 'docs/ROADMAP.md still match runtime truth (totals derived from the',
@@ -92,14 +93,14 @@ console.log(
 'Flags:',
 '  --only <file,...>  only check these files (comma-separated, repo-relative)',
 '  --quiet            only print drifted facts (no summary line)',
+'  --json             emit a schema-1 report instead of human lines',
+'  --list             enumerate EVERY count-bearing claim found (ok / stale / illustration)',
 '  --self-test        prove the checkers fire on synthetic fixtures and exit',
 '  --help             print this text and exit 0',
 '',
 'Exit codes: 0 = every documented count still true, 1 = drift found,',
 '            2 = bad usage (also: no documents matched — never a clean pass).',
 'Unknown flags and unexpected arguments exit 2.',
-  '  --json            emit a schema-1 report instead of human lines',
-
 ].join('\n'),
 );
 }
@@ -164,6 +165,37 @@ out.push({ file: relFile, claimed: f[0], subject: label, total });
 }
 }
 return out;
+}
+
+/**
+ * EVERY subject-anchored count with its verdict — the informational mirror of
+ * claimFindings above and what `--list` prints. Same window, same illustration
+ * cue, but nothing is skipped: a true claim is `ok`, a mismatch is `stale`,
+ * dated/illustrative text is `illustration`. The gate itself keeps using
+ * claimFindings (which returns only what must FAIL) so the two cannot blur —
+ * a list that quietly dropped true claims would hide exactly what a reader
+ * opened it to audit.
+ */
+function enumerateClaims(text, subjects, relFile) {
+  const out = [];
+  for (const { re, total, label } of subjects) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const window = text.slice(m.index, m.index + 160);
+      const f = window.match(/(\d+)\/(\d+)/);
+      if (!f) continue; // subject mentioned, no count attached
+      const before =
+        text.slice(Math.max(0, m.index - 60), m.index) + window.slice(0, window.indexOf(f[0]));
+      const status = NON_CLAIM_CUE.test(before)
+        ? 'illustration'
+        : Number(f[1]) === total && Number(f[2]) === total
+          ? 'ok'
+          : 'stale';
+      out.push({ file: relFile, subject: label, claimed: f[0], status });
+    }
+  }
+  return out;
 }
 
 /**
@@ -374,6 +406,32 @@ return null;
 }
 check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2);
 
+// ---- --list: a declared flag must DO something, not just parse ---------
+// Same defect class as --json above: a flag that is accepted but does
+// nothing still exits 0, so these assert on OUTPUT, never on the exit code.
+{
+  const statuses = (t) => enumerateClaims(t, SUBJ, 'x.md').map((c) => c.status);
+  check('enumerateClaims labels a true claim ok', statuses('`--check-cli` 21/21 tools'), ['ok']);
+  check('enumerateClaims labels a stale claim stale', statuses('`--check-cli` 19/19 tools'), ['stale']);
+  check('enumerateClaims labels dated evidence illustration', statuses('six stale `--check-cli` 19/19 claims'), ['illustration']);
+  check('enumerateClaims skips a subject with no count', statuses('run `--check-cli` in CI'), []);
+  check('enumerateClaims carries the owning file', enumerateClaims('`--check-cli` 19/19', SUBJ, 'docs/STATUS.md')[0].file, 'docs/STATUS.md');
+  const listing = cli(['--list']).out;
+  check('--list rows carry a verdict token, or an explicit empty footer',
+    /^\s*(OK|STALE|ILLUSTRATION)\s/m.test(listing) ? true : /no count-bearing claims found/.test(listing), true);
+  check('--list prints the claims footer', /count-bearing claim\(s\)|no count-bearing claims found/.test(listing), true);
+  check('--list is listed in --help', cli(['--help']).out.includes('--list'), true);
+  check('--list given a value exits 2 (it is boolean)', cli(['--list=1']).code, 2);
+  check('--list --json adds a claims array to the schema-1 report', (() => {
+    try {
+      const o = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((x) => x.trim().startsWith('{')));
+      return Array.isArray(o.claims);
+    } catch {
+      return null;
+    }
+  })(), true);
+}
+
 
 const failed = cases.filter((c) => !c.pass);
 for (const c of failed) {
@@ -387,8 +445,10 @@ process.exit(failed.length > 0 ? 1 : 0);
 
 if (flags['--self-test'] === true) runSelfTest();
 
+
 // ── Main ───────────────────────────────────────────────────────────────
-  const asJson = flags['--json'] === true;
+const asJson = flags['--json'] === true;
+const list = flags['--list'] === true;
 
 const selected = flags['--only']
 ? String(flags['--only']).split(',').map((s) => s.trim()).filter(Boolean)
@@ -396,6 +456,10 @@ const selected = flags['--only']
 
 // False-green guard: checking nothing must never read as "all facts true".
 const docs = selected.map((rel) => ({ rel, abs: path.join(ROOT, rel) }));
+// --list reads documents only AFTER the existence filter below: reading
+// here would turn `--only=<missing>` into an ENOENT crash (exit 1) instead
+// of the contract's "no documents matched" exit 2.
+
 const present = docs.filter((d) => fs.existsSync(d.abs));
 if (!present.length) {
 console.error(
@@ -421,6 +485,26 @@ const subjects = [
 { re: /check-flag-contract/gi, total: flagTotal, label: 'check-flag-contract' },
 ];
 
+
+// --list runs AFTER the existence + totals guards above, so it inherits the
+// exit-2 / exit-1 protections instead of crashing past them (the first
+// version of this block read every selected file before the filter and took
+// the whole tool down with an ENOENT on `--only=<missing>`).
+const listedClaims = list
+  ? present.flatMap((d) => enumerateClaims(fs.readFileSync(d.abs, 'utf8'), subjects, d.rel))
+  : null;
+if (list) {
+  const width = Math.max(4, ...listedClaims.map((c) => c.file.length));
+  for (const c of listedClaims) {
+    console.log(`${c.status.toUpperCase().padEnd(12)} ${c.file.padEnd(width)}  ${c.claimed.padEnd(7)} ${c.subject}`);
+  }
+  const n = (s) => listedClaims.filter((c) => c.status === s).length;
+  console.log(
+    listedClaims.length
+      ? `\n${listedClaims.length} count-bearing claim(s): ${n('ok')} ok, ${n('stale')} stale, ${n('illustration')} illustration`
+      : '(no count-bearing claims found)',
+  );
+}
 const drifted = [];
 for (const doc of present) {
 const text = fs.readFileSync(doc.abs, 'utf8');
@@ -460,6 +544,7 @@ documents: present.length,
 liveTotals: { checkCli: cliTotal, flagContract: flagTotal },
 drifted: drifted.map((d) => ({ file: d.file, claimed: d.claimed, subject: d.subject ?? null })),
 driftedCount: drifted.length,
+  ...(list ? { claims: listedClaims } : {}),
 ok: drifted.length === 0,
 }),
 );
@@ -468,7 +553,7 @@ for (const d of drifted) {
   const hint = formatHint(d, cliTotal, flagTotal);
 console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
 }
-if (!quiet) {
+if (!quiet && !list) {
 console.log(
 `\ncheck-doc-facts: ${present.length} documents, ${cliTotal} + ${flagTotal} live tool totals, ${drifted.length} drifted claim(s)`,
 );
