@@ -158,6 +158,13 @@ const PROBES = [
     to: 'if (false) return hit;',
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-summary-matrix-is-derived',
+    why: 'a by-subject total that stops incrementing desyncs the matrix from its rows - the pure check and the live mirror must both catch it',
+    from: '    b.total += 1;',
+    to: '    b.total += 0;',
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',

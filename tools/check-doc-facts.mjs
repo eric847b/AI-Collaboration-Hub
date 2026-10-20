@@ -468,6 +468,15 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
   check('--list rows carry a verdict token, or an explicit empty footer',
     /^\s*(OK|STALE|ILLUSTRATION)\s/m.test(listing) ? true : /no count-bearing claims found/.test(listing), true);
   check('--list prints the claims footer', /count-bearing claim\(s\)|no count-bearing claims found/.test(listing), true);
+  // The by-subject segment must reconcile with the overall totals — a footer
+  // that miscounts a subject would mislead exactly the reader it serves.
+  check('--list footer by-subject counts sum to its overall totals', (() => {
+    const m = listing.match(/count-bearing claim\(s\): (\d+) ok, (\d+) stale, (\d+) illustration — by subject: (.+)/);
+    if (!m) return null;
+    const parts = m[4].split('; ').map((x) => x.match(/^(\S+) (\d+)\/(\d+)\/(\d+)$/)).filter(Boolean);
+    const sum = (i) => parts.reduce((a, p) => a + Number(p[i]), 0);
+    return parts.length > 0 && sum(2) === +m[1] && sum(3) === +m[2] && sum(4) === +m[3];
+  })(), true);
   check('--list is listed in --help', cli(['--help']).out.includes('--list'), true);
   check('--list given a value exits 2 (it is boolean)', cli(['--list=1']).code, 2);
   check('--list --json adds a claims array to the schema-1 report', (() => {
@@ -578,10 +587,17 @@ if (list) {
   for (const c of listedClaims) {
     console.log(`${c.status.toUpperCase().padEnd(12)} ${c.file.padEnd(width)}  ${c.claimed.padEnd(7)} ${c.subject}`);
   }
-  const n = (s) => listedClaims.filter((c) => c.status === s).length;
+  // ONE derivation for the footer AND the JSON matrix: a second hand-rolled
+  // counter here is exactly how the two views drift apart. The by-subject
+  // segment (ok/stale/illustration per subject) is what a reader auditing
+  // one tool needs without re-scanning every row; its sums are check-pinned
+  // against the overall totals below.
+  const cs = buildClaimSummary(listedClaims);
   console.log(
     listedClaims.length
-      ? `\n${listedClaims.length} count-bearing claim(s): ${n('ok')} ok, ${n('stale')} stale, ${n('illustration')} illustration`
+      ? `\n${cs.total} count-bearing claim(s): ${cs.ok} ok, ${cs.stale} stale, ${cs.illustration} illustration — by subject: ${Object.entries(cs.bySubject)
+          .map(([sub, b]) => `${sub} ${b.ok}/${b.stale}/${b.illustration}`)
+          .join('; ')}`
       : '(no count-bearing claims found)',
   );
 }
