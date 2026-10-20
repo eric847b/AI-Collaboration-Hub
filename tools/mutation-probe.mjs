@@ -186,6 +186,20 @@ const PROBES = [
     to: "''",
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-byfile-axis-is-derived',
+    why: 'claimSummary.byFile must be derived from claims in the same loop as bySubject - a byFile that never fills must fail the reconciliation check',
+    from: 'const f = (s.byFile[c.file] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });',
+    to: 'const f = (s.bySubject[c.subject] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });',
+  },
+  {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-deepclaims-respects-only',
+    why: '--only must scope deepClaims to the selection; re-attaching the whole corpus to a subset run must fail the self-test',
+    from: 'const deepVerdicts = present.map((d) => ({',
+    to: 'const deepVerdicts = DOC_FILES.map((rel) => ({ rel, abs: path.join(ROOT, rel) })).map((d) => ({',
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',

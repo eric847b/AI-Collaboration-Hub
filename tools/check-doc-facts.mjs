@@ -204,16 +204,22 @@ function enumerateClaims(text, subjects, relFile) {
  * reports as `claimSummary`. Derived from the SAME claims array it ships with,
  * so the matrix cannot disagree with the rows a human reads; the self-test
  * re-derives every total from the live report and compares both directions
- * (overall and per subject), so a summary that drifts from its own claims
- * fails CI instead of misleading a dashboard.
+ * (overall, per subject and per file), so a summary that drifts from its own
+ * claims fails CI instead of misleading a dashboard.
  */
 function buildClaimSummary(claims) {
-  const s = { total: claims.length, ok: 0, stale: 0, illustration: 0, bySubject: {} };
+  const s = { total: claims.length, ok: 0, stale: 0, illustration: 0, bySubject: {}, byFile: {} };
   for (const c of claims) {
     s[c.status] += 1;
     const b = (s.bySubject[c.subject] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });
     b.total += 1;
     b[c.status] += 1;
+    // Second axis of the same matrix: WHICH document carries the claims.
+    // A dashboard asking "which doc goes stale most often" should not have to
+    // re-derive counts from claims[] — the summary answers it directly.
+    const f = (s.byFile[c.file] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });
+    f.total += 1;
+    f[c.status] += 1;
   }
   return s;
 }
@@ -463,10 +469,10 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
   check('enumerateClaims labels dated evidence illustration', statuses('six stale `--check-cli` 19/19 claims'), ['illustration']);
   check('enumerateClaims skips a subject with no count', statuses('run `--check-cli` in CI'), []);
   check('enumerateClaims carries the owning file', enumerateClaims('`--check-cli` 19/19', SUBJ, 'docs/STATUS.md')[0].file, 'docs/STATUS.md');
-  // claimSummary as a pure function: totals and the by-subject matrix are
+  // claimSummary as a pure function: totals and the subject/file matrices are
   // derived, never hand-added — key order matters (check() compares via
   // JSON.stringify), so this also pins the exact reported shape.
-  check('buildClaimSummary totals every claim overall and per subject', buildClaimSummary([
+  check('buildClaimSummary totals every claim overall, per subject and per file', buildClaimSummary([
     { file: 'a.md', subject: 's', claimed: '1/1', status: 'ok' },
     { file: 'b.md', subject: 's', claimed: '9/9', status: 'stale' },
     { file: 'c.md', subject: 't', claimed: '3/3', status: 'illustration' },
@@ -475,6 +481,11 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
     bySubject: {
       s: { total: 2, ok: 1, stale: 1, illustration: 0 },
       t: { total: 1, ok: 0, stale: 0, illustration: 1 },
+    },
+    byFile: {
+      'a.md': { total: 1, ok: 1, stale: 0, illustration: 0 },
+      'b.md': { total: 1, ok: 0, stale: 1, illustration: 0 },
+      'c.md': { total: 1, ok: 0, stale: 0, illustration: 1 },
     },
   });
   const listing = cli(['--list']).out;
@@ -547,6 +558,45 @@ check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2)
       const o = JSON.parse(cli(['--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
       return Array.isArray(o.deepClaims) && o.deepClaims.length === o.documents
         && o.deepClaims.every((c) => typeof c.file === 'string' && ['agrees', 'drifts', 'silent'].includes(c.verdict));
+    } catch {
+      return null;
+    }
+  })(), true);
+  // The matrix's second axis must reconcile in BOTH directions: every claim
+  // lands in exactly one byFile bucket, and bucket sums rebuild totals — a
+  // byFile that cannot agree with claims[] would silently mislead a dashboard.
+  check('claimSummary.byFile reconciles with claims[] and totals', (() => {
+    try {
+      const o = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
+      const s = o.claimSummary;
+      if (!s || typeof s.byFile !== 'object' || !s.byFile) return null;
+      const files = [...new Set(o.claims.map((c) => c.file))].sort();
+      if (JSON.stringify(Object.keys(s.byFile).sort()) !== JSON.stringify(files)) return false;
+      let sum = 0;
+      for (const f of files) {
+        const b = s.byFile[f];
+        const own = o.claims.filter((c) => c.file === f);
+        if (b.total !== own.length) return false;
+        if (b.ok + b.stale + b.illustration !== b.total) return false;
+        for (const st of ['ok', 'stale', 'illustration']) {
+          if (b[st] !== own.filter((c) => c.status === st).length) return false;
+        }
+        sum += b.total;
+      }
+      return sum === s.total && s.total === o.claims.length;
+    } catch {
+      return null;
+    }
+  })(), true);
+  // --only scoping of the second fact: a subset run must report ONLY the
+  // selected documents' deep verdicts (length agrees with its own documents
+  // count), never the whole corpus silently re-attached.
+  check('--only subset scopes deepClaims to the selected documents', (() => {
+    try {
+      const o = JSON.parse(cli(['--only=AGENTS.md', '--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
+      return o.documents === 1 && Array.isArray(o.deepClaims) && o.deepClaims.length === 1
+        && o.deepClaims[0].file === 'AGENTS.md'
+        && ['agrees', 'drifts', 'silent'].includes(o.deepClaims[0].verdict);
     } catch {
       return null;
     }
