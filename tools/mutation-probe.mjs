@@ -172,6 +172,13 @@ const PROBES = [
     to: "(matrix details removed by probe)",
   },
   {
+    tool: 'check-doc-facts.mjs',
+    id: 'docfacts-json-drift-carries-live-totals',
+    why: 'a --json consumer must see the same live totals a human line carries - the pure checks are all that exercise this on a clean corpus',
+    from: 'liveTotals: d.denominator === null ? null : { cli: cliTotal, flag: flagTotal },',
+    to: 'liveTotals: null,',
+  },
+  {
     tool: 'flake-tracker.cjs',
     id: 'flake-zero-tests-is-na-not-zero',
     why: 'a zero-test run must report n/a, not 0.0% - that would read as "tests ran, none flaked"',

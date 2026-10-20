@@ -310,6 +310,14 @@ check('an ILLUSTRATION of the bug is not a claim', claimFindings('Motivated by r
   // These two execute that path so it can never be untested again.
   check('a drifted claim renders its live-totals hint', formatHint({ denominator: 21 }, 23, 22), ' (live totals: 23 / 22)');
   check('a hintless finding renders an empty hint', formatHint({ denominator: null }), '');
+  // Same two shapes for the JSON twin: a drifted entry carries the live
+  // totals, a denominator-less one keeps them null (order matters: check()
+  // compares via JSON.stringify).
+  check('a drifted JSON entry carries the live totals',
+    driftedEntry({ file: 'x.md', claimed: '19/19', subject: '--check-cli', denominator: 21 }, 24, 23),
+    { file: 'x.md', claimed: '19/19', subject: '--check-cli', liveTotals: { cli: 24, flag: 23 } });
+  check('a hintless JSON entry keeps liveTotals null',
+    driftedEntry({ file: 'x.md', claimed: '19/19', subject: null, denominator: null }, 24, 23).liveTotals, null);
 check('a "claims like" illustration is not a claim', claimFindings('catches stale claims like "`--check-cli` 19/19" after the total moved', SUBJ, 'x.md').length, 0);
 check('an "e.g." illustration is not a claim', claimFindings('e.g. `--check-cli` 19/19 is now wrong', SUBJ, 'x.md').length, 0);
 check('CONTROL: a real claim is still caught after a cue word', claimFindings('`--check-cli` reports 21/22 tools honor the contract', SUBJ, 'x.md').length, 1);
@@ -634,6 +642,21 @@ denominator: null,
 function formatHint(d, cli, flag) {
   return d.denominator === null ? '' : ` (live totals: ${cli} / ${flag})`;
 }
+
+/**
+ * Machine twin of formatHint: a --json consumer must see the SAME live
+ * totals a human line carries, or the two reports disagree exactly when
+ * there is drift to act on. Extracted so the self-test can drive it — the
+ * live corpus is currently clean, so nothing but a pure check ever would.
+ */
+function driftedEntry(d, cliTotal, flagTotal) {
+  return {
+    file: d.file,
+    claimed: d.claimed,
+    subject: d.subject ?? null,
+    liveTotals: d.denominator === null ? null : { cli: cliTotal, flag: flagTotal },
+  };
+}
 // Machine-readable path. Emitted BEFORE the human lines so a consumer can
 // parse stdout without having to skip prose, and so --json alone still works
 // even when --quiet suppresses the summary.
@@ -643,7 +666,7 @@ JSON.stringify({
 schema: 1,
 documents: present.length,
 liveTotals: { checkCli: cliTotal, flagContract: flagTotal },
-drifted: drifted.map((d) => ({ file: d.file, claimed: d.claimed, subject: d.subject ?? null })),
+drifted: drifted.map((d) => driftedEntry(d, cliTotal, flagTotal)),
 driftedCount: drifted.length,
   ...(list ? { claims: listedClaims, claimSummary: buildClaimSummary(listedClaims) } : {}),
 ok: drifted.length === 0,
