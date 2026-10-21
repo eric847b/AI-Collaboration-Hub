@@ -66,7 +66,9 @@ jobs:
 
       - name: Push Changes
         if: steps.changes.outputs.changed == 'true'
-        run: C:\Users\Eric\Documents\Cline\Hooks\resilient-git.ps1 sync -Repo c:/Users/Eric/OneDrive/Documents/GitHub
+        # NOTE: was a Windows-local path (C:\Users\Eric\...) that cannot run on ubuntu-latest;
+        # replaced with a plain push (workflow already has contents:write). 2026-10-21.
+        run: git push
 
       - name: Notify on Manual Dispatch
         if: github.event_name == 'workflow_dispatch' && steps.changes.outputs.changed == 'true'
