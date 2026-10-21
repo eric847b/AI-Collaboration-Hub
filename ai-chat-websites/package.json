@@ -106,7 +106,7 @@
       "smol-toml": "1.9.0"
     },
     "@vapi-ai/mcp-server": {
-      "@modelcontextprotocol/sdk": "1.31.0"
+      "@modelcontextprotocol/sdk": "^1.32.0"
     },
     "katex": "0.18.2"
   }
