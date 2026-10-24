@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.0.0';
+const TOOL_VERSION = '4.1.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -20,7 +20,7 @@ const FLAG_DECLARATIONS = [
   ['--list', 'print available check ids'],
   ['--self-test', 'run built-in checks and exit'],
 ];
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'wiring'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'wiring', 'bloat'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
@@ -162,7 +162,23 @@ function checkWiring() {
   return { id: 'wiring', label: 'wiring', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || 'gate script + parity map present', findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkWiring];
+function checkBloat() {
+  const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
+  if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
+  const data = readJson(ledger);
+  const findings = [];
+  if (!data || typeof data !== 'object') findings.push('repo-bloat-history.json unreadable');
+  else if (!Array.isArray(data.snapshots)) findings.push('snapshots[] missing');
+  else if (data.snapshots.length === 0) findings.push('no snapshots recorded');
+  let detail = 'repo-bloat ledger present';
+  if (data && Array.isArray(data.snapshots) && data.snapshots.length) {
+    const last = data.snapshots[data.snapshots.length - 1];
+    if (last && typeof last.trackedBytes === 'number') detail = `repo-bloat ledger present (${last.trackedFiles ?? '?'} files, ${Math.round(last.trackedBytes / 1024)} KiB)`;
+  }
+  return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
+}
+
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkWiring, checkBloat];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());

@@ -71,7 +71,7 @@ const ValidatorModule = {
 
         // Check for innerHTML usage
         const innerHTMLCount = (script.match(/\.innerHTML\s*=/g) || []).length;
-        if (innerHTMLCount > 3) {
+        if (innerHTMLCount > 0) {
             warnings.push(`⚠️ ${innerHTMLCount} uses of innerHTML - consider textContent for security`);
             penalty += 5;
         }
@@ -127,8 +127,8 @@ const ValidatorModule = {
             penalty += 15;
         }
         if (!script.includes('@name')) {
-            warnings.push('⚠️ Missing @name in metadata block');
-            penalty += 5;
+            issues.push('❌ Missing @name directive - script will not be installable');
+            penalty += 15;
         }
         if (!script.includes('@version')) {
             warnings.push('⚠️ Missing @version in metadata block');
@@ -142,7 +142,7 @@ const ValidatorModule = {
         // Code quality
         const lines = script.split('\n');
         const longLines = lines.filter(l => l.length > 120);
-        if (longLines.length > 5) {
+        if (longLines.length > 0) {
             warnings.push(`⚠️ ${longLines.length} lines exceed 120 characters - consider breaking them up`);
             penalty += 3;
         }

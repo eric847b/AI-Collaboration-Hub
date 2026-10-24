@@ -25,7 +25,7 @@
     "WF012"
   ],
   "totals": {
-    "workflows": 25,
+    "workflows": 26,
     "findings": 1,
     "bySeverity": {
       "high": 0,

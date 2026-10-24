@@ -28,6 +28,20 @@ const PluginAPI = {
     pluginSandboxes: new Map(),
 
     /**
+     * Get the live plugin registry (kept on the shared suite state so that
+     * consumers can reset it between sessions/tests).
+     * @returns {Object} Plugin registry keyed by plugin id
+     */
+    getRegistry() {
+        const suite = (typeof window !== 'undefined' && window.UnifiedSuite) || {};
+        if (!suite.state) suite.state = {};
+        if (!suite.state.plugins || typeof suite.state.plugins !== 'object') {
+            suite.state.plugins = {};
+        }
+        return suite.state.plugins;
+    },
+
+    /**
      * Register a plugin
      * @param {PluginManifest} manifest - Plugin manifest
      * @param {Object} implementation - Plugin implementation
@@ -35,16 +49,27 @@ const PluginAPI = {
      */
     register(manifest, implementation) {
         try {
-            // Validate manifest
-            if (!manifest.id || !manifest.name) {
+            if (!manifest || typeof manifest !== 'object') {
+                debugLog('Plugin manifest missing');
+                return false;
+            }
+
+            // Validate manifest (id, name and version are required)
+            if (!manifest.id || !manifest.name || !manifest.version) {
                 debugLog('Plugin manifest missing required fields');
+                return false;
+            }
+
+            const registry = this.getRegistry();
+            if (registry[manifest.id]) {
+                debugLog(`Plugin already registered: ${manifest.id}`);
                 return false;
             }
 
             // Check dependencies
             if (manifest.dependencies) {
                 for (const dep of manifest.dependencies) {
-                    if (!this.installedPlugins.has(dep)) {
+                    if (!registry[dep]) {
                         debugLog(`Plugin ${manifest.id} missing dependency: ${dep}`);
                         return false;
                     }
@@ -52,9 +77,16 @@ const PluginAPI = {
             }
 
             // Create sandbox
-            const sandbox = this.createSandbox(manifest, implementation);
+            const sandbox = this.createSandbox(manifest, implementation || {});
             this.pluginSandboxes.set(manifest.id, sandbox);
             this.installedPlugins.set(manifest.id, { manifest, sandbox });
+
+            registry[manifest.id] = {
+                manifest,
+                implementation: implementation || {},
+                sandbox,
+                registeredAt: Date.now()
+            };
 
             debugLog(`Plugin registered: ${manifest.name} v${manifest.version}`);
             return true;
@@ -123,6 +155,8 @@ const PluginAPI = {
     unregister(pluginId) {
         this.installedPlugins.delete(pluginId);
         this.pluginSandboxes.delete(pluginId);
+        const registry = this.getRegistry();
+        delete registry[pluginId];
         debugLog(`Plugin unregistered: ${pluginId}`);
     },
 
@@ -131,14 +165,18 @@ const PluginAPI = {
      * @returns {Array} Installed plugins
      */
     listPlugins() {
-        return Array.from(this.installedPlugins.values()).map(p => ({
-            id: p.manifest.id,
-            name: p.manifest.name,
-            version: p.manifest.version,
-            description: p.manifest.description,
-            author: p.manifest.author,
-            permissions: p.manifest.permissions
-        }));
+        const registry = this.getRegistry();
+        return Object.keys(registry).map(id => {
+            const p = registry[id];
+            return {
+                id: p.manifest.id,
+                name: p.manifest.name,
+                version: p.manifest.version,
+                description: p.manifest.description,
+                author: p.manifest.author,
+                permissions: p.manifest.permissions
+            };
+        });
     },
 
     /**
@@ -147,7 +185,8 @@ const PluginAPI = {
      * @returns {Object|null} Plugin info
      */
     getPlugin(pluginId) {
-        const plugin = this.installedPlugins.get(pluginId);
+        const registry = this.getRegistry();
+        const plugin = registry[pluginId];
         if (!plugin) return null;
         return {
             manifest: plugin.manifest,
@@ -163,10 +202,11 @@ const PluginAPI = {
      */
     async executeHook(hookName, ...args) {
         const results = [];
-        for (const [id, plugin] of this.installedPlugins) {
+        const registry = this.getRegistry();
+        for (const id of Object.keys(registry)) {
             try {
-                const sandbox = plugin.sandbox;
-                if (sandbox[hookName] && typeof sandbox[hookName] === 'function') {
+                const sandbox = registry[id].sandbox;
+                if (sandbox && typeof sandbox[hookName] === 'function') {
                     const result = await sandbox[hookName](...args);
                     results.push({ pluginId: id, result });
                 }
@@ -183,7 +223,7 @@ const PluginAPI = {
      * @returns {number} Plugin count
      */
     getCount() {
-        return this.installedPlugins.size;
+        return Object.keys(this.getRegistry()).length;
     },
 
     isAvailable() {
