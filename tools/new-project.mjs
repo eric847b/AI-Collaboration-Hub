@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -94,6 +95,32 @@ function runSelfTest() {
   }
   const must = ['package.json', 'vite.config.ts', 'tsconfig.app.json', 'eslint.config.js', 'index.html', 'src/main.tsx', 'src/App.tsx', 'src/lib/telemetry.ts', 'vitest.config.ts', 'playwright.config.js', 'e2e/app.spec.js', 'README.md'];
   for (const f of must) if (!fs.existsSync(path.join(target, f))) fails.push('missing ' + f);
+  // Stronger than existence: every scaffolded file must be non-empty, and
+  // package.json + tsconfig*.json must parse as JSON (catches a broken
+  // template before a user discovers it at build time).
+  for (const [rel] of plan.m) {
+    const abs = path.join(target, rel);
+    try {
+      const st = fs.statSync(abs);
+      if (st.size === 0) fails.push('empty ' + rel);
+    } catch { fails.push('unreadable ' + rel); }
+  }
+  for (const jf of ['package.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json']) {
+    const abs = path.join(target, jf);
+    if (fs.existsSync(abs)) {
+      try { JSON.parse(fs.readFileSync(abs, 'utf8')); }
+      catch (e) { fails.push('invalid JSON ' + jf + ': ' + (e && e.message ? e.message : e)); }
+    }
+  }
+  // Classic/ESM JS configs must at least parse under `node --check` (the same
+  // gate the pre-commit hook uses), so a malformed template fails here.
+  for (const jsf of ['eslint.config.js', 'playwright.config.js', 'e2e/app.spec.js']) {
+    const abs = path.join(target, jsf);
+    if (fs.existsSync(abs)) {
+      const r = spawnSync(process.execPath, ['--check', abs], { stdio: 'ignore' });
+      if (r.status !== 0) fails.push('syntax ' + jsf);
+    }
+  }
   fs.rmSync(tmp, { recursive: true, force: true });
   if (fails.length > 0) { console.error('new-project --self-test FAIL: ' + fails.join(', ')); process.exit(2); }
   console.log('new-project --self-test PASS (' + must.length + ' files)');
