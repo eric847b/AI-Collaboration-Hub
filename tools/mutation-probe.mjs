@@ -493,6 +493,28 @@ const PROBES = [
     from: "return 'warn'; // warn, skip, absent, anything else",
     to: "return 'ok'; // warn, skip, absent, anything else",
   },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-http-scheme-skipped',
+    why: 'the scheme regex must skip http(s)/mailto links; weakening it to require 5+ letters lets http: through',
+    from: "/^[a-z]+:/i.test(r)",
+    to: "/^[a-z]{5,}:/i.test(r)",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-ischeckable-gate-fires',
+    why: 'scanLinks must skip non-checkable links; dropping the guard counts every link including mailto/anchor',
+    from: "if (!isCheckableLink(raw)) continue;",
+    to: "if (false) continue;",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-unknown-flag-exits-2',
+    why: 'an unknown flag must exit 2; swallowing it lets typos run silently',
+    from: "if (!BOOLEAN_FLAGS.has(key)) {",
+    to: "if (false) {",
+  },
+
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */
