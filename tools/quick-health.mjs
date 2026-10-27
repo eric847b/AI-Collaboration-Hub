@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.27.0';
+const TOOL_VERSION = '4.28.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -19,6 +19,7 @@ const FLAG_DECLARATIONS = [
   ['--json', 'machine-readable report'],
   ['--only <ids>', 'comma-separated check ids'],
   ['--list', 'print available check ids'],
+  ['--fail-fast', 'stop at first fail/warn'],
   ['--self-test', 'run built-in checks and exit'],
 ];
 const SUGGESTIONS = {
@@ -76,7 +77,7 @@ function gitSnapshot() {
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
 
 export function parseArgs(argv) {
-  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
+  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false };
   const errors = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -102,6 +103,7 @@ export function parseArgs(argv) {
       case '--list': opts.list = true; break;
       case '--help': case '-h': opts.help = true; break;
       case '--version': case '-V': opts.version = true; break;
+      case '--fail-fast': opts.failFast = true; break;
       case '--self-test': opts.selfTest = true; break;
       default: errors.push(`unknown flag: ${arg}`); break;
     }
@@ -415,6 +417,10 @@ const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, chec
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
+  if (opts.failFast) {
+    const idx = checks.findIndex((c) => c.level !== 'ok');
+    if (idx >= 0) checks = checks.slice(0, idx + 1);
+  }
   checks = checks.map((c) => ({ ...c, suggestion: c.level === 'ok' ? null : (SUGGESTIONS[c.id] || null) }));
   if (opts.only?.length) {
     const unknown = opts.only.filter((id) => !ALL_CHECK_IDS.includes(id));
