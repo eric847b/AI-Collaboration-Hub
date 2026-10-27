@@ -6,6 +6,7 @@ import { EventsWidget } from "./widgets/EventsWidget";
 import { SignalsWidget } from "./widgets/SignalsWidget";
 import { MemoryWidget } from "./widgets/MemoryWidget";
 import { RemoteWidget } from "./widgets/RemoteWidget";
+import { CollaborationWidget } from "./widgets/CollaborationWidget";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -16,6 +17,7 @@ const widgetMap: Record<string, { title: string; comp: () => ReactElement }> = {
   signals: { title: "Signal Monitor", comp: SignalsWidget },
   memory: { title: "Memory Stream", comp: MemoryWidget },
   remote: { title: "AI Remote", comp: RemoteWidget },
+  collaboration: { title: "Fleet Collaboration", comp: CollaborationWidget },
 };
 
 export const Dashboard = () => {
