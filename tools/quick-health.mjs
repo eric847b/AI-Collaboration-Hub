@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.24.0';
+const TOOL_VERSION = '4.25.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -515,7 +515,8 @@ async function selfTest(io) {
   const q2 = await runCapture(['--only', 'engines', '--quiet']);
   check('--quiet scopes verdict line', q2.out.includes('quick-health:'));
 
-  // Pure helpers (mutation-bite targets).
+  // Suggestion map covers every check id.
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
   check('enginesVerdict 24<26 warns', enginesVerdict('26', '24.0.0').level === 'warn');
   check('enginesVerdict 26>=26 ok', enginesVerdict('26', '26.0.0').level === 'ok');
   check('compareSemver orders', compareSemver([1, 2, 3], [1, 10, 0]) === -1 && compareSemver([2, 0, 0], [1, 99, 99]) === 1);
