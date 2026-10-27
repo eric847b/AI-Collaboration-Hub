@@ -345,6 +345,7 @@ function applyPlan() {
   console.log('patch: ' + applied + ' edit(s) across ' + written + ' lockfile(s), ' + skipped + ' documented skip(s)');
   const residual = computeEdits(); // re-plan against the NEW lockfiles
   const left = residual.flatMap(p => p.edits.map(e => p.rel + ' ' + e.key + ' -> ' + e.target));
+  if (process.argv.includes('--json')) console.log(JSON.stringify({ applied, written, skipped, residual: left.length }));
   if (left.length) { console.error('RESIDUAL FIXABLE VULNERABLE COPIES:\n' + left.join('\n')); process.exit(1); }
   console.log('verify: residual fixable copies = 0');
 }
@@ -395,8 +396,8 @@ const USAGE = [
   '',
   'Flags:',
   '  --self-test  alias for the `selftest` command (repo-wide convention, and what',
-  '  --json       print machine-readable JSON for `selftest` (cases count + result)',
   '               tools/mutation-probe.mjs invokes to prove these cases bite)',
+  '  --json       print machine-readable JSON for `selftest` (cases count + result)',
   '  --help       print this text and exit 0',
   '',
   'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
