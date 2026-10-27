@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.23.0';
+const TOOL_VERSION = '4.24.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -50,6 +50,28 @@ const SUGGESTIONS = {
   contributing: 'add CONTRIBUTING.md',
   devcontainer: 'add .devcontainer/ config',
 };
+let _gitSnapshot = null;
+function gitSnapshot() {
+  if (_gitSnapshot) return _gitSnapshot;
+  const snap = { branch: '', detached: false, dirty: 0, hasOrigin: false, available: true };
+  try {
+    const out = execFileSync('git', ['status', '--porcelain=v2', '--branch'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    for (const line of out.split(/\r?\n/)) {
+      if (line.startsWith('# branch.head ')) { const b = line.slice('# branch.head '.length).trim(); if (b === '(detached)') snap.detached = true; else snap.branch = b; }
+      else if (line.startsWith('# branch.upstream ')) { /* noop */ }
+      else if (line.startsWith('# branch.oid ')) { /* noop */ }
+      else if (line.trim() && !line.startsWith('#')) snap.dirty++;
+    }
+    try {
+      const rem = execFileSync('git', ['remote', '-v'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      snap.hasOrigin = /^origin\s/m.test(rem);
+    } catch (e) { snap.hasOrigin = false; }
+  } catch (e) {
+    snap.available = false;
+  }
+  _gitSnapshot = snap;
+  return snap;
+}
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer'];
 
 export function parseArgs(argv) {
@@ -279,43 +301,26 @@ function checkDashboard() {
 }
 
 function checkGitClean() {
-  let out = '';
-  try {
-    out = execFileSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  } catch (e) {
-    return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: 'git status unavailable', findings: [] };
-  }
-  const lines = out.split(/\r?\n/).filter(Boolean);
-  if (lines.length === 0) return { id: 'gitclean', label: 'gitclean', level: 'ok', detail: 'working tree clean', findings: [] };
-  return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: lines.length + ' uncommitted change(s)', findings: lines.slice(0, 10) };
+  const snap = gitSnapshot();
+  if (!snap.available) return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: 'git status unavailable', findings: [], suggestion: SUGGESTIONS.gitclean };
+  if (snap.dirty === 0) return { id: 'gitclean', label: 'gitclean', level: 'ok', detail: 'working tree clean', findings: [], suggestion: null };
+  return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: snap.dirty + ' uncommitted change(s)', findings: [], suggestion: SUGGESTIONS.gitclean };
 }
 
 function checkBranch() {
-  let branch = '';
-  let detached = false;
-  try {
-    branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-    if (branch === 'HEAD') detached = true;
-  } catch (e) {
-    return { id: 'branch', label: 'branch', level: 'warn', detail: 'git branch unavailable', findings: [] };
-  }
-  if (detached) return { id: 'branch', label: 'branch', level: 'warn', detail: 'detached HEAD', findings: [] };
+  const snap = gitSnapshot();
+  if (!snap.available) return { id: 'branch', label: 'branch', level: 'warn', detail: 'git branch unavailable', findings: [], suggestion: SUGGESTIONS.branch };
+  if (snap.detached) return { id: 'branch', label: 'branch', level: 'warn', detail: 'detached HEAD', findings: [], suggestion: SUGGESTIONS.branch };
   const findings = [];
-  if (branch === 'main' || branch === 'master') findings.push('on default branch (' + branch + ')');
-  return { id: 'branch', label: 'branch', level: findings.length ? 'warn' : 'ok', detail: branch + (findings.length ? ' — ' + findings.join('; ') : ''), findings };
+  if (snap.branch === 'main' || snap.branch === 'master') findings.push('on default branch (' + snap.branch + ')');
+  return { id: 'branch', label: 'branch', level: findings.length ? 'warn' : 'ok', detail: snap.branch + (findings.length ? ' — ' + findings.join('; ') : ''), findings, suggestion: findings.length ? SUGGESTIONS.branch : null };
 }
 
 function checkGitRemote() {
-  let out = '';
-  try {
-    out = execFileSync('git', ['remote', '-v'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  } catch (e) {
-    return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'git remote unavailable', findings: [] };
-  }
-  const lines = out.split(/\r?\n/).filter(Boolean);
-  const hasOrigin = lines.some((l) => /^origin\s/.test(l));
-  if (hasOrigin) return { id: 'gitremote', label: 'gitremote', level: 'ok', detail: 'origin remote configured', findings: [] };
-  return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'no origin remote', findings: lines };
+  const snap = gitSnapshot();
+  if (!snap.available) return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'git remote unavailable', findings: [], suggestion: SUGGESTIONS.gitremote };
+  if (snap.hasOrigin) return { id: 'gitremote', label: 'gitremote', level: 'ok', detail: 'origin remote configured', findings: [], suggestion: null };
+  return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'no origin remote', findings: [], suggestion: SUGGESTIONS.gitremote };
 }
 
 function checkGitIgnore() {
