@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.20.0';
+const TOOL_VERSION = '4.21.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -21,7 +21,7 @@ const FLAG_DECLARATIONS = [
   ['--list', 'print available check ids'],
   ['--self-test', 'run built-in checks and exit'],
 ];
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
@@ -337,6 +337,14 @@ function checkChangelog() {
   return { id: 'changelog', label: 'changelog', level: 'warn', detail: 'no CHANGELOG file', findings: [] };
 }
 
+function checkContributing() {
+  const candidates = ['CONTRIBUTING.md', 'CONTRIBUTING'];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(ROOT, c))) return { id: 'contributing', label: 'contributing', level: 'ok', detail: c + ' present', findings: [] };
+  }
+  return { id: 'contributing', label: 'contributing', level: 'warn', detail: 'no CONTRIBUTING file', findings: [] };
+}
+
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
   if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
@@ -353,7 +361,7 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
