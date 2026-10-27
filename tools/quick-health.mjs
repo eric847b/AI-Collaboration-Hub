@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.22.0';
+const TOOL_VERSION = '4.23.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -48,8 +48,9 @@ const SUGGESTIONS = {
   license: 'add a LICENSE file',
   changelog: 'add CHANGELOG.md',
   contributing: 'add CONTRIBUTING.md',
+  devcontainer: 'add .devcontainer/ config',
 };
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
@@ -373,6 +374,12 @@ function checkContributing() {
   return { id: 'contributing', label: 'contributing', level: 'warn', detail: 'no CONTRIBUTING file', findings: [] };
 }
 
+function checkDevcontainer() {
+  const dir = path.join(ROOT, '.devcontainer');
+  if (!fs.existsSync(dir)) return { id: 'devcontainer', label: 'devcontainer', level: 'warn', detail: '.devcontainer missing', findings: [] };
+  return { id: 'devcontainer', label: 'devcontainer', level: 'ok', detail: '.devcontainer present', findings: [] };
+}
+
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
   if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
@@ -389,7 +396,7 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
