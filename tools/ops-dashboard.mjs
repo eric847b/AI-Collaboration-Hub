@@ -600,6 +600,7 @@ const sections = [
   flakeSection(),
   toolOutputSection('parity', 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check'),
   toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
+  toolOutputSection('quickhealth', 'Quick Health Triage', 'node tools/quick-health.mjs'),
   extensionSection(),
   machineReportsSection(),
   telemetrySinkSection(),
