@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.21.0';
+const TOOL_VERSION = '4.22.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -21,6 +21,34 @@ const FLAG_DECLARATIONS = [
   ['--list', 'print available check ids'],
   ['--self-test', 'run built-in checks and exit'],
 ];
+const SUGGESTIONS = {
+  configs: 'npm run gate',
+  workflows: 'actionlint .github/workflows/*.yml',
+  lockfiles: 'npm install (regenerate lockfiles)',
+  engines: 'install Node >=26 (see .nvmrc)',
+  hooks: 'restore .husky/pre-commit',
+  handoff: 'write .renitor/handoff-result.json',
+  handoffmd: 'regenerate .renitor/current-handoff.md',
+  wiring: 'restore tools/workspace-gate.ps1 + parity map',
+  bloat: 'node tools/repo-bloat.mjs collect',
+  stray: 'remove stray dotfiles in tools/',
+  dashboard: 'node tools/ops-dashboard.mjs',
+  tmpfiles: 'rm -rf tools/.tmp',
+  nodemodules: 'npm install',
+  roadmap: 'restore docs/ROADMAP.md (## 2. Open Work)',
+  status: 'regenerate docs/STATUS.md',
+  verifytools: 'restore tools/verify-tools.mjs',
+  agentsmd: 'restore AGENTS.md',
+  gitclean: 'git add/commit or stash',
+  branch: 'git checkout a feature branch',
+  gitremote: 'git remote add origin <url>',
+  gitignore: 'add node_modules/.env to .gitignore',
+  rootpkg: 'fix root package.json',
+  readme: 'add README.md',
+  license: 'add a LICENSE file',
+  changelog: 'add CHANGELOG.md',
+  contributing: 'add CONTRIBUTING.md',
+};
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing'];
 
 export function parseArgs(argv) {
@@ -365,6 +393,7 @@ const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, chec
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
+  checks = checks.map((c) => ({ ...c, suggestion: c.level === 'ok' ? null : (SUGGESTIONS[c.id] || null) }));
   if (opts.only?.length) {
     const unknown = opts.only.filter((id) => !ALL_CHECK_IDS.includes(id));
     if (unknown.length) return { usageError: `unknown check id(s): ${unknown.join(', ')} (use --list)` };
@@ -400,7 +429,10 @@ export async function run(argv, io = { stdout: (s) => process.stdout.write(s), s
     return report.exit;
   }
   io.stdout(`quick-health v${TOOL_VERSION} — ${report.checks.length} checks\n`);
-  for (const c of report.checks) io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}\n`);
+  for (const c of report.checks) {
+    io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}\n`);
+    if (c.suggestion) io.stdout(`         -> ${c.suggestion}\n`);
+  }
   io.stdout(`verdict: ${report.verdict}${opts.strict ? ' (strict)' : ''}\n`);
   return report.exit;
 }
