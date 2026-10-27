@@ -3,7 +3,7 @@ import { Activity, RefreshCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Resource = { id: string; status?: string; remaining: number | null; quota: number | null; hours_to_refill: number | null; score?: number; schedulable?: boolean };
-type Metrics = { schema: string; generated_at: string; summary?: Record<string, number | null>; providers?: { id: string; status: string }[]; rankings_by_task?: Record<string, Resource[]> };
+type Metrics = { schema: string; generated_at: string; summary?: Record<string, number | null>; providers?: { id: string; status: string }[]; provider_tally?: Record<string, { calls?: number; successes?: number; failures?: number; total_tokens?: number }>; rankings_by_task?: Record<string, Resource[]> };
 const URL = "https://eric847b.github.io/autonomous-github-agent/profile-snapshot.json";
 export function CollaborationWidget() {
  const [data,setData]=useState<Metrics|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[key,setKey]=useState(0);
@@ -14,8 +14,9 @@ export function CollaborationWidget() {
   <div className="flex items-center justify-between gap-2 mb-3"><div className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-neon-cyan"/>Fleet Collaboration</div><Button size="sm" variant="ghost" onClick={()=>{setBusy(true);setError("");setKey(n=>n+1);}} disabled={busy}><RefreshCw className={"h-3.5 w-3.5 "+(busy?"animate-spin":"")}/></Button></div>
   {error&&<p className="text-destructive text-xs">{error}</p>}
   {!data&&!error&&<p className="text-xs text-muted-foreground">{busy?"Loading shared metrics…":"No metrics yet."}</p>}
-  {data&&<><div className="grid grid-cols-2 gap-2 mb-3">{[["Providers ready",s.providers_available],["Calls",s.provider_calls],["Failures",s.provider_failures],["Rotations",s.provider_rotations],["Measured quotas",s.resources_with_measured_remaining],["Handoffs queued",s.handoffs_queued]].map(([label,value])=><div key={String(label)} className="rounded-md border border-border/50 p-2"><div className="text-lg font-semibold">{value??"Unknown"}</div><div className="text-[10px] text-muted-foreground">{label}</div></div>)}</div>
+  {data&&<><div className="grid grid-cols-2 gap-2 mb-3">{[["Providers ready",s.providers_available],["Calls",s.provider_calls],["Failures",s.provider_failures],["Rotations",s.provider_rotations],["Tokens",s.provider_total_tokens],["Measured quotas",s.resources_with_measured_remaining],["Handoffs queued",s.handoffs_queued]].map(([label,value])=><div key={String(label)} className="rounded-md border border-border/50 p-2"><div className="text-lg font-semibold">{value??"Unknown"}</div><div className="text-[10px] text-muted-foreground">{label}</div></div>)}</div>
   <div className="flex flex-wrap gap-1 mb-3">{(data.providers||[]).map(p=><span key={p.id} className="rounded border px-1.5 py-0.5 text-[10px]">{p.id}:{p.status}</span>)}</div>
+  <div className="space-y-1 mb-3">{Object.entries(data.provider_tally||{}).map(([name,t])=><div key={name} className="flex justify-between gap-2 text-[10px] border-b border-border/30 pb-1"><span>{name} · calls {t.calls??"?"} · fail {t.failures??"?"}</span><span className="text-muted-foreground">tokens {t.total_tokens??"?"}</span></div>)}</div>
   <div className="text-xs font-medium mb-1 flex items-center gap-1"><Activity className="h-3 w-3"/>Best renewal-aware candidates</div>
   {resources.map(r=><div key={r.id} className="flex items-center justify-between gap-2 border-t border-border/40 py-1.5 text-xs"><span className="truncate">{r.id}</span><span className="shrink-0 text-muted-foreground">{r.remaining??"?"}/{r.quota??"?"} · {r.hours_to_refill==null?"reset ?":r.hours_to_refill+"h"} · {r.schedulable?r.score:"—"}</span></div>)}
   <p className="mt-2 text-[10px] text-muted-foreground">Updated {new Date(data.generated_at).toLocaleString()}. Unknown quotas are not assumed unlimited.</p></>}
