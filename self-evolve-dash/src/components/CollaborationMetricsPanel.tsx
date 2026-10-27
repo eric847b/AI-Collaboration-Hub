@@ -9,8 +9,8 @@ function dedupe(metrics: CollaborationMetrics): CollaborationResource[] {
  return [...map.values()].sort((a,b) => (b.score || 0) - (a.score || 0)).slice(0,12);
 }
 export function CollaborationMetricsPanel() {
- const [metrics,setMetrics]=useState<CollaborationMetrics|null>(null),[error,setError]=useState(""),[loading,setLoading]=useState(false),[refresh,setRefresh]=useState(0);
- const load=useCallback(async(signal?:AbortSignal)=>{setLoading(true);setError("");try{setMetrics(await fetchCollaborationMetrics(signal));}catch(e){if(!(e instanceof DOMException&&e.name==="AbortError"))setError(e instanceof Error?e.message:"Metrics unavailable");}finally{setLoading(false);}},[]);
+ const [metrics,setMetrics]=useState<CollaborationMetrics|null>(null),[error,setError]=useState(""),[loading,setLoading]=useState(true),[refresh,setRefresh]=useState(0);
+ const load=useCallback(async(signal?:AbortSignal)=>{try{setMetrics(await fetchCollaborationMetrics(signal));}catch(e){if(!(e instanceof DOMException&&e.name==="AbortError"))setError(e instanceof Error?e.message:"Metrics unavailable");}finally{setLoading(false);}},[]);
  useEffect(()=>{const c=new AbortController();void load(c.signal);return()=>c.abort();},[load,refresh]);
  const s=metrics?.summary||{},resources=useMemo(()=>metrics?dedupe(metrics):[],[metrics]);
  return <Card><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5"/>Fleet collaboration</CardTitle><Button variant="outline" size="sm" disabled={loading} onClick={()=>setRefresh(n=>n+1)}><RefreshCw className="h-4 w-4 mr-2"/>Refresh</Button></CardHeader><CardContent className="space-y-4">
