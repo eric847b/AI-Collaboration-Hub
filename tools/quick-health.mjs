@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.25.0';
+const TOOL_VERSION = '4.26.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -434,7 +434,7 @@ export async function run(argv, io = { stdout: (s) => process.stdout.write(s), s
   if (opts.selfTest) return selfTest(io);
   const report = buildReport(opts);
   if (report.usageError) { io.stderr(`quick-health: ${report.usageError}\n`); return 2; }
-  if (opts.json) { io.stdout(JSON.stringify(report) + '\n'); return report.exit; }
+  if (opts.json) { io.stdout(JSON.stringify({ ...report, generatedAt: new Date().toISOString() }) + '\n'); return report.exit; }
   if (opts.quiet) {
     const okCount = report.checks.filter((c) => c.level === 'ok').length;
     io.stdout(`quick-health: ${report.verdict} (${report.checks.length} checks: ${okCount} ok, ${report.warn.length} warn, ${report.fail.length} fail)\n`);
