@@ -83,7 +83,7 @@ const SMOKE = {
   'repo-bloat.mjs': ['report', '--limit', '1'],
   'flake-tracker.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],
-  'quick-health.mjs': [],
+  'quick-health.mjs': ['--self-test'],
   'telemetry-collector.mjs': ['report', '--limit', '1'],
   'telemetry-export.mjs': ['--self-test'],
   // Cheap and read-only on purpose: a bare run would spawn every probed tool's
