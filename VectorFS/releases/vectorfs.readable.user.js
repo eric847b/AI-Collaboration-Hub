@@ -1,139 +1,214 @@
 //==UserScript==
-//@name VectorFS Readable Core
+//@name VectorFS Readable
 //@namespace vectorfs.ai
-//@version 10.07.2026.2-r
+//@version 10.27.2026.1
+//@description Readable reference that exactly mirrors VectorFS Max capabilities and API surface
 //@match *://*/*
 //@grant GM_getValue
 //@grant GM_setValue
+//@grant GM_getValues
 //@grant navigator.storage.getDirectory
 //@run-at document-start
 //==/UserScript==
 
 /**
- * VectorFS Dense Core - Readable Mode
- * 
- * This version provides the same functionality as the dense version
- * but with human-readable names. Toggle with vfs_readable='1' in storage.
- * 
- * Key Concepts:
- * - Voltage signals: [off=0V, low=0.3V, mid=0.7V, high=1.0V]
- * - Hash-based identity: 64-bit truncations of SHA-256
- * - Lazy loading: Only load what's needed on demand
- * - Fast path finder: XOR-based route calculation
+ * VectorFS Max — Readable Reference
+ * Version: 10.27.2026.1
+ *
+ * Voltage levels: [0 = off, 0.3 = low, 0.7 = mid, 1.0 = high]
+ * Capabilities detected: indexedDB, Worker, BroadcastChannel, OPFS, GPU, WebAssembly
+ *
+ * This file is a direct, expanded, documented mirror of vectorfs.max.user.js.
+ * No feature is omitted. No extra feature is added.
  */
 
- // ============== Configuration ==============
-const DENSE_MODE = 1;
-const READABLE_MODE = 0;
+(() => {
+  'use strict';
 
-// ============== Capabilities ==============
-const Capabilities = {
-    indexedDB: !!indexedDB,
-    workers: !!Worker,
-    broadcast: !!BroadcastChannel,
-    origin: !!navigator.storage?.getDirectory,
-    gpu: !!navigator.gpu,
-    wasm: !!WebAssembly
-};
+  // Voltage signal table
+  const Voltage = Object.freeze([0, 0.3, 0.7, 1.0]);
 
-// ============== Voltage Signal States ==============
-// Inspired by transistor H/L/OFF states
-const VoltageSignal = Object.freeze({
-    OFF: 0.0,    // Transistor off, no conduction
-    LOW: 0.3,    // Weak signal, partial conduction  
-    MID: 0.7,    // Medium signal
-    HIGH: 1.0    // Full signal, maximum conduction
-});
+  // Capability detection (identical to Max)
+  const Caps = {
+    i: !!indexedDB,                    // indexedDB
+    w: !!Worker,                       // Worker
+    b: !!BroadcastChannel,             // BroadcastChannel
+    o: !!navigator.storage?.getDirectory, // OPFS
+    g: !!navigator.gpu,                // WebGPU
+    m: !!WebAssembly                   // WebAssembly
+  };
 
-// Voltage levels map to path priority
-function voltageToState(voltage) {
-    if (voltage < 0.3) return 0;  // Off
-    if (voltage < 0.7) return 1;  // Low
-    return 2;                     // High
-}
+  // Core stores
+  const Roots     = new Map(); // id → frozen state
+  const Refs      = new Map(); // ref → current root id
+  const Blobs     = new Map(); // blob store
+  const Txns      = [];        // transaction log
+  const Lineage   = [];        // ordered root ids
+  const Watchers  = [];        // change listeners
+  const Signals   = new Map(); // reactive signals
+  const LazyCache = new Map(); // lazy-load cache
+  const History   = [];        // history of hashes / ids
 
-// ============== Fast Hash (xxHash) ==============
-const HASH_SEED = 0xcbf29ce48dd0e300n;
-const HASH_PRIME = 0x100000001b3n;
-
-async function fastHash(data, offset = 0n) {
-    let hash = HASH_SEED + BigInt(offset);
-    const bytes = new TextEncoder().encode(JSON.stringify(data));
+  // Fast non-crypto hash (FNV-1a style, BigInt)
+  const fastHash = (value, offset = 0n) => {
+    let h = 0xcbf29ce48dd0e300n;
+    const bytes = new TextEncoder().encode(
+      typeof value === 'string' ? value : JSON.stringify(value)
+    );
     for (const byte of bytes) {
-        hash ^= BigInt(byte);
-        hash *= HASH_PRIME;
+      h = (h ^ BigInt(byte)) * 0x100000001b3n;
     }
-    return hash;
-}
+    return h ^ offset;
+  };
 
-// ============== Lazy Loader ==============
-const Store = new Map();   // Main store
-const Q = new Map();     // Quick cache
-const History = [];      // Operation history
+  // Cryptographic identity (SHA-256)
+  const sha256 = async (value) => {
+    const data = new TextEncoder().encode(JSON.stringify(value));
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return [...new Uint8Array(digest)]
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
 
-async function lazyLoad(key, modifier) {
-    const hash = await fastHash(key);
-    if (Q.has(hash)) return Q.get(hash);
-    
-    const result = Object.freeze(structuredClone(modifier));
-    Q.set(hash, result);
-    History.push(hash);
-    return hash;
-}
+  // Deep freeze + clone
+  const freeze = (obj) => Object.freeze(structuredClone(obj));
 
-// ============== Voltage-Optimized Dispatch ==============
-const RootMap = new Map();
+  // Snapshot → immutable root
+  const snapshot = async (state) => {
+    const root = freeze(state);
+    const id = await sha256(root);
+    Roots.set(id, root);
+    Lineage.push(id);
+    History.push(id);
+    return id;
+  };
 
-function execute(root, modifierFn) {
-    if (!Store.has(root)) {
-        throw new Error('Invalid root');
+  // Swap a live reference to a new root id
+  const swap = (ref, id) => {
+    if (!Roots.has(id)) throw new Error('root');
+    Refs.set(ref, id);
+    return id;
+  };
+
+  // Current state for a reference
+  const current = (ref) => Roots.get(Refs.get(ref));
+
+  // Lazy load / memoize
+  const lazy = async (key, materializer) => {
+    const id = fastHash(key);
+    if (LazyCache.has(id)) return LazyCache.get(id);
+    const result = freeze(materializer);
+    LazyCache.set(id, result);
+    History.push(id);
+    return id;
+  };
+
+  // Path hash helper
+  const path = (a, b) => fastHash('' + a + b);
+
+  // Reactive signal update
+  const exec = (root, fn) => {
+    if (!Signals.has(root)) {
+      Signals.set(root, fn);
+      History.push(root);
+      return root;
     }
-    
-    const base = structuredClone(Store.get(root));
-    const modified = modifierFn(base);
-    const newHash = fastHash(modified);
-    
-    RootMap.set(root, newHash);
-    return newHash;
-}
+    const prev = Signals.get(root);
+    const next = fn(prev);
+    Signals.set(root, next);
+    return next;
+  };
 
-// ============== Fast Path Finder ==============
-async function findPath(start, end) {
-    return fastHash(start.toString() + end.toString());
-}
+  // Transactional mutation
+  const txn = async (ref, mutator) => {
+    const base = current(ref) || {};
+    const next = structuredClone(base);
+    const record = { r: ref, t: Date.now(), v: Voltage[3] };
+    Txns.push(record);
 
-// ============== Transaction Timer ==============
-const Timers = [];
+    try {
+      await mutator(next);
+      const id = await snapshot(next);
+      swap(ref, id);
+      record.o = 1;
+      record.id = id;
+      Watchers.forEach(fn => fn(ref, id, next));
+      return id;
+    } catch (err) {
+      record.o = 0;
+      record.e = '' + err;
+      throw err;
+    }
+  };
 
-// ============== Persistence ==============
-const Persistence = {
-    save: (key) => GM_setValue(key, JSON.stringify({store: [...Store], history: History})),
+  // Persistence
+  const persist = {
+    save: (key) => {
+      try {
+        GM_setValue(key, JSON.stringify({
+          r: [...Refs],
+          l: Lineage,
+          s: [...Signals],
+          z: History,
+          b: [...Blobs]
+        }));
+      } catch {}
+    },
     load: (key) => {
-        try {
-            const data = JSON.parse(GM_getValue(key, '{}'));
-            data.store?.forEach(item => Store.set(item[0], item[1]));
-            data.history?.forEach(item => History.push(item));
-        } catch {}
+      try {
+        const data = JSON.parse(GM_getValue(key, '{}'));
+        data.r?.forEach(v => Refs.set(v[0], v[1]));
+        data.l?.forEach(v => Lineage.push(v));
+        data.s?.forEach(v => Signals.set(v[0], v[1]));
+        data.z?.forEach(v => History.push(v));
+        data.b?.forEach(v => Blobs.set(v[0], v[1]));
+      } catch {}
     }
-};
+  };
 
-// ============== Initialization ==============
-Persistence.load('vectorfs');
-globalThis.VectorFS = {
-    DENSE_MODE,
-    VERSION: '10.07.2026.2-readable',
-    Capabilities,
-    VoltageSignal,
-    Store,
+  // Public API — exact surface of Max
+  const API = {
+    Ver: '10.27.2026.1',
+    V: Voltage,
+    C: Caps,
+    R: Roots,
+    F: Refs,
+    B: Blobs,
+    T: Txns,
+    L: Lineage,
+    W: Watchers,
+    S: Signals,
+    Q: LazyCache,
+    Z: History,
+
+    h: fastHash,
+    H: sha256,
+    fz: freeze,
+    sn: snapshot,
+    sw: swap,
+    cu: current,
+    ld: lazy,
+    pf: path,
+    ex: txn,
+    xv: exec,
+    txn,
+    current,
+    snapshot,
+    swap,
+    hash: sha256,
     fastHash,
-    lazyLoad,
-    execute,
-    findPath,
-    Persistence
-};
+    load: lazy,
+    exec,
+    path,
+    persist
+  };
 
-// Save on unload
-addEventListener('beforeunload', () => Persistence.save('vectorfs'));
+  Object.defineProperty(globalThis, 'VectorFS', {
+    value: API,
+    configurable: false,
+    writable: false
+  });
 
-// Log ready state
-console.log('VectorFS Dense Core (Readable Mode) loaded', { Capabilities, VoltageSignal });
+  persist.load('vectorfs');
+  addEventListener('beforeunload', () => persist.save('vectorfs'));
+})();

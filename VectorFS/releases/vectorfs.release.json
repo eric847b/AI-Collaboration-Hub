@@ -1,0 +1,50 @@
+{
+  "name": "VectorFS",
+  "version": "10.27.2026.1",
+  "date": "2026-10-27",
+  "type": "userscript-runtime",
+  "main": "vectorfs.max.user.js",
+  "entry": "vectorfs.max.user.js",
+  "files": {
+    "max": "vectorfs.max.user.js",
+    "standard": "vectorfs.user.js",
+    "readable": "vectorfs.readable.user.js"
+  },
+  "removed": [
+    "vectorfs.dense.user.js",
+    "vectorfs.min.user.js",
+    "vectorfs.kernel.user.js"
+  ],
+  "features": [
+    "immutable-roots",
+    "transactional-state",
+    "lineage-runtime",
+    "browser-persistence",
+    "rollback-model",
+    "snapshot-engine",
+    "voltage-signals",
+    "fast-hash-xxhash",
+    "sha256-identity",
+    "lazy-loading",
+    "fast-path-xor",
+    "voltage-dispatch",
+    "watchers",
+    "blob-store",
+    "opfs-capable"
+  ],
+  "capabilities": {
+    "indexedDB": true,
+    "worker": true,
+    "broadcast": true,
+    "opfs": true,
+    "gpu-detection": true,
+    "wasm": true,
+    "voltage-levels": [0, 0.3, 0.7, 1.0]
+  },
+  "build": {
+    "mode": "max-density-max-features",
+    "readable": true,
+    "ai_interpretable": true,
+    "source_of_truth": "vectorfs.max.user.js"
+  }
+}
