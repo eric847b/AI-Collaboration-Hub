@@ -21,7 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Boolean flags only; unknown flags and stray positionals exit 2 instead
 // of being silently ignored. No stdin prompts, ever.
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--json', '--self-test']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -52,10 +52,11 @@ function usage() {
     [
       'check-doc-links.mjs — verify relative links in tracked Markdown resolve (non-interactive)',
       '',
-      'Usage: node tools/check-doc-links.mjs [--quiet]',
+      'Usage: node tools/check-doc-links.mjs [--quiet] [--json]',
       '',
       'Flags:',
       '  --quiet   only print broken links (no summary line)',
+      '  --json    emit machine-readable JSON (files, checked, broken, brokenLinks[])',
       '  --self-test prove the scanners fire on synthetic fixtures and exit',
       '  --help    print this text and exit 0',
       '',
@@ -180,6 +181,11 @@ function runSelfTest() {
   check('--help exits 0', cli(['--help']).code, 0);
   check('unknown flag exits 2', cli(['--nope']).code, 2);
   check('unexpected positional exits 2', cli(['extra']).code, 2);
+  const jr = cli(['--json']);
+  check('--json exits 0', jr.code, 0);
+  let jok = false;
+  try { const j = JSON.parse(jr.out); jok = Array.isArray(j.brokenLinks) && typeof j.files === 'number'; } catch { jok = false; }
+  check('--json emits parseable JSON', jok, true);
 
   const failed = cases.filter((c) => !c.pass);
   for (const c of failed) {
@@ -195,8 +201,10 @@ function runSelfTest() {
 if (flags['--self-test'] === true) runSelfTest();
 
 const files = walk(ROOT, []);
+const jsonMode = flags['--json'] === true;
 let broken = 0;
 let checked = 0;
+const brokenLinks = [];
 for (const file of files) {
   const relFile = path.relative(ROOT, file).split(path.sep).join('/');
   const text = fs.readFileSync(file, 'utf8');
@@ -204,9 +212,14 @@ for (const file of files) {
     checked += 1;
     if (!row.exists) {
       broken += 1;
-      console.log(`BROKEN  ${relFile}  ->  ${row.raw}`);
+      brokenLinks.push({ file: relFile, target: row.target, raw: row.raw });
+      if (!jsonMode) console.log(`BROKEN  ${relFile}  ->  ${row.raw}`);
     }
   }
 }
-if (!quiet) console.log(`\ncheck-doc-links: ${files.length} markdown files, ${checked} relative links checked, ${broken} broken`);
+if (jsonMode) {
+  console.log(JSON.stringify({ files: files.length, checked, broken, brokenLinks }, null, 2));
+} else if (!quiet) {
+  console.log(`\ncheck-doc-links: ${files.length} markdown files, ${checked} relative links checked, ${broken} broken`);
+}
 process.exit(broken > 0 ? 1 : 0);
