@@ -3,7 +3,7 @@ import { Activity, RefreshCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Resource = { id: string; status?: string; remaining: number | null; quota: number | null; hours_to_refill: number | null; score?: number; schedulable?: boolean };
-type Metrics = { schema: string; generated_at: string; summary?: Record<string, number | null>; providers?: { id: string; status: string }[]; provider_tally?: Record<string, { calls?: number; successes?: number; failures?: number; usage_reports?: number; total_tokens?: number }>; rankings_by_task?: Record<string, Resource[]> };
+type Metrics = { schema: string; generated_at: string; summary?: Record<string, number | null>; providers?: { id: string; status: string }[]; provider_tally?: Record<string, { calls?: number; successes?: number; failures?: number; usage_reports?: number; total_tokens?: number }>; rankings_by_task?: Record<string, Resource[]>; policy?: { resource_ranking_free_only?: boolean; paid_api_fallback_enabled?: boolean } };
 const URL = "https://eric847b.github.io/autonomous-github-agent/profile-snapshot.json";
 export function CollaborationWidget() {
  const [data,setData]=useState<Metrics|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[key,setKey]=useState(0);
@@ -19,6 +19,6 @@ export function CollaborationWidget() {
   <div className="space-y-1 mb-3">{Object.entries(data.provider_tally||{}).map(([name,t])=><div key={name} className="flex justify-between gap-2 text-[10px] border-b border-border/30 pb-1"><span>{name} · calls {t.calls??"?"} · fail {t.failures??"?"}</span><span className="text-muted-foreground">tokens {(t.usage_reports||0)>0?t.total_tokens??"?":"unreported"}</span></div>)}</div>
   <div className="text-xs font-medium mb-1 flex items-center gap-1"><Activity className="h-3 w-3"/>Best renewal-aware candidates</div>
   {resources.map(r=><div key={r.id} className="flex items-center justify-between gap-2 border-t border-border/40 py-1.5 text-xs"><span className="truncate">{r.id}</span><span className="shrink-0 text-muted-foreground">{r.remaining??"?"}/{r.quota??"?"} · {r.hours_to_refill==null?"reset ?":r.hours_to_refill+"h"} · {r.schedulable?r.score:"—"}</span></div>)}
-  <p className="mt-2 text-[10px] text-muted-foreground">Updated {new Date(data.generated_at).toLocaleString()}. Unknown quotas are not assumed unlimited.</p></>}
+  <p className="mt-2 text-[10px] text-muted-foreground">Updated {new Date(data.generated_at).toLocaleString()}. Free-only resource ranking: {String(data.policy?.resource_ranking_free_only??true)} · OpenAI API fallback: {String(data.policy?.paid_api_fallback_enabled??false)}. Unknown quotas are not assumed unlimited.</p></>}
  </div>;
 }
