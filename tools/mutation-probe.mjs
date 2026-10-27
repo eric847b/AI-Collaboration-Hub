@@ -755,7 +755,20 @@ function runProbeSelfTest() {
   console.log('mutation-probe self-test: 13/13 passed');
 }
 
+function sweepStaleArtifacts() {
+  let swept = 0;
+  try {
+    for (const e of fs.readdirSync(TOOLS_DIR)) {
+      if (e.startsWith('.mutation-probe-')) {
+        try { fs.rmSync(path.join(TOOLS_DIR, e), { force: true, recursive: true }); swept += 1; } catch { }
+      }
+    }
+  } catch { }
+  if (swept > 0) console.error(`mutation-probe: swept ${swept} stale artifact(s) from a prior run`);
+}
+
 function main() {
+  sweepStaleArtifacts();
   let sel;
   try {
     sel = parseArgs(process.argv.slice(2));

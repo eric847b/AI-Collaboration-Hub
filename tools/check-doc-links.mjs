@@ -56,7 +56,7 @@ function usage() {
       '',
       'Flags:',
       '  --quiet   only print broken links (no summary line)',
-      '  --json    emit machine-readable JSON (files, checked, broken, brokenLinks[])',
+      '  --json    emit machine-readable JSON (files, checked, broken, brokenLinks[] with line numbers)',
       '  --self-test prove the scanners fire on synthetic fixtures and exit',
       '  --help    print this text and exit 0',
       '',
@@ -118,7 +118,8 @@ function scanLinks(text, fileAbs) {
     if (!isCheckableLink(raw)) continue;
     const target = decodeURIComponent(raw.split('#')[0]);
     const abs = path.resolve(path.dirname(fileAbs), target);
-    rows.push({ raw, target, abs, exists: fs.existsSync(abs) });
+    const line = text.slice(0, m.index).split('\n').length;
+    rows.push({ raw, target, abs, exists: fs.existsSync(abs), line });
   }
   return rows;
 }
@@ -212,7 +213,7 @@ for (const file of files) {
     checked += 1;
     if (!row.exists) {
       broken += 1;
-      brokenLinks.push({ file: relFile, target: row.target, raw: row.raw });
+      brokenLinks.push({ file: relFile, target: row.target, raw: row.raw, line: row.line });
       if (!jsonMode) console.log(`BROKEN  ${relFile}  ->  ${row.raw}`);
     }
   }

@@ -6,10 +6,11 @@
 // Tiers: ok=0, warn=0 (1 with --strict), fail=1, bad usage=2 (D-contract).
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.1.0';
+const TOOL_VERSION = '4.14.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -20,7 +21,7 @@ const FLAG_DECLARATIONS = [
   ['--list', 'print available check ids'],
   ['--self-test', 'run built-in checks and exit'],
 ];
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'wiring', 'bloat'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
@@ -162,6 +163,119 @@ function checkWiring() {
   return { id: 'wiring', label: 'wiring', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || 'gate script + parity map present', findings };
 }
 
+function checkStray() {
+  const dir = path.join(ROOT, 'tools');
+  const stray = [];
+  try {
+    for (const f of fs.readdirSync(dir)) {
+      if (f.startsWith('.') && /\.(mjs|cjs|ps1|json)$/.test(f)) stray.push(f);
+    }
+  } catch (e) {
+    return { id: 'stray', label: 'stray', level: 'warn', detail: `tools/ unreadable: ${e.message}`, findings: [e.message] };
+  }
+  if (stray.length === 0) return { id: 'stray', label: 'stray', level: 'ok', detail: 'no stray dotfiles in tools/', findings: [] };
+
+
+  return { id: 'stray', label: 'stray', level: 'warn', detail: `${stray.length} stray dotfile(s) in tools/ (${stray.slice(0, 3).join(', ')}${stray.length > 3 ? ', ...' : ''})`, findings: stray };
+}
+
+function checkHandoffMd() {
+  const file = path.join(ROOT, '.renitor', 'current-handoff.md');
+  if (!fs.existsSync(file)) return { id: 'handoffmd', label: 'handoffmd', level: 'warn', detail: '.renitor/current-handoff.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 50) return { id: 'handoffmd', label: 'handoffmd', level: 'warn', detail: 'current-handoff.md suspiciously short', findings: [] };
+  return { id: 'handoffmd', label: 'handoffmd', level: 'ok', detail: 'current-handoff.md present', findings: [] };
+}
+
+function checkAgentsMd() {
+  const file = path.join(ROOT, 'AGENTS.md');
+  if (!fs.existsSync(file)) return { id: 'agentsmd', label: 'agentsmd', level: 'warn', detail: 'AGENTS.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 100) return { id: 'agentsmd', label: 'agentsmd', level: 'warn', detail: 'AGENTS.md suspiciously short', findings: [] };
+  return { id: 'agentsmd', label: 'agentsmd', level: 'ok', detail: 'AGENTS.md present', findings: [] };
+}
+
+function checkVerifyTools() {
+  const file = path.join(ROOT, 'tools', 'verify-tools.mjs');
+  if (!fs.existsSync(file)) return { id: 'verifytools', label: 'verifytools', level: 'warn', detail: 'tools/verify-tools.mjs missing', findings: [] };
+  return { id: 'verifytools', label: 'verifytools', level: 'ok', detail: 'verify-tools.mjs present', findings: [] };
+}
+
+function checkStatus() {
+  const file = path.join(ROOT, 'docs', 'STATUS.md');
+  if (!fs.existsSync(file)) return { id: 'status', label: 'status', level: 'warn', detail: 'docs/STATUS.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 100) return { id: 'status', label: 'status', level: 'warn', detail: 'STATUS.md suspiciously short', findings: [] };
+  return { id: 'status', label: 'status', level: 'ok', detail: 'STATUS.md present', findings: [] };
+}
+
+function checkRoadmap() {
+  const file = path.join(ROOT, 'docs', 'ROADMAP.md');
+  if (!fs.existsSync(file)) return { id: 'roadmap', label: 'roadmap', level: 'warn', detail: 'docs/ROADMAP.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (!raw.includes('## 2. Open Work')) return { id: 'roadmap', label: 'roadmap', level: 'warn', detail: 'ROADMAP.md lacks open-work section', findings: [] };
+  return { id: 'roadmap', label: 'roadmap', level: 'ok', detail: 'ROADMAP.md present', findings: [] };
+}
+
+function checkNodeModules() {
+  const dir = path.join(ROOT, 'node_modules');
+  if (!fs.existsSync(dir)) return { id: 'nodemodules', label: 'nodemodules', level: 'warn', detail: 'node_modules missing (run: npm install)', findings: [] };
+  const pkg = path.join(dir, '.package-lock.json');
+  return { id: 'nodemodules', label: 'nodemodules', level: 'ok', detail: 'node_modules present', findings: [] };
+}
+
+function checkTmpFiles() {
+  const dir = path.join(ROOT, 'tools', '.tmp');
+  if (!fs.existsSync(dir)) return { id: 'tmpfiles', label: 'tmpfiles', level: 'ok', detail: 'no tools/.tmp directory', findings: [] };
+  const files = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else files.push(path.relative(ROOT, p));
+    }
+  };
+  try { walk(dir); } catch (e) { return { id: 'tmpfiles', label: 'tmpfiles', level: 'warn', detail: `tools/.tmp unreadable: ${e.message}`, findings: [e.message] }; }
+  if (files.length === 0) return { id: 'tmpfiles', label: 'tmpfiles', level: 'ok', detail: 'tools/.tmp empty', findings: [] };
+  return { id: 'tmpfiles', label: 'tmpfiles', level: 'warn', detail: `${files.length} file(s) in tools/.tmp (${files.slice(0, 2).join(', ')}${files.length > 2 ? ', ...' : ''})`, findings: files };
+}
+
+function checkDashboard() {
+  const file = path.join(ROOT, 'docs', 'metrics', 'OPS-DASHBOARD.md');
+  if (!fs.existsSync(file)) return { id: 'dashboard', label: 'dashboard', level: 'warn', detail: 'OPS-DASHBOARD.md missing (run: node tools/ops-dashboard.mjs)', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (!raw.includes('<!-- ops-section:')) return { id: 'dashboard', label: 'dashboard', level: 'warn', detail: 'OPS-DASHBOARD.md lacks section markers (regenerate)', findings: [] };
+  const stamps = [...raw.matchAll(/<!-- ops-section:[a-z-]+ ts:([^ ]+) -->/g)].map((m) => m[1]);
+  return { id: 'dashboard', label: 'dashboard', level: 'ok', detail: `OPS-DASHBOARD.md present (${stamps.length} sections)`, findings: [] };
+}
+
+function checkGitClean() {
+  let out = '';
+  try {
+    out = execFileSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch (e) {
+    return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: 'git status unavailable', findings: [] };
+  }
+  const lines = out.split(/\r?\n/).filter(Boolean);
+  if (lines.length === 0) return { id: 'gitclean', label: 'gitclean', level: 'ok', detail: 'working tree clean', findings: [] };
+  return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: lines.length + ' uncommitted change(s)', findings: lines.slice(0, 10) };
+}
+
+function checkBranch() {
+  let branch = '';
+  let detached = false;
+  try {
+    branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (branch === 'HEAD') detached = true;
+  } catch (e) {
+    return { id: 'branch', label: 'branch', level: 'warn', detail: 'git branch unavailable', findings: [] };
+  }
+  if (detached) return { id: 'branch', label: 'branch', level: 'warn', detail: 'detached HEAD', findings: [] };
+  const findings = [];
+  if (branch === 'main' || branch === 'master') findings.push('on default branch (' + branch + ')');
+  return { id: 'branch', label: 'branch', level: findings.length ? 'warn' : 'ok', detail: branch + (findings.length ? ' — ' + findings.join('; ') : ''), findings };
+}
+
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
   if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
@@ -178,7 +292,7 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkWiring, checkBloat];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
@@ -265,6 +379,28 @@ async function selfTest(io) {
   check('default run exits 0 or 1', normal.code === 0 || normal.code === 1, `got ${normal.code}`);
   check('default run prints per-check lines', normal.out.includes('quick-health v'));
   check('all output modes agree on exit code', normal.code === json.code && quiet.code === json.code);
+
+  // --only scoping works for EVERY check id (not just 'engines').
+  for (const id of ALL_CHECK_IDS) {
+    const r = await runCapture(['--only', id, '--json']);
+    check(`--only ${id} never exits 2`, r.code === 0 || r.code === 1, `got ${r.code}`);
+    let parsed = null;
+    try { parsed = JSON.parse(r.out); } catch { parsed = null; }
+    check(`--only ${id} emits parseable JSON`, !!parsed);
+    check(`--only ${id} scopes to one check`, !!parsed && parsed.checks.length === 1 && parsed.checks[0].id === id);
+    check(`--only ${id} check has valid tier`, !!parsed && ['ok', 'warn', 'fail'].includes(parsed.checks[0].level));
+  }
+
+  // Every check result carries the documented shape.
+  const full = await runCapture(['--json']);
+  const fullReport = JSON.parse(full.out);
+  check('full report has all checks', fullReport.checks.length === ALL_CHECK_IDS.length);
+  check('full report checks have id/label/detail/level', fullReport.checks.every((c) => typeof c.id === 'string' && typeof c.label === 'string' && typeof c.detail === 'string' && ['ok', 'warn', 'fail'].includes(c.level)));
+  check('verdict is one of ok/warn/fail', ['ok', 'warn', 'fail'].includes(fullReport.verdict));
+
+  // --quiet prints verdict line for scoped runs.
+  const q2 = await runCapture(['--only', 'engines', '--quiet']);
+  check('--quiet scopes verdict line', q2.out.includes('quick-health:'));
 
   // Pure helpers (mutation-bite targets).
   check('enginesVerdict 24<26 warns', enginesVerdict('26', '24.0.0').level === 'warn');

@@ -73,7 +73,7 @@ const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
-  if (a === '--help' || a === '-h' || a === '--self-test') {
+  if (a === '--help' || a === '-h' || a === '--self-test' || a === '--json') {
     flags[a] = true;
     continue;
   }
@@ -148,7 +148,7 @@ function usage() {
       '  check     fail when a project grew more than --threshold % (default 10)',
       '            flags: --ledger --threshold --webhook-url --project',
       '  report    print recent ledger entries',
-      '            flags: --ledger --limit --project',
+      '            flags: --ledger --limit --project --json',
       '  markdown  write docs/metrics/bundle-report.md',
       '            flags: --ledger --out --project',
       '  checksum  write .checksum-manifest.json over build outputs (pre-build gate)',
@@ -180,7 +180,7 @@ const cmd = positionals[0] || 'report';
 const CMD_FLAGS = {
   collect: ['--ledger', '--note', '--project'],
   check: ['--ledger', '--threshold', '--webhook-url', '--project'],
-  report: ['--ledger', '--limit', '--project'],
+  report: ['--ledger', '--limit', '--project', '--json'],
   markdown: ['--ledger', '--out', '--project'],
   checksum: ['--project'],
   verify: ['--project'],
@@ -455,19 +455,35 @@ function report() {
   const scope = assertScope(projectScope());
   const entries = ledger.entries.slice(-limit);
   if (entries.length === 0) {
-    console.log('bundle-trend: ledger is empty. Run `collect` after building projects.');
+    if (flags['--json']) console.log(JSON.stringify({ entries: [] }, null, 2));
+    else console.log('bundle-trend: ledger is empty. Run collect after building projects.');
+    return 0;
+  }
+  if (flags['--json']) {
+    console.log(JSON.stringify({
+      entries: entries.map(function (entry) {
+        const names = Object.keys(entry.projects || {}).sort().filter(function (n) { return !scope || n === scope; });
+        return {
+          timestamp: entry.timestamp,
+          gitSha: entry.gitSha,
+          note: entry.note || null,
+          projects: Object.fromEntries(names.map(function (name) {
+            return [name, { bytes: entry.projects[name].bytes, files: entry.projects[name].files }];
+          })),
+        };
+      }),
+    }, null, 2));
     return 0;
   }
   for (const entry of entries) {
-    console.log(`\n${entry.timestamp}  (${entry.gitSha}${entry.note ? `, ${entry.note}` : ''})`);
-    const names = Object.keys(entry.projects || {}).sort().filter((n) => !scope || n === scope);
+    console.log('\n' + entry.timestamp + '  (' + entry.gitSha + (entry.note ? ', ' + entry.note : '') + ')');
+    const names = Object.keys(entry.projects || {}).sort().filter(function (n) { return !scope || n === scope; });
     for (const name of names) {
-      console.log(`  ${name.padEnd(34)} ${human(entry.projects[name].bytes).padStart(10)}  (${entry.projects[name].files} files)`);
+      console.log('  ' + name.padEnd(34) + ' ' + human(entry.projects[name].bytes).padStart(10) + '  (' + entry.projects[name].files + ' files)');
     }
   }
   return 0;
 }
-
 function markdown() {
   const file = ledgerPath();
   const outArg = opt('--out', '');

@@ -191,7 +191,8 @@ function selftest() {
   ];
   const bad = cases.filter(([v, r, want]) => sat(v, r) !== want);
   if (bad.length) { console.error('SELFTEST FAIL: ' + JSON.stringify(bad)); process.exit(1); }
-  console.log('selftest: ' + cases.length + '/' + cases.length + ' semver cases pass');
+  if (process.argv.includes('--json')) console.log(JSON.stringify({ cases: cases.length, passed: cases.length - bad.length, failed: bad.length, ok: bad.length === 0 }));
+  else console.log('selftest: ' + cases.length + '/' + cases.length + ' semver cases pass');
 }
 
 /* ---------- lockfile tree walk ---------- */
@@ -394,6 +395,7 @@ const USAGE = [
   '',
   'Flags:',
   '  --self-test  alias for the `selftest` command (repo-wide convention, and what',
+  '  --json       print machine-readable JSON for `selftest` (cases count + result)',
   '               tools/mutation-probe.mjs invokes to prove these cases bite)',
   '  --help       print this text and exit 0',
   '',
@@ -415,7 +417,7 @@ if (argv.includes('--self-test')) {
                   // through into the unknown-flag loop below.
 }
 for (const a of argv) {
-  if (a.startsWith('-')) {
+  if (a.startsWith('-') && a !== '--json') {
     console.error(`fix-security-alerts: unknown flag "${a}" - see \`node tools/fix-security-alerts.cjs --help\``);
     process.exit(2);
   }

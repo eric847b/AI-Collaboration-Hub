@@ -66,6 +66,7 @@ const FLAG_DECLARATIONS = [
   ['--limit <n>', 'snapshots shown by report/markdown (default 5/10)'],
   ['--out <file>', 'markdown output file (default: stdout)'],
   ['--self-test', 'run built-in checks and exit'],
+  ['--json', 'emit machine-readable JSON (check command)'],
 ];
 
 /**
@@ -121,9 +122,13 @@ const EXCLUDE_REVIEWABLE = [/\.grok\//, /\.py\.gz$/];
 
 function classify(rel, bytes, maxFileMb) {
   if (EXCLUDE_REVIEWABLE.some(r=>r.test(rel))) return null;
-  if (!isBloatPath(rel)) return null;
+  const bloat = isBloatPath(rel);
   const oversized = isOverCap(bytes, maxFileMb);
-  if (!oversized) return null;
+  if (!bloat && !oversized) return null;
+  // A bloat-pattern match is an offender regardless of size (archives, media,
+  // binaries, logs, ...); an oversized file is an offender regardless of path.
+  // When both apply, the pattern is the more specific, actionable reason.
+  if (bloat) return { path: rel, bytes, kind: 'pattern' };
   return { path: rel, bytes, kind: 'oversized' };
 }
 
@@ -238,7 +243,7 @@ export function saveLedger(ledgerPath, data) {
 
 export function parseArgs(argv) {
   const opts = {
-    strict: false, quiet: false, selfTest: false, help: false, version: false,
+    strict: false, quiet: false, json: false, selfTest: false, help: false, version: false,
     ledger: DEFAULT_LEDGER, note: null, thresholdPct: DEFAULT_THRESHOLD_PCT,
     maxFileMb: DEFAULT_MAX_FILE_MB, limit: null, out: null, command: null,
   };
@@ -257,6 +262,7 @@ export function parseArgs(argv) {
     switch (bare) {
       case '--strict':
       case '--quiet':
+      case '--json':
       case '--self-test':
       case '--help':
       case '-h':
@@ -265,6 +271,7 @@ export function parseArgs(argv) {
         if (inlineValue !== null) { errors.push(`flag ${bare} takes no value`); break; }
         if (bare === '--strict') opts.strict = true;
         else if (bare === '--quiet') opts.quiet = true;
+        else if (bare === '--json') opts.json = true;
         else if (bare === '--self-test') opts.selfTest = true;
         else if (bare === '--help' || bare === '-h') opts.help = true;
         else opts.version = true;
@@ -364,6 +371,10 @@ export function cmdCollect(opts, io, deps) {
     return 2;
   }
   const delta = prevBytes === null || prevBytes === 0 ? null : ((current.bytes - prevBytes) / prevBytes) * 100;
+  if (opts.json) {
+    io.stdout(JSON.stringify({ files: current.files, bytes: current.bytes, offenders: current.offenders.length, seeded, accepted: ledger.accepted.length, deltaPct: delta === null ? null : Number(delta.toFixed(1)), ledger: opts.ledger }, null, 2) + '\\n');
+    return 0;
+  }
   io.stdout(
     `repo-bloat: snapshot written (${current.files} files, ${human(current.bytes)}` +
     `${delta === null ? '' : `, ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}% vs prev`}) — ` +
@@ -383,6 +394,21 @@ export function cmdCheck(opts, io, deps) {
   }
   const baseline = ledger && ledger.snapshots.length ? ledger.snapshots[ledger.snapshots.length - 1] : null;
   const verdict = evaluate({ current, baseline, accepted: ledger ? ledger.accepted : [], opts });
+  if (opts.json) {
+    const payload = {
+      level: verdict.level,
+      baseline: baseline ? { files: baseline.files, bytes: baseline.bytes, timestamp: baseline.timestamp } : null,
+      current: { files: current.files, bytes: current.bytes, offenders: current.offenders.length },
+      growthPct: verdict.growthPct,
+      thresholdPct: opts.thresholdPct,
+      newOffenders: verdict.newOffenders,
+      acceptedOffenders: verdict.acceptedOffenders,
+    };
+    io.stdout(JSON.stringify(payload, null, 2) + '\n');
+    if (verdict.level === 'fail') return 1;
+    if (verdict.level === 'warn') return opts.strict ? 1 : 0;
+    return 0;
+  }
   if (!opts.quiet) io.stdout(`repo-bloat v${TOOL_VERSION} — check (ledger: ${opts.ledger})\n`);
   if (!baseline) {
     if (!opts.quiet) io.stdout('  no baseline recorded — run `collect` to seed the ledger (advisory until then)\n');
@@ -423,6 +449,19 @@ export function cmdReport(opts, io, deps) {
   }
   if (!ledger || !ledger.snapshots.length) {
     io.stdout(`repo-bloat: no snapshots in ${opts.ledger} — run \`collect\` first.\n`);
+    if (opts.json) { io.stdout(JSON.stringify({ snapshots: [], accepted: [] }, null, 2) + '\\n'); return 0; }
+    return 0;
+  }
+  if (opts.json) {
+    const out = [];
+    let prev = ledger.snapshots.length > (opts.limit ?? 5) ? ledger.snapshots[ledger.snapshots.length - (opts.limit ?? 5) - 1] : null;
+    const shown = ledger.snapshots.slice(-(opts.limit ?? 5));
+    for (const sn of shown) {
+      const delta = prev === null || prev.bytes === 0 ? null : ((sn.bytes - prev.bytes) / prev.bytes) * 100;
+      out.push({ timestamp: sn.timestamp, files: sn.files, bytes: sn.bytes, note: sn.note || '', deltaPct: delta === null ? null : Number(delta.toFixed(1)) });
+      prev = sn;
+    }
+    io.stdout(JSON.stringify({ accepted: ledger.accepted || [], count: ledger.snapshots.length, shown: out }, null, 2) + '\n');
     return 0;
   }
   const limit = opts.limit ?? 5;
@@ -474,6 +513,15 @@ export function cmdMarkdown(opts, io, deps) {
   }
   lines.push('', `Accepted offenders (ratchet baseline): ${(ledger.accepted || []).length}`, '');
   const text = lines.join('\n');
+  if (opts.json) {
+    if (opts.out) {
+      try { deps.writeFile(opts.out, text); } catch (e) { io.stderr(`repo-bloat: cannot write ${opts.out}: ${e.message}\n`); return 2; }
+      io.stdout(JSON.stringify({ written: true, out: opts.out, lines: text.split('\n').length }, null, 2) + '\n');
+      return 0;
+    }
+    io.stdout(JSON.stringify({ markdown: text }, null, 2) + '\n');
+    return 0;
+  }
   if (opts.out) {
     try {
       deps.writeFile(opts.out, text);
