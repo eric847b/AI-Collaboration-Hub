@@ -36,7 +36,7 @@ const argv = process.argv.slice(2);
 // Boolean: --check --refresh. Value: --out --max-age-hours. Unknown flags and
 // stray positionals exit 2 instead of being silently ignored. No stdin prompts.
 const BOOLEAN_FLAGS = new Set(['--check', '--refresh', '--self-test', '--json']);
-const VALUE_FLAGS = new Set(['--out', '--max-age-hours']);
+const VALUE_FLAGS = new Set(['--out', '--max-age-hours', '--section']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -80,7 +80,7 @@ function usage() {
     [
       'ops-dashboard.mjs - repo-level observability dashboard (workflows, tooling, ledgers, telemetry)',
       '',
-      'Usage: node tools/ops-dashboard.mjs [--out <path>] [--refresh]',
+      'Usage: node tools/ops-dashboard.mjs [--out <path>] [--refresh] [--section <id>]',
       '       node tools/ops-dashboard.mjs --check [--max-age-hours <h>]',
       '',
       'Flags:',
@@ -605,6 +605,15 @@ const sections = [
   machineReportsSection(),
   telemetrySinkSection(),
 ];
+const sectionFilter = flags['--section'];
+const filteredSections = sectionFilter ? sections.filter((s) => s.id === sectionFilter) : sections;
+if (sectionFilter && filteredSections.length === 0) {
+  console.error(`ops-dashboard: unknown section "${sectionFilter}" (available: ${sections.map((s) => s.id).join(', ')})`);
+  process.exit(2);
+}
+const sectionsToRender = filteredSections;
+
+
 
 const existingRaw = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
 const { stamps: oldStamps, bodies: oldBodies } = parseFreshness(existingRaw);
@@ -613,7 +622,7 @@ const { stamps: oldStamps, bodies: oldBodies } = parseFreshness(existingRaw);
   const forceRefresh = argv.includes('--refresh');
 let anyChanged = false;
 const blocks = [];
-for (const s of sections) {
+for (const s of sectionsToRender) {
   const body = s.lines.join('\n').trimEnd();
     const unchanged = oldBodies.has(s.id) && oldBodies.get(s.id) === body;
   if (!unchanged) anyChanged = true;
@@ -624,7 +633,7 @@ for (const s of sections) {
 // Idempotence: a fully unchanged, non-refresh run leaves the file byte-identical.
 if (existingRaw !== null && !anyChanged && !forceRefresh) {
   if (flags['--json']) {
-    console.log(JSON.stringify({ written: false, unchanged: true, sections: sections.length, path: path.relative(ROOT, OUT) }, null, 2));
+    console.log(JSON.stringify({ written: false, unchanged: true, sections: sectionsToRender.length, path: path.relative(ROOT, OUT) }, null, 2));
     process.exit(0);
   }
   console.log(`ops-dashboard: unchanged -> ${path.relative(ROOT, OUT)} (no section changed, not rewritten)`);
@@ -641,9 +650,9 @@ const content = header.join('\n') + '\n\n' + blocks.join('\n\n') + '\n';
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, content, 'utf8');
 if (flags['--json']) {
-  console.log(JSON.stringify({ written: true, unchanged: false, sections: sections.length, lines: content.split('\n').length, path: path.relative(ROOT, OUT) }, null, 2));
+  console.log(JSON.stringify({ written: true, unchanged: false, sections: sectionsToRender.length, lines: content.split('\n').length, path: path.relative(ROOT, OUT) }, null, 2));
   process.exit(0);
 }
-console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sections.length} sections stamped)`);
+console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sectionsToRender.length} sections stamped)`);
 
 
