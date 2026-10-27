@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.15.0';
+const TOOL_VERSION = '4.16.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -21,7 +21,7 @@ const FLAG_DECLARATIONS = [
   ['--list', 'print available check ids'],
   ['--self-test', 'run built-in checks and exit'],
 ];
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
@@ -289,6 +289,16 @@ function checkGitRemote() {
   return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'no origin remote', findings: lines };
 }
 
+function checkGitIgnore() {
+  const file = path.join(ROOT, '.gitignore');
+  if (!fs.existsSync(file)) return { id: 'gitignore', label: 'gitignore', level: 'warn', detail: '.gitignore missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  const findings = [];
+  if (!/^node_modules\/?$/m.test(raw) && !raw.includes('node_modules')) findings.push('node_modules not ignored');
+  if (!raw.includes('.env')) findings.push('.env not ignored');
+  return { id: 'gitignore', label: 'gitignore', level: findings.length ? 'warn' : 'ok', detail: findings.length ? findings.join('; ') : '.gitignore present', findings };
+}
+
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
   if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
@@ -305,7 +315,7 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
