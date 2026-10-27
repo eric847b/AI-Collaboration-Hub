@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.26.0';
+const TOOL_VERSION = '4.27.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -49,6 +49,7 @@ const SUGGESTIONS = {
   changelog: 'add CHANGELOG.md',
   contributing: 'add CONTRIBUTING.md',
   devcontainer: 'add .devcontainer/ config',
+  nvmrc: 'add .nvmrc pinning Node 26',
 };
 let _gitSnapshot = null;
 function gitSnapshot() {
@@ -72,7 +73,7 @@ function gitSnapshot() {
   _gitSnapshot = snap;
   return snap;
 }
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
@@ -385,6 +386,15 @@ function checkDevcontainer() {
   return { id: 'devcontainer', label: 'devcontainer', level: 'ok', detail: '.devcontainer present', findings: [] };
 }
 
+function checkNvmrc() {
+  const candidates = ['.nvmrc', '.node-version'];
+  let found = null;
+  for (const c of candidates) { if (fs.existsSync(path.join(ROOT, c))) { found = c; break; } }
+  if (!found) return { id: 'nvmrc', label: 'nvmrc', level: 'warn', detail: 'no .nvmrc/.node-version', findings: [], suggestion: 'add .nvmrc pinning Node 26' };
+  const raw = fs.readFileSync(path.join(ROOT, found), 'utf8').trim();
+  return { id: 'nvmrc', label: 'nvmrc', level: 'ok', detail: found + ' = ' + raw, findings: [], suggestion: null };
+}
+
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
   if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
@@ -401,7 +411,7 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer, checkNvmrc];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => fn());
