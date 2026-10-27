@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, RefreshCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchCollaborationMetrics, type CollaborationMetrics, type CollaborationResource } from "@/lib/collaborationMetrics";
