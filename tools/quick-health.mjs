@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.34.0';
+const TOOL_VERSION = '4.35.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -543,6 +543,12 @@ async function selfTest(io) {
   check('--quiet scopes verdict line', q2.out.includes('quick-health:'));
 
   // Suggestion map covers every check id.
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const cnt = await runCapture(['--count']);
+  // --count prints a number.
+  const cntr = await runCapture(['--count']);
+  check('--count prints a number', /^\d+\n?$/.test(cntr.out));
+  check('--count prints a number', /^\d+\n?$/.test(cnt.out));
   check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
   const sl = await runCapture(['--sort', 'level', '--json']);
   // --sort level orders checks by level.
