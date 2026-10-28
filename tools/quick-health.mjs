@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.45.0';
+const TOOL_VERSION = '4.46.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -21,6 +21,7 @@ const FLAG_DECLARATIONS = [
   ['--list', 'print available check ids'],
   ['--fail-fast', 'stop at first fail/warn'],
   ['--verbose', 'print per-check timing'],
+  ['--list-checks', 'alias of --list'],
   ['--count', 'print check count only'],
   ['--sort', 'sort order: id|level (default id)'],
   ['--no-suggestions', 'suppress suggestion hints'],
@@ -81,7 +82,7 @@ function gitSnapshot() {
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
 
 export function parseArgs(argv) {
-  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id', count: false, verbose: false };
+  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id', count: false, verbose: false, listChecks: false };
   const errors = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -112,6 +113,7 @@ export function parseArgs(argv) {
       case '--sort': { const v = takeValue(); if (v === null || !['id', 'level'].includes(v)) errors.push('--sort requires id|level'); else opts.sort = v; break; }
       case '--count': opts.count = true; break;
       case '--verbose': opts.verbose = true; break;
+      case '--list-checks': opts.listChecks = true; break;
       case '--self-test': opts.selfTest = true; break;
       default: errors.push(`unknown flag: ${arg}`); break;
     }
@@ -463,7 +465,7 @@ export async function run(argv, io = { stdout: (s) => process.stdout.write(s), s
   if (errors.length) { io.stderr(`quick-health: ${errors.join('; ')}\nTry: node tools/quick-health.mjs --help\n`); return 2; }
   if (opts.help) { io.stdout(helpText()); return 0; }
   if (opts.version) { io.stdout(`quick-health ${TOOL_VERSION}\n`); return 0; }
-  if (opts.list) { io.stdout(ALL_CHECK_IDS.join('\n') + '\n'); return 0; }
+  if (opts.list || opts.listChecks) { io.stdout(ALL_CHECK_IDS.join('\n') + '\n'); return 0; }
   if (opts.selfTest) return selfTest(io);
   const report = buildReport(opts);
   if (opts.count) { io.stdout(report.checks.length + '\n'); return report.exit; }
