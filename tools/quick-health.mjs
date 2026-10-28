@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.35.0';
+const TOOL_VERSION = '4.36.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -20,6 +20,7 @@ const FLAG_DECLARATIONS = [
   ['--only <ids>', 'comma-separated check ids'],
   ['--list', 'print available check ids'],
   ['--fail-fast', 'stop at first fail/warn'],
+  ['--verbose', 'print per-check timing'],
   ['--count', 'print check count only'],
   ['--sort', 'sort order: id|level (default id)'],
   ['--no-suggestions', 'suppress suggestion hints'],
@@ -80,7 +81,7 @@ function gitSnapshot() {
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
 
 export function parseArgs(argv) {
-  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id', count: false };
+  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id', count: false, verbose: false };
   const errors = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -110,6 +111,7 @@ export function parseArgs(argv) {
       case '--no-suggestions': opts.noSuggestions = true; break;
       case '--sort': { const v = takeValue(); if (v === null || !['id', 'level'].includes(v)) errors.push('--sort requires id|level'); else opts.sort = v; break; }
       case '--count': opts.count = true; break;
+      case '--verbose': opts.verbose = true; break;
       case '--self-test': opts.selfTest = true; break;
       default: errors.push(`unknown flag: ${arg}`); break;
     }
@@ -422,7 +424,12 @@ function checkBloat() {
 const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer, checkNvmrc];
 
 export function buildReport(opts) {
-  let checks = CHECKS.map((fn) => fn());
+  let checks = CHECKS.map((fn) => {
+    const t0 = Date.now();
+    const c = fn();
+    c.durationMs = Date.now() - t0;
+    return c;
+  });
   if (opts.failFast) {
     const idx = checks.findIndex((c) => c.level !== 'ok');
     if (idx >= 0) checks = checks.slice(0, idx + 1);
@@ -469,7 +476,7 @@ export async function run(argv, io = { stdout: (s) => process.stdout.write(s), s
   }
   io.stdout(`quick-health v${TOOL_VERSION} — ${report.checks.length} checks\n`);
   for (const c of report.checks) {
-    io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}\n`);
+    io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}${opts.verbose ? ` (${c.durationMs}ms)` : ''}\n`);
     if (c.suggestion && !opts.noSuggestions) io.stdout(`         -> ${c.suggestion}\n`);
   }
   io.stdout(`verdict: ${report.verdict}${opts.strict ? ' (strict)' : ''}\n`);
