@@ -36,7 +36,7 @@ const argv = process.argv.slice(2);
 // Boolean: --check --refresh. Value: --out --max-age-hours. Unknown flags and
 // stray positionals exit 2 instead of being silently ignored. No stdin prompts.
 const BOOLEAN_FLAGS = new Set(['--check', '--refresh', '--self-test', '--json']);
-const VALUE_FLAGS = new Set(['--out', '--max-age-hours', '--section']);
+const VALUE_FLAGS = new Set(['--out', '--max-age-hours', '--section', '--output']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -80,7 +80,7 @@ function usage() {
     [
       'ops-dashboard.mjs - repo-level observability dashboard (workflows, tooling, ledgers, telemetry)',
       '',
-      'Usage: node tools/ops-dashboard.mjs [--out <path>] [--refresh] [--section <id>]',
+      'Usage: node tools/ops-dashboard.mjs [--out <path>|--output <path>] [--refresh] [--section <id>]',
       '       node tools/ops-dashboard.mjs --check [--max-age-hours <h>]',
       '',
       'Flags:',
@@ -114,7 +114,7 @@ if (positionals.length > 0) {
 }
 
 const opt = (name, def) => (flags[name] === undefined ? def : flags[name]);
-const outArg = opt('--out', '');
+const outArg = opt('--output', opt('--out', ''));
 const OUT = path.isAbsolute(outArg) ? outArg : path.join(ROOT, outArg || path.join('docs', 'metrics', 'OPS-DASHBOARD.md'));
 
 const readJsonSafe = (rel) => {
