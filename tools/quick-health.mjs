@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.33.0';
+const TOOL_VERSION = '4.34.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -543,6 +543,14 @@ async function selfTest(io) {
   check('--quiet scopes verdict line', q2.out.includes('quick-health:'));
 
   // Suggestion map covers every check id.
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const sl = await runCapture(['--sort', 'level', '--json']);
+  // --sort level orders checks by level.
+  const slr = await runCapture(['--sort', 'level', '--json']);
+  const slrReport = JSON.parse(slr.out);
+  const levels = slrReport.checks.map((c) => c.level);
+  const rank = { fail: 0, warn: 1, ok: 2 };
+  check('--sort level orders by level', levels.every((l, i) => i === 0 || rank[levels[i - 1]] <= rank[l]));
   check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
   const j = await runCapture(['--json']);
   // --json includes generatedAt timestamp.
