@@ -502,6 +502,13 @@ const PROBES = [
 
   },
   {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-count-regex-bites',
+    why: 'the --count output assertion must actually validate the number - a permissive regex would accept any output',
+    from: "/^\\d+\\n?$/",
+    to: "/^NEVER$/",
+  },
+  {
     tool: 'check-doc-links.mjs',
     id: 'doclinks-http-scheme-skipped',
     why: 'the scheme regex must skip http(s)/mailto links; weakening it to require 5+ letters lets http: through',
