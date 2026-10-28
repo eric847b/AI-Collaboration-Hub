@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.31.0';
+const TOOL_VERSION = '4.32.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -20,6 +20,7 @@ const FLAG_DECLARATIONS = [
   ['--only <ids>', 'comma-separated check ids'],
   ['--list', 'print available check ids'],
   ['--fail-fast', 'stop at first fail/warn'],
+  ['--sort', 'sort order: id|level (default id)'],
   ['--no-suggestions', 'suppress suggestion hints'],
   ['--self-test', 'run built-in checks and exit'],
 ];
@@ -78,7 +79,7 @@ function gitSnapshot() {
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
 
 export function parseArgs(argv) {
-  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false };
+  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id' };
   const errors = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -106,6 +107,7 @@ export function parseArgs(argv) {
       case '--version': case '-V': opts.version = true; break;
       case '--fail-fast': opts.failFast = true; break;
       case '--no-suggestions': opts.noSuggestions = true; break;
+      case '--sort': { const v = takeValue(); if (v === null || !['id', 'level'].includes(v)) errors.push('--sort requires id|level'); else opts.sort = v; break; }
       case '--self-test': opts.selfTest = true; break;
       default: errors.push(`unknown flag: ${arg}`); break;
     }
@@ -432,6 +434,10 @@ export function buildReport(opts) {
   const warn = checks.filter((c) => c.level === 'warn');
   const fail = checks.filter((c) => c.level === 'fail');
   const verdict = fail.length ? 'fail' : warn.length ? 'warn' : 'ok';
+  if (opts.sort === 'level') {
+    const rank = { fail: 0, warn: 1, ok: 2 };
+    checks.sort((a, b) => (rank[a.level] ?? 9) - (rank[b.level] ?? 9) || a.id.localeCompare(b.id));
+  }
   const exit = fail.length ? 1 : (opts.strict && warn.length) ? 1 : 0;
   return { tool: 'quick-health', version: TOOL_VERSION, verdict, checks, warn, fail, exit };
 }
