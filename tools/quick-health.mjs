@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.30.0';
+const TOOL_VERSION = '4.31.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -20,6 +20,7 @@ const FLAG_DECLARATIONS = [
   ['--only <ids>', 'comma-separated check ids'],
   ['--list', 'print available check ids'],
   ['--fail-fast', 'stop at first fail/warn'],
+  ['--no-suggestions', 'suppress suggestion hints'],
   ['--self-test', 'run built-in checks and exit'],
 ];
 const SUGGESTIONS = {
@@ -77,7 +78,7 @@ function gitSnapshot() {
 const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
 
 export function parseArgs(argv) {
-  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false };
+  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false };
   const errors = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -104,6 +105,7 @@ export function parseArgs(argv) {
       case '--help': case '-h': opts.help = true; break;
       case '--version': case '-V': opts.version = true; break;
       case '--fail-fast': opts.failFast = true; break;
+      case '--no-suggestions': opts.noSuggestions = true; break;
       case '--self-test': opts.selfTest = true; break;
       default: errors.push(`unknown flag: ${arg}`); break;
     }
@@ -459,7 +461,7 @@ export async function run(argv, io = { stdout: (s) => process.stdout.write(s), s
   io.stdout(`quick-health v${TOOL_VERSION} — ${report.checks.length} checks\n`);
   for (const c of report.checks) {
     io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}\n`);
-    if (c.suggestion) io.stdout(`         -> ${c.suggestion}\n`);
+    if (c.suggestion && !opts.noSuggestions) io.stdout(`         -> ${c.suggestion}\n`);
   }
   io.stdout(`verdict: ${report.verdict}${opts.strict ? ' (strict)' : ''}\n`);
   return report.exit;
