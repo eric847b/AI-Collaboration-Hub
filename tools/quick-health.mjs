@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.39.0';
+const TOOL_VERSION = '4.40.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
