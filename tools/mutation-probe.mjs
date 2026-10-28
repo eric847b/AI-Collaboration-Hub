@@ -494,6 +494,14 @@ const PROBES = [
     to: "return 'ok'; // warn, skip, absent, anything else",
   },
   {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-verbose-timing-bites',
+    why: 'the --verbose timing assertion must actually check for timing output - a no-op would let a missing timing silently pass',
+    from: "vbr.out.includes('ms)')",
+    to: "vbr.out.includes('NEVER')",
+
+  },
+  {
     tool: 'check-doc-links.mjs',
     id: 'doclinks-http-scheme-skipped',
     why: 'the scheme regex must skip http(s)/mailto links; weakening it to require 5+ letters lets http: through',
