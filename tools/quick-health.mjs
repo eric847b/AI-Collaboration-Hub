@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.36.0';
+const TOOL_VERSION = '4.37.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -550,6 +550,11 @@ async function selfTest(io) {
   check('--quiet scopes verdict line', q2.out.includes('quick-health:'));
 
   // Suggestion map covers every check id.
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const vb = await runCapture(['--verbose']);
+  // --verbose prints timing.
+  const vbr = await runCapture(['--verbose']);
+  check('--verbose prints timing', vbr.out.includes('ms)') || vbr.out.includes('checks'));
   check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
   const cnt = await runCapture(['--count']);
   // --count prints a number.
