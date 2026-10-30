@@ -194,6 +194,19 @@ npm run health    # alias of gate
 npm run ci        # alias of gate
 ```
 
+### Doc Health (ratcheted)
+
+Tracked-document health is gated by offline, read-only tools (ratchet = only *new* drift fails; accepted debt exits 0):
+
+```powershell
+npm run docs:links:check     # relative links (and #anchors) resolve — 0 broken
+npm run docs:json:check      # all tracked *.json parse (JSONC-aware) — 0 invalid
+npm run docs:scripts:check    # `npm run <script>` refs in Markdown resolve — 0 stale
+npm run docs:facts            # documented counts still match runtime truth
+```
+
+Regenerate a baseline after a deliberate change with `npm run docs:links:update-baseline` (and the `:json:`/`:scripts:` siblings).
+
 ## Tooling & Automation
 
 The workspace ships with PowerShell tooling under `tools/`:
