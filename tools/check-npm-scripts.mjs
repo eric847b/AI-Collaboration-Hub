@@ -19,11 +19,12 @@ const failFast = has('--fail-fast');
 const selfTest = has('--self-test');
 const suggestMode = has('--suggest');
 const listMode = has('--list');
+const countMode = has('--count');
 const checkMode = has('--check');
 const updateBaseline = has('--update-baseline');
 const BASELINE_PATH = path.join(ROOT, 'docs', 'metrics', 'npm-scripts-baseline.json');
 
-const BOOLEAN_FLAGS = new Set(['--json', '--quiet', '--verbose', '--self-test', '--list', '--check', '--update-baseline', '--version', '--suggest', '--fail-fast']);
+const BOOLEAN_FLAGS = new Set(['--json', '--quiet', '--verbose', '--self-test', '--list', '--count', '--check', '--update-baseline', '--version', '--suggest', '--fail-fast']);
 const VALUE_FLAGS = new Set();
 
 function rejectBadFlags() {
@@ -49,6 +50,7 @@ function usage() {
     '  --check            ratchet: fail only on NEW stale refs vs baseline',
     '  --update-baseline  (re)seed docs/metrics/npm-scripts-baseline.json',
     '  --suggest          print "did you mean?" suggestions for stale refs',
+    '  --count            print only the total number of refs checked',
     '  --version          print version and exit',
     'Ignore a ref: add <!-- npm-scripts: ignore --> on the same or preceding line.',
     'Ignore a whole file: add <!-- npm-scripts: ignore-file --> anywhere in it.',
@@ -251,7 +253,7 @@ if (asJson) {
   const payload = { files: files.length, checked: allRefs.length, stale, ignored, staleRefs, orphans: verbose ? orphans : undefined };
   if (listMode) payload.refs = allRefs.map((r) => ({ file: r.file, line: r.line, script: r.name, raw: r.raw, verdict: r.ignored ? 'ignored' : (r.exists ? 'ok' : 'stale') }));
   console.log(JSON.stringify(payload, null, 2));
-} else if (!quiet || listMode) {
+} else if ((!quiet || listMode) && !countMode) {
   console.log('\\ncheck-npm-scripts: ' + files.length + ' markdown files, ' + allRefs.length + ' npm-run refs checked, ' + stale + ' stale, ' + ignored + ' ignored');
   if (verbose && orphans.length) {
     console.log('never-referenced root scripts (' + orphans.length + '): ' + orphans.join(', '));
@@ -286,4 +288,5 @@ if (checkMode) {
     for (const r of newRefs) console.log('NEW-STALE  ' + r.file + ':' + r.line + '  ->  ' + r.raw);
   }
 }
+if (countMode) { console.log(allRefs.length); process.exit(0); }
 process.exit(checkMode ? (newStale > 0 ? 1 : 0) : (stale > 0 ? 1 : 0));
