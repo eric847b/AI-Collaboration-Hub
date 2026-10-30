@@ -25,10 +25,11 @@ const asJson = has('--json');
 const quiet = has('--quiet');
 const selfTest = has('--self-test');
 const listMode = has('--list');
+const countMode = has('--count');
 const checkMode = has('--check');
 const updateBaseline = has('--update-baseline');
 const failFast = has('--fail-fast');
-const BOOLEAN_FLAGS = new Set(['--json', '--quiet', '--self-test', '--version', '--list', '--check', '--update-baseline', '--fail-fast']);
+const BOOLEAN_FLAGS = new Set(['--json', '--quiet', '--self-test', '--version', '--list', '--count', '--check', '--update-baseline', '--fail-fast']);
 
 function rejectBadFlags() {
   for (const a of argv) {
@@ -185,7 +186,7 @@ for (const file of files) {
   }
 }
 if (asJson) console.log(JSON.stringify({ files: files.length, invalid, bad }, null, 2));
-else if (!quiet) console.log('\ncheck-json-validity: ' + files.length + ' json files, ' + invalid + ' invalid');
+else if (!quiet && !countMode) console.log('\ncheck-json-validity: ' + files.length + ' json files, ' + invalid + ' invalid');
 // ---- ratchet baseline (optional) -----------------------------------------
 const baselineKey = (b) => b.file;
 if (updateBaseline) {
@@ -211,4 +212,5 @@ if (checkMode) {
     for (const b of newFiles) console.log('NEW-INVALID  ' + b.file + '  ->  ' + b.error);
   }
 }
+if (countMode) { console.log(files.length); process.exit(0); }
 process.exit(checkMode ? (newInvalid > 0 ? 1 : 0) : (invalid > 0 ? 1 : 0));
