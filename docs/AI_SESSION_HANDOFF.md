@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # AI Session Handoff — Userscript Suite + Zero-deps Workspace
 
 > **TL;DR.** Feature work complete and pushed (Userscript Suite registration,

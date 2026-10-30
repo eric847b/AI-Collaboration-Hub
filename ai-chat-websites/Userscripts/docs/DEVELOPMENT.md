@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # AI Chat Websites - Development Guide
 
 ## Getting Started

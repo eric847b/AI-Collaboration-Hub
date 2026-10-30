@@ -56,6 +56,8 @@ const SUGGESTIONS = {
   contributing: 'add CONTRIBUTING.md',
   devcontainer: 'add .devcontainer/ config',
   nvmrc: 'add .nvmrc pinning Node 26',
+  baselines: 'node tools/check-doc-links.mjs --update-baseline (and siblings)',
+  doclinks: 'node tools/check-doc-links.mjs',
 };
 let _gitSnapshot = null;
 function gitSnapshot() {
@@ -79,7 +81,7 @@ function gitSnapshot() {
   _gitSnapshot = snap;
   return snap;
 }
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc'];
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc', 'baselines', 'doclinks'];
 
 export function parseArgs(argv) {
   const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id', count: false, verbose: false, listChecks: false };
@@ -406,6 +408,23 @@ function checkNvmrc() {
   const raw = fs.readFileSync(path.join(ROOT, found), 'utf8').trim();
   return { id: 'nvmrc', label: 'nvmrc', level: 'ok', detail: found + ' = ' + raw, findings: [], suggestion: null };
 }
+function checkBaselines() {
+  const baselines = ['doc-links-baseline.json', 'json-validity-baseline.json', 'npm-scripts-baseline.json'];
+  const missing = baselines.filter((b) => !fs.existsSync(path.join(ROOT, 'docs', 'metrics', b)));
+  if (missing.length) return { id: 'baselines', label: 'baselines', level: 'warn', detail: 'missing ratchet baseline(s): ' + missing.join(', '), findings: missing };
+  return { id: 'baselines', label: 'baselines', level: 'ok', detail: baselines.length + ' ratchet baseline(s) present', findings: [] };
+}
+
+
+
+function checkDocLinks() {
+  const tool = path.join(ROOT, 'tools', 'check-doc-links.mjs');
+  if (!fs.existsSync(tool)) return { id: 'doclinks', label: 'doclinks', level: 'warn', detail: 'tools/check-doc-links.mjs missing', findings: [] };
+  const baseline = path.join(ROOT, 'docs', 'metrics', 'doc-links-baseline.json');
+  if (!fs.existsSync(baseline)) return { id: 'doclinks', label: 'doclinks', level: 'warn', detail: 'doc-links baseline missing', findings: [] };
+  return { id: 'doclinks', label: 'doclinks', level: 'ok', detail: 'link-health tool + baseline present', findings: [] };
+}
+
 
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
@@ -423,7 +442,7 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer, checkNvmrc];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer, checkNvmrc, checkBaselines, checkDocLinks];
 
 export function buildReport(opts) {
   let checks = CHECKS.map((fn) => {

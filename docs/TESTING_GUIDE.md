@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Testing Guide
 
 > **Complete reference for all testing strategies, tools, and workflows in the AI Collaboration Hub workspace.**

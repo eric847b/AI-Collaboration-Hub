@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Third Door — Blink Controller
 
 An Expo React Native app that uses camera-based blink detection to control an

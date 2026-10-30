@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # AI Chat Websites - Userscripts
 
 Active userscript collection for this repository.

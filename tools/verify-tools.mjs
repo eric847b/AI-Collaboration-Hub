@@ -68,7 +68,9 @@ const onlyArg = opt('--only', '');
  * must be side-effect free — asserted by the self-test below.
  */
 const SMOKE = {
-  'check-doc-links.mjs': ['--quiet'],
+  'check-doc-links.mjs': ['--check'],
+  'check-json-validity.mjs': ['--check'],
+  'check-npm-scripts.mjs': ['--check'],
   'check-doc-facts.mjs': [],
   'check-flag-contract.mjs': [],
   'extension-check.mjs': ['--quiet'],

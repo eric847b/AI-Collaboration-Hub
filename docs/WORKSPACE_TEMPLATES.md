@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Workspace Templates
 
 > **Project scaffolding templates for creating new Vite/React apps with standardized configurations.**

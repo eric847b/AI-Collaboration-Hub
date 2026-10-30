@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Troubleshooting Guide
 
 > **Common issues and their solutions for the AI Collaboration Hub workspace.**
@@ -9,13 +10,11 @@
 ## Table of Contents
 
 1. [Node.js Issues](#nodejs-issues)
-2. [Dependency & Lockfile Issues](#dependency--lockfile-issues)
-3. [Playwright & E2E Issues](#playwright--e2e-issues)
-4. [CI/CD & Workflow Issues](#cicd--workflow-issues)
-5. [Python Issues](#python-issues)
-6. [VS Code & Editor Issues](#vs-code--editor-issues)
-7. [Tooling Issues](#tooling-issues)
-8. [General Issues](#general-issues)
+2. [CI/CD & Workflow Issues](#cicd--workflow-issues)
+3. [Python Issues](#python-issues)
+4. [VS Code & Editor Issues](#vs-code--editor-issues)
+5. [Tooling Issues](#tooling-issues)
+6. [General Issues](#general-issues)
 
 ---
 

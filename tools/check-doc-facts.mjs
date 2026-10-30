@@ -45,7 +45,7 @@ const SELF = fileURLToPath(import.meta.url);
 // Unknown flags, missing values, booleans given a value and stray positionals
 // all exit 2 instead of being silently ignored. No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--only']);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json', '--list']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json', '--list', '--version']);
 const argv = process.argv.slice(2);
 const flags = {};
 const positionals = [];
@@ -97,6 +97,7 @@ console.log(
 '  --list             enumerate EVERY count-bearing claim found (ok / stale / illustration)',
   '                   plus a by-subject footer; with --json emits claims[] + claimSummary',
 '  --self-test        prove the checkers fire on synthetic fixtures and exit',
+'  --version          print version and exit 0',
 '  --help             print this text and exit 0',
 '',
 'Exit codes: 0 = every documented count still true, 1 = drift found,',
@@ -108,6 +109,10 @@ console.log(
 
 if (flags['--help']) {
 usage();
+process.exit(0);
+}
+if (flags['--version']) {
+console.log('check-doc-facts 1.1.0');
 process.exit(0);
 }
 if (positionals.length) {

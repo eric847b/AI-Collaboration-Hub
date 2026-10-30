@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Contributing
 
 First off — thanks for taking the time to contribute! 🎉

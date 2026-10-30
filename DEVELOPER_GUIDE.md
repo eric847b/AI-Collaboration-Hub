@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Developer Quick Start Guide
 
 **For developers joining the workspace or starting fresh.**

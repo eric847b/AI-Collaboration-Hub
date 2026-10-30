@@ -65,11 +65,11 @@ Each project has standard npm/pip scripts:
 
 ```powershell
 cd nexus-infinity-hub
-npm run dev      # Start dev server
+npm run dev      # Start dev server <!-- npm-scripts: ignore -->
 npm run lint     # Check code
-npm run lint:fix # Auto-fix issues
-npm run test     # Run tests
-npm run build    # Production build
+npm run lint:fix # Auto-fix issues <!-- npm-scripts: ignore -->
+npm run test     # Run tests <!-- npm-scripts: ignore -->
+npm run build    # Production build <!-- npm-scripts: ignore -->
 ```
 
 ### 4. Free AI CLI — runs anywhere, never pauses
@@ -131,8 +131,8 @@ Workflow audit: 1 accepted finding (documented WF004 review-flag on `ci-self-hea
 
 ```powershell
 .\tools\bootstrap.ps1
-cd nexus-infinity-hub && npm run check
-cd ..\self-evolve-dash && npm run check
+cd nexus-infinity-hub && npm run check <!-- npm-scripts: ignore -->
+cd ..\self-evolve-dash && npm run check <!-- npm-scripts: ignore -->
 cd ..\singularity-operator && python -m pip install -r requirements.txt
 ```
 
@@ -150,7 +150,7 @@ pip install --upgrade -r requirements.txt  # Python projects
 
 ```powershell
 cd <project>
-npm run lint:fix    # Auto-fix ESLint issues (Node)
+npm run lint:fix    # Auto-fix ESLint issues (Node) <!-- npm-scripts: ignore -->
 black .             # Format Python
 ```
 
