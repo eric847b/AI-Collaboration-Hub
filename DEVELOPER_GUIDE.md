@@ -141,6 +141,19 @@ npm run quality
 
 ---
 
+### Doc Health (ratcheted)
+
+Tracked-document health is gated by offline, read-only tools (ratchet = only *new* drift fails):
+
+```powershell
+npm run docs:links:check     # relative links (and #anchors) resolve
+npm run docs:json:check      # all tracked *.json parse (JSONC-aware)
+npm run docs:scripts:check    # `npm run <script>` refs in Markdown resolve
+npm run docs:facts            # documented counts still match runtime truth
+```
+
+---
+
 ## 6. Pushing Code to GitHub
 
 ### Before Push
