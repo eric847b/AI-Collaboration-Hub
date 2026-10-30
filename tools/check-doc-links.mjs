@@ -23,7 +23,7 @@ const BASELINE_PATH = path.join(ROOT, 'docs', 'metrics', 'doc-links-baseline.jso
 // Boolean flags only; unknown flags and stray positionals exit 2 instead
 // of being silently ignored. No stdin prompts, ever.
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--json', '--self-test', '--list', '--version', '--suggest', '--check', '--update-baseline', '--fail-fast']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--json', '--self-test', '--list', '--count', '--version', '--suggest', '--check', '--update-baseline', '--fail-fast']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -85,6 +85,7 @@ if (positionals.length) {
   process.exit(2);
 }
 const quiet = flags['--quiet'] === true;
+const countMode = flags['--count'] === true;
 const failFast = flags['--fail-fast'] === true;
 const checkMode = flags['--check'] === true;
 const updateBaseline = flags['--update-baseline'] === true;
@@ -335,7 +336,7 @@ if (jsonMode) {
   const payload = { files: files.length, checked, broken, brokenLinks };
   if (listMode) payload.links = allLinks.map((r) => ({ ...r, verdict: r.exists ? 'ok' : 'broken' }));
   console.log(JSON.stringify(payload, null, 2));
-} else if (!quiet) {
+} else if (!quiet && !countMode) {
   console.log(`\ncheck-doc-links: ${files.length} markdown files, ${checked} relative links checked, ${broken} broken`);
 }
 // ---- ratchet baseline (optional) -----------------------------------------
@@ -363,4 +364,5 @@ if (checkMode) {
     for (const b of newLinks) console.log('NEW-BROKEN  ' + b.file + ':' + b.line + '  ->  ' + b.raw);
   }
 }
+if (countMode) { console.log(checked); process.exit(0); }
 process.exit(checkMode ? (newBroken > 0 ? 1 : 0) : (broken > 0 ? 1 : 0));
