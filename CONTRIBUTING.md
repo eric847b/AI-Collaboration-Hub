@@ -118,6 +118,7 @@ npm run ai -- "explain transformers"
 - [ ] Pre-commit hooks pass: `npx lint-staged`
 - [ ] README / provider table updated (if you added a lane)
 - [ ] No secrets committed — keys come from env / `GM_getValue`
+- [ ] Doc health passes: `npm run docs:links:check && npm run docs:json:check && npm run docs:scripts:check`
 
 ---
 
