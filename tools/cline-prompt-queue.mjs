@@ -19,8 +19,7 @@ function tasks() {
 }
 
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--help', '-h', '--version']);
-const VALUE_FLAGS = new Set();
+const BOOLEAN_FLAGS = new Set(['--help', '-h', '--version', '--count']);
 let flags = {};
 let positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -63,10 +62,12 @@ Commands:
 Flags:
   --help, -h        show this help and exit 0
   --version         print version and exit 0
+  --count           print only the number of queued prompts and exit 0
 `);
   process.exit(0);
 }
 if (flags['--version']) { console.log('cline-prompt-queue 1.1.0'); process.exit(0); }
+if (flags['--count']) { console.log(tasks().length); process.exit(0); }
 
 const cmd = positionals[0] || 'list';
 const arg = positionals.slice(1).join(' ');
