@@ -45,7 +45,7 @@ const SELF = fileURLToPath(import.meta.url);
 // Unknown flags, missing values, booleans given a value and stray positionals
 // all exit 2 instead of being silently ignored. No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--only']);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json', '--list', '--version']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json', '--list', '--count', '--version']);
 const argv = process.argv.slice(2);
 const flags = {};
 const positionals = [];
@@ -96,6 +96,7 @@ console.log(
 '  --json             emit a schema-1 report instead of human lines',
 '  --list             enumerate EVERY count-bearing claim found (ok / stale / illustration)',
   '                   plus a by-subject footer; with --json emits claims[] + claimSummary',
+'  --count            print only the total number of count-bearing claims checked',
 '  --self-test        prove the checkers fire on synthetic fixtures and exit',
 '  --version          print version and exit 0',
 '  --help             print this text and exit 0',
@@ -120,6 +121,7 @@ console.error(`check-doc-facts: unexpected argument "${positionals[0]}" — flag
 process.exit(2);
 }
 const quiet = flags['--quiet'] === true;
+const countMode = flags['--count'] === true;
 
 /** Documents that make count claims. Narrow and deliberate, not a tree walk. */
 const DOC_FILES = ['AGENTS.md', 'docs/STATUS.md', 'docs/ROADMAP.md'];
@@ -671,7 +673,8 @@ const subjects = [
 // ("CI runs --deep") used to be computed only inside the drift loop, so it
 // was INVISIBLE to --list unless it drifted.
 const docTexts = new Map(present.map((d) => [d.rel, fs.readFileSync(d.abs, 'utf8')]));
-const listedClaims = list ? present.flatMap((d) => enumerateClaims(docTexts.get(d.rel), subjects, d.rel)) : null;
+const allClaims = present.flatMap((d) => enumerateClaims(docTexts.get(d.rel), subjects, d.rel));
+const listedClaims = list ? allClaims : null;
 const deepVerdicts = present.map((d) => ({
   file: d.rel,
   verdict: deepClaimVerdict(docTexts.get(d.rel), workflowText),
@@ -744,7 +747,7 @@ function driftedEntry(d, cliTotal, flagTotal) {
 // Machine-readable path. Emitted BEFORE the human lines so a consumer can
 // parse stdout without having to skip prose, and so --json alone still works
 // even when --quiet suppresses the summary.
-if (asJson) {
+if (asJson && !countMode) {
 console.log(
 JSON.stringify({
 schema: 1,
@@ -758,13 +761,14 @@ ok: drifted.length === 0,
 }),
 );
 }
-for (const d of drifted) {
+if (!countMode) for (const d of drifted) {
   const hint = formatHint(d, cliTotal, flagTotal);
-console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
+  console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
 }
-if (!quiet && !list) {
+if (!quiet && !list && !countMode) {
 console.log(
 `\ncheck-doc-facts: ${present.length} documents, ${cliTotal} + ${flagTotal} live tool totals, ${drifted.length} drifted claim(s)`,
 );
 }
+if (countMode) { console.log(allClaims.length); process.exit(0); }
 process.exit(drifted.length > 0 ? 1 : 0);
