@@ -56,6 +56,7 @@
     "telemetry:export": "node tools/telemetry-export.mjs serve",
     "autopilot:selftest": "powershell -ExecutionPolicy Bypass -File ./tools/cline-autopilot.ps1 -SelfTest",
     "autopilot:watchdog": "powershell -ExecutionPolicy Bypass -File ./tools/cline-autopilot-watchdog.ps1",
+    "autopilot:watchdog:selftest": "powershell -ExecutionPolicy Bypass -File ./tools/cline-autopilot-watchdog.ps1 -SelfTest",
     "autopilot:run-once": "powershell -ExecutionPolicy Bypass -File ./tools/cline-autopilot.ps1 -Once -MaxLoops 1",
     "telemetry:serve": "node tools/telemetry-collector.mjs serve",
     "telemetry:report": "node tools/telemetry-collector.mjs report",
