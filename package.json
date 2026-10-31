@@ -53,6 +53,7 @@
     "autopilot:install": "powershell -ExecutionPolicy Bypass -File ./tools/manage-cline-autopilot.ps1 install",
     "autopilot:install-all": "powershell -ExecutionPolicy Bypass -File ./tools/manage-cline-autopilot.ps1 install-all",
     "autopilot:queue": "node tools/cline-prompt-queue.mjs",
+    "autopilot:queue:selftest": "node tools/cline-prompt-queue.mjs --self-test",
     "telemetry:export": "node tools/telemetry-export.mjs serve",
     "autopilot:selftest": "powershell -ExecutionPolicy Bypass -File ./tools/cline-autopilot.ps1 -SelfTest",
     "autopilot:watchdog": "powershell -ExecutionPolicy Bypass -File ./tools/cline-autopilot-watchdog.ps1",

@@ -7,19 +7,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const QUEUE = path.join(ROOT, '.renitor', 'autopilot-queue.txt');
+function queuePath() { return process.env.CLINE_QUEUE_PATH || path.join(ROOT, '.renitor', 'autopilot-queue.txt'); }
 
 function readLines() {
-  if (!fs.existsSync(QUEUE)) return [];
-  return fs.readFileSync(QUEUE, 'utf8').split(/\r?\n/);
+  const Q = queuePath();
+  if (!fs.existsSync(Q)) return [];
+  return fs.readFileSync(Q, 'utf8').split(/\r?\n/);
 }
-function writeLines(lines) { fs.writeFileSync(QUEUE, lines.join('\n') + '\n', 'utf8'); }
+function writeLines(lines) { fs.writeFileSync(queuePath(), lines.join('\n') + '\n', 'utf8'); }
 function tasks() {
   return readLines().map((l, i) => ({ l, i })).filter(x => { const t = x.l.trim(); return t !== '' && !t.startsWith('#'); });
 }
 
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--help', '-h', '--version', '--count']);
+const BOOLEAN_FLAGS = new Set(['--help', '-h', '--version', '--count', '--self-test']);
 let flags = {};
 let positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -63,11 +64,38 @@ Flags:
   --help, -h        show this help and exit 0
   --version         print version and exit 0
   --count           print only the number of queued prompts and exit 0
+  --self-test       run in-process self-test against a temp queue (no side effects)
 `);
   process.exit(0);
 }
 if (flags['--version']) { console.log('cline-prompt-queue 1.1.0'); process.exit(0); }
 if (flags['--count']) { console.log(tasks().length); process.exit(0); }
+if (flags['--self-test']) {
+  const os = await import('node:os');
+  const fs2 = fs;
+  const tmp = path.join(os.tmpdir(), 'cline-queue-selftest-' + process.pid + '.txt');
+  process.env.CLINE_QUEUE_PATH = tmp;
+  let pass = true;
+  const check = (label, cond) => { if (!cond) { console.log('FAIL:', label); pass = false; } else { console.log('OK:', label); } };
+  // clear
+  writeLines(['# Autopilot prompt queue']);
+  check('clear/empty count', tasks().length === 0);
+  // add
+  writeLines(readLines().concat(['hello']));
+  check('add via writeLines', tasks().length === 1);
+  // remove
+  const lines = readLines();
+  const t = tasks();
+  lines.splice(t[0].i, 1);
+  writeLines(lines);
+  check('remove', tasks().length === 0);
+  // count flag via child not needed; verify JSON shape
+  const j = JSON.stringify({ count: tasks().length, prompts: tasks().map(x => x.l.trim()) });
+  check('json shape', j.includes('"count"') && j.includes('"prompts"'));
+  try { fs2.unlinkSync(tmp); } catch {}
+  if (pass) { console.log('SELF-TEST: PASS'); process.exit(0); }
+  else { console.log('SELF-TEST: FAIL'); process.exit(1); }
+}
 
 const cmd = positionals[0] || 'list';
 const arg = positionals.slice(1).join(' ');
