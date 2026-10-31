@@ -14,7 +14,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const ROOT = __dirname;
+const ROOT = path.resolve(__dirname, '..');
 const ALERTS = path.join(ROOT, 'tmp-alerts.json');
 const REGMETA = path.join(ROOT, 'tmp-reg-meta.json');
 const LOCKS = [
