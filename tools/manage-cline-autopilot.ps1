@@ -1,10 +1,19 @@
 # manage-cline-autopilot.ps1 - start/stop/status for the autonomous driver
 param(
     [ValidateSet('start','stop','status','install','uninstall','install-all')]
-    [string]$Action = 'status'
+    [string]$Action = 'status',
+    [switch]$SelfTest
 )
 $TaskName = 'ClineAutopilot'
 $ScriptPath = Join-Path $PSScriptRoot 'cline-autopilot.ps1'
+if ($SelfTest) {
+    $pass = $true
+    if (-not (Test-Path $ScriptPath)) { Write-Host 'FAIL: driver missing'; $pass = $false } else { Write-Host 'OK: driver present' }
+    if (-not (Test-Path (Join-Path $PSScriptRoot 'cline-autopilot-watchdog.ps1'))) { Write-Host 'FAIL: watchdog missing'; $pass = $false } else { Write-Host 'OK: watchdog present' }
+    $cfgPath = Join-Path $PSScriptRoot '..\.renitor\autopilot.json'
+    if (-not (Test-Path $cfgPath)) { Write-Host 'FAIL: config missing'; $pass = $false } else { Write-Host 'OK: config present' }
+    if ($pass) { Write-Host 'SELF-TEST: PASS'; exit 0 } else { Write-Host 'SELF-TEST: FAIL'; exit 1 }
+}
 switch ($Action) {
     'install' {
         $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`""
