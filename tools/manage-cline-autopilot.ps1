@@ -29,9 +29,7 @@ switch ($Action) {
         Write-Host "stopped"
     }
     'install-all' {
-        # install the driver task
         & $PSCommandPath install
-        # install the watchdog task (every 5 min)
         $wdAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSScriptRoot\cline-autopilot-watchdog.ps1`""
         $wdTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
         $wdSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
@@ -43,6 +41,12 @@ switch ($Action) {
         $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         if ($t) { Write-Host "task: $($t.State)"; $t | Get-ScheduledTaskInfo | Format-List LastRunTime,LastTaskResult,NextRunTime }
         else { Write-Host "task not installed" }
+        $wd = Get-ScheduledTask -TaskName 'ClineAutopilotWatchdog' -ErrorAction SilentlyContinue
+        if ($wd) { Write-Host "watchdog: $($wd.State)" } else { Write-Host 'watchdog: not installed' }
+        $hb = Join-Path (Split-Path $PSScriptRoot -Parent) '.renitor\autopilot.heartbeat'
+        if (Test-Path $hb) { $a=(Get-Date)-(Get-Item $hb).LastWriteTime; Write-Host ('heartbeat: {0} min ago' -f [math]::Round($a.TotalMinutes,1)) } else { Write-Host 'heartbeat: missing' }
+        $procs = @(Get-Process -Name powershell -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*cline-autopilot.ps1*' })
+        Write-Host ('driver processes: {0}' -f $procs.Count)
         $st = Join-Path (Split-Path $PSScriptRoot -Parent) '.renitor\autopilot-state.json'
         if (Test-Path $st) { Get-Content $st }
     }
