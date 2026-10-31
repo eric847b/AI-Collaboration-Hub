@@ -62,7 +62,8 @@ function Run-Cline($cfg, $prompt) {
         Write-Log $cfg ("attempt $attempt/$($cfg.maxRetries): $($prompt.Substring(0,[Math]::Min(80,$prompt.Length)))")
         if (Test-Path $outFile) { Remove-Item $outFile -Force -ErrorAction SilentlyContinue }
         if (Test-Path $errFile) { Remove-Item $errFile -Force -ErrorAction SilentlyContinue }
-        $proc = Start-Process -FilePath 'C:/Users/Eric/AppData/Roaming/npm/cline.cmd' -ArgumentList $args -RedirectStandardInput $inFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile -PassThru -WindowStyle Hidden
+        $clineCmd = Join-Path $env:APPDATA 'npm\cline.cmd'
+$proc = Start-Process -FilePath $clineCmd -ArgumentList $args -RedirectStandardInput $inFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile -PassThru -WindowStyle Hidden
         $deadline = (Get-Date).AddSeconds($cfg.timeoutSeconds + 60)
         while (-not $proc.HasExited) {
             if ((Get-Date) -gt $deadline) { try { $proc.Kill() } catch {}; Write-Log $cfg "timeout kill"; break }
@@ -89,7 +90,8 @@ if ($SelfTest) {
     $q = Load-Queue $cfg
     if ($q.Count -lt 1) { Write-Host "FAIL: queue empty"; $pass = $false } else { Write-Host ("OK: queue has " + $q.Count + " prompts") }
     if (-not (Test-Path (Split-Path $cfg.stateFile -Parent))) { Write-Host "FAIL: state dir missing"; $pass = $false } else { Write-Host "OK: state dir exists" }
-    if (-not (Test-Path 'C:/Users/Eric/AppData/Roaming/npm/cline.cmd')) { Write-Host "FAIL: cline.cmd missing"; $pass = $false } else { Write-Host "OK: cline.cmd present" }
+    $clineCmd = Join-Path $env:APPDATA 'npm\cline.cmd'
+if (-not (Test-Path $clineCmd)) { Write-Host "FAIL: cline.cmd missing"; $pass = $false } else { Write-Host "OK: cline.cmd present" }
     if ($pass) { Write-Host "SELF-TEST: PASS"; exit 0 } else { Write-Host "SELF-TEST: FAIL"; exit 1 }
 }
 Write-Log $cfg "autopilot starting (config=$ConfigPath)"
@@ -126,7 +128,8 @@ while ($true) {
         }
         if (-not $DryRun) {
             try {
-                $govOut = & powershell -NoProfile -ExecutionPolicy Bypass -File 'C:/Users/Eric/Documents/Cline/Hooks/model-governor.ps1' auto 2>$null
+                $govScript = Join-Path $env:USERPROFILE 'Documents\Cline\Hooks\model-governor.ps1'
+$govOut = if (Test-Path $govScript) { & powershell -NoProfile -ExecutionPolicy Bypass -File $govScript auto 2>$null } else { $null }
                 if ($govOut) { Write-Log $cfg ("governor: " + (($govOut | Select-Object -Last 1).ToString())) }
             } catch {}
         }
