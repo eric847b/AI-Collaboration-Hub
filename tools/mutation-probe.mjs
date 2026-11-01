@@ -669,6 +669,13 @@ const PROBES = [
     from: "      if (j < n && (text[j] === '}' || text[j] === ']')) { i += 1; continue; }",
     to: "      if (false) { i += 1; continue; }",
   },
+  {
+    tool: 'cline-prompt-queue.mjs',
+    id: 'queue-selftest-empty-count-guard',
+    why: 'the empty-queue self-test check must actually assert emptiness, or a broken clear() would still pass',
+    from: "check('clear/empty count', tasks().length === 0);",
+    to: "check('clear/empty count', tasks().length !== 0);",
+  },
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */
