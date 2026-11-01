@@ -146,6 +146,9 @@ $govOut = if (Test-Path $govScript) { & powershell -NoProfile -ExecutionPolicy B
 Write-Log $cfg "autopilot exiting"
 if ($JsonOutput) {
     $st = Load-State $cfg
-    $summary = [pscustomobject]@{ loop=$st.loop; status=$st.status; consecutiveFailures=$st.consecutiveFailures; lastRun=$st.lastRun; exitCode=0 }
+    $hb = Join-Path (Split-Path $cfg.stateFile -Parent) 'autopilot.heartbeat'
+    $hbAge = $null
+    if (Test-Path $hb) { $hbAge = [math]::Round(((Get-Date) - (Get-Item $hb).LastWriteTime).TotalMinutes, 1) }
+    $summary = [pscustomobject]@{ loop=$st.loop; status=$st.status; consecutiveFailures=$st.consecutiveFailures; lastRun=$st.lastRun; queueCount=(Load-Queue $cfg).Count; heartbeatAgeMin=$hbAge; exitCode=0 }
     $summary | ConvertTo-Json -Compress
 }
