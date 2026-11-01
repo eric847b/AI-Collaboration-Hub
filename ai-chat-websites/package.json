@@ -109,6 +109,7 @@
       "@modelcontextprotocol/sdk": "^1.32.0"
     },
     "katex": "0.18.2",
-    "re2js": "2.8.7"
+    "re2js": "2.8.7",
+    "zod": "4.6.6"
   }
 }
