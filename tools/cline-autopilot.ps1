@@ -83,7 +83,7 @@ $proc = Start-Process -FilePath $clineCmd -ArgumentList $args -RedirectStandardI
 }
 $cfg = Load-Config $ConfigPath
 Rotate-Log $cfg
-if ($Version) { Write-Host "cline-autopilot 1.1.0"; exit 0 }
+if ($Version) { Write-Host "cline-autopilot 1.2.0"; exit 0 }
 if ($SelfTest) {
     $pass = $true
     if (-not (Test-Path $cfg.queueFile)) { Write-Host "FAIL: queueFile missing"; $pass = $false } else { Write-Host "OK: queueFile exists" }
