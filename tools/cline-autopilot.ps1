@@ -6,6 +6,7 @@ param(
     [switch]$JsonOutput,
     [switch]$Version,
     [switch]$DryRun,
+    [switch]$Check,
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\.renitor\autopilot.json')
 )
 $ErrorActionPreference = 'Continue'
@@ -84,6 +85,18 @@ $proc = Start-Process -FilePath $clineCmd -ArgumentList $args -RedirectStandardI
 $cfg = Load-Config $ConfigPath
 Rotate-Log $cfg
 if ($Version) { Write-Host "cline-autopilot 1.2.0"; exit 0 }
+if ($Check) {
+    $pass = $true
+    if (-not (Test-Path $cfg.queueFile)) { Write-Host 'FAIL: queueFile missing'; $pass = $false } else { Write-Host 'OK: queueFile exists' }
+    if (-not (Test-Path (Split-Path $cfg.stateFile -Parent))) { Write-Host 'FAIL: state dir missing'; $pass = $false } else { Write-Host 'OK: state dir exists' }
+    $clineCmd = Join-Path $env:APPDATA 'npm\cline.cmd'
+    if (-not (Test-Path $clineCmd)) { Write-Host 'FAIL: cline.cmd missing'; $pass = $false } else { Write-Host 'OK: cline.cmd present' }
+    $q = Load-Queue $cfg
+    Write-Host ("queue prompts: {0}" -f $q.Count)
+    $st = Load-State $cfg
+    Write-Host ("state: loop={0} status={1} failures={2}" -f $st.loop, $st.status, $st.consecutiveFailures)
+    if ($pass) { Write-Host 'CHECK: PASS'; exit 0 } else { Write-Host 'CHECK: FAIL'; exit 1 }
+}
 if ($SelfTest) {
     $pass = $true
     if (-not (Test-Path $cfg.queueFile)) { Write-Host "FAIL: queueFile missing"; $pass = $false } else { Write-Host "OK: queueFile exists" }
