@@ -676,6 +676,13 @@ const PROBES = [
     from: "check('clear/empty count', tasks().length === 0);",
     to: "check('clear/empty count', tasks().length !== 0);",
   },
+  {
+    tool: 'cline-prompt-queue.mjs',
+    id: 'queue-selftest-add-count-guard',
+    why: 'the add self-test check must actually assert one item, or a broken add() would still pass',
+    from: "check('add via writeLines', tasks().length === 1);",
+    to: "check('add via writeLines', tasks().length === 0);",
+  },
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */
