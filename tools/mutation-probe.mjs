@@ -683,6 +683,13 @@ const PROBES = [
     from: "check('add via writeLines', tasks().length === 1);",
     to: "check('add via writeLines', tasks().length === 0);",
   },
+  {
+    tool: 'cline-prompt-queue.mjs',
+    id: 'queue-selftest-remove-count-guard',
+    why: 'the remove self-test check must actually assert emptiness, or a broken remove() would still pass',
+    from: "check('remove', tasks().length === 0);",
+    to: "check('remove', tasks().length !== 0);",
+  },
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */
