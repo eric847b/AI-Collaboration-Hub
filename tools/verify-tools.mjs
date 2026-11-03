@@ -73,7 +73,11 @@ const SMOKE = {
   'check-npm-scripts.mjs': ['--check'],
   'check-doc-facts.mjs': [],
   'check-flag-contract.mjs': [],
+  'cline-prompt-queue.mjs': ['--self-test'],
+  'e2e-smoke.mjs': ['--self-test'],
   'extension-check.mjs': ['--quiet'],
+  'fix-security-alerts.cjs': ['--self-test', '--quiet'],
+  'load-test.mjs': ['--self-test'],
   'secret-scan.mjs': ['--quiet'],
   'workflow-audit.mjs': ['--quiet'],
   'dependabot-check.mjs': [],
@@ -278,7 +282,7 @@ function runSelfTest() {
     '--max-age-hours',
     '48',
   ]);
-  check('unknown tool is syntax-only', smokeArgsFor('load-test.mjs', {}), undefined);
+  check('load-test has smoke args', smokeArgsFor('load-test.mjs', {}), ['--self-test']);
   check(
     'matrix entries are copied',
     smokeArgsFor('check-doc-links.mjs', {}).length === SMOKE['check-doc-links.mjs'].length,
