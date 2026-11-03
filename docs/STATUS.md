@@ -98,7 +98,7 @@ ledger 51 → 1 accepted finding (the documented WF004 review-flag on the legiti
 ## Last gate run
 
 ```
-| 2026-10-18 — tools/workspace-gate.ps1 v3 (after repo-bloat dashboard/CI wiring)
+| 2026-11-02 — tools/workspace-gate.ps1 v3 (gate re-run, all green)
 Passed=25  Failed=0  Warnings=1
   warn: node v24.14.0 < engines requirement >= 26 (accepted local delta - see docs/STATUS.md 'Node runtime delta'; npm is not engine-strict)
 Status: PASS
