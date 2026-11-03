@@ -6,7 +6,7 @@
 > `ROUND_3_COMPLETION.md`, `ROUND_3_STATUS.md`.
 > History: `docs/ARCHIVE-improvement-rounds-2026-08.md` · Live state: `docs/STATUS.md`
 
-**Last revised:** 2026-09-19 · **Quality gate:** `npm run gate` · **Full catalyst series:** `npm run quality`
+**Last revised:** 2026-10-19 · **Quality gate:** `npm run gate` · **Full catalyst series:** `npm run quality`
 
 ## Legend
 
