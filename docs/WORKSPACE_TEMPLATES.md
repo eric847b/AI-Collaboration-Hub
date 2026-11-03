@@ -5,7 +5,7 @@
 >
 > **Generator:** `node tools/new-project.mjs --name my-app` (non-interactive; see `--help`)
 > 
-> **Last updated:** 2026-09-19 · **Gate status:** PASS (22/22) · **Completed rounds:** 11
+> **Last updated:** 2026-11-02 · **Gate status:** PASS (25/25) · **Completed rounds:** 11
 
 ---
 
@@ -44,7 +44,7 @@
 
 5. **Install Playwright browsers:**
    ```powershell
-   npx playwright install chromium
+   node_modules\.bin\playwright install chromium
    ```
 
 6. **Install and verify:**
@@ -79,4 +79,4 @@ When adding a new project to the workspace, ensure:
 
 ---
 
-*Last updated: 2026-09-19 · Gate: PASS (22/22) · Rounds: 10 complete*
+*Last updated: 2026-11-02 · Gate: PASS (25/25) · Rounds: 11 complete*
