@@ -21,7 +21,7 @@ Eric's definition, in his words: "the iteration at the end of the last possible 
 For any single component, that moment is recognized — the component IS at its infinity version — when all of its status conditions hold:
 
 1. Its acceptance suites pass, held unmodified (green is earned against the old tests, never by rewriting them).
-2. No strictly better candidate is found within the stated search budget (generations, tokens, time), with the search recorded.
+2. No strictly better candidate is found within the stated search budget (generations, tokens, time), with the search recorded. Where no budget is pre-stated for a component, the default budget is one full regeneration-and-verification cycle for that component, and that cycle is the recorded search.
 3. It encompasses the functions of the software it replaces.
 4. No open alerts or defects remain against it.
 5. A lane that did not build it has verified all of the above.
