@@ -43,10 +43,12 @@ jobs:
           node --check tools/check-doc-links.mjs
           node --check tools/check-doc-facts.mjs
           node --check tools/check-flag-contract.mjs
+          node --check tools/check-npm-scripts.mjs
+          node --check tools/check-json-validity.mjs
           node --check tools/secret-scan.mjs
           node --check tools/sync-parity.mjs
       - name: Doc-link health (all Markdown)
-        run: node tools/check-doc-links.mjs
+        run: node tools/check-doc-links.mjs --check
       # Complements the link check above: links prove a doc PATH is real, this
       # proves a doc NUMBER is still true. It caught six stale "--check-cli 19/19"
       # claims across three files on 2026-10-01, and immediately caught its own
@@ -54,6 +56,10 @@ jobs:
       # derived from the filesystem and check-flag-contract --json, never hand-typed.
       - name: Doc facts (documented counts still match runtime truth)
         run: node tools/check-doc-facts.mjs
+      - name: npm run reference health (stale script refs ratcheted)
+        run: node tools/check-npm-scripts.mjs --check
+      - name: JSON validity (all tracked *.json parse)
+        run: node tools/check-json-validity.mjs --check
       - name: Extension health (informational — ladder surface may lag)
         continue-on-error: true
         run: node tools/extension-check.mjs --quiet
@@ -108,6 +114,8 @@ jobs:
           # is verified against the real tool; the hot path derives it for speed.
           # Without this line the speedup could rot unnoticed in CI.
           node tools/check-doc-facts.mjs --self-test
+          node tools/check-npm-scripts.mjs --self-test
+          node tools/check-json-validity.mjs --self-test
           node tools/telemetry-collector.mjs --self-test
           node tools/telemetry-export.mjs --self-test
           node tools/ops-dashboard.mjs --self-test

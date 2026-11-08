@@ -14,7 +14,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const ROOT = __dirname;
+const ROOT = path.resolve(__dirname, '..');
 const ALERTS = path.join(ROOT, 'tmp-alerts.json');
 const REGMETA = path.join(ROOT, 'tmp-reg-meta.json');
 const LOCKS = [
@@ -191,7 +191,8 @@ function selftest() {
   ];
   const bad = cases.filter(([v, r, want]) => sat(v, r) !== want);
   if (bad.length) { console.error('SELFTEST FAIL: ' + JSON.stringify(bad)); process.exit(1); }
-  console.log('selftest: ' + cases.length + '/' + cases.length + ' semver cases pass');
+  if (process.argv.includes('--json')) console.log(JSON.stringify({ cases: cases.length, passed: cases.length - bad.length, failed: bad.length, ok: bad.length === 0 }));
+  else console.log('selftest: ' + cases.length + '/' + cases.length + ' semver cases pass');
 }
 
 /* ---------- lockfile tree walk ---------- */
@@ -344,6 +345,7 @@ function applyPlan() {
   console.log('patch: ' + applied + ' edit(s) across ' + written + ' lockfile(s), ' + skipped + ' documented skip(s)');
   const residual = computeEdits(); // re-plan against the NEW lockfiles
   const left = residual.flatMap(p => p.edits.map(e => p.rel + ' ' + e.key + ' -> ' + e.target));
+  if (process.argv.includes('--json')) console.log(JSON.stringify({ applied, written, skipped, residual: left.length }));
   if (left.length) { console.error('RESIDUAL FIXABLE VULNERABLE COPIES:\n' + left.join('\n')); process.exit(1); }
   console.log('verify: residual fixable copies = 0');
 }
@@ -395,6 +397,7 @@ const USAGE = [
   'Flags:',
   '  --self-test  alias for the `selftest` command (repo-wide convention, and what',
   '               tools/mutation-probe.mjs invokes to prove these cases bite)',
+  '  --json       print machine-readable JSON for `selftest` (cases count + result)',
   '  --help       print this text and exit 0',
   '',
   'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
@@ -415,7 +418,7 @@ if (argv.includes('--self-test')) {
                   // through into the unknown-flag loop below.
 }
 for (const a of argv) {
-  if (a.startsWith('-')) {
+  if (a.startsWith('-') && a !== '--json') {
     console.error(`fix-security-alerts: unknown flag "${a}" - see \`node tools/fix-security-alerts.cjs --help\``);
     process.exit(2);
   }

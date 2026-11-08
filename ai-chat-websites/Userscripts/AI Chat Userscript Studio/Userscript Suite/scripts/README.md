@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Scripts
 
 Automation helpers for validating, testing, bundling, and maintaining the

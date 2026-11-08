@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # AI Chat Websites
 
 Private workspace for AI chat userscripts, modular suite development, legacy archives, and planning docs.

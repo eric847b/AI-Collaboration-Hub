@@ -36,6 +36,10 @@ for (let i = 0; i < args.length; i += 1) {
     flags['--self-test'] = true;
     continue;
   }
+  if (a === '--json') {
+    flags['--json'] = true;
+    continue;
+  }
   if (a.startsWith('-')) {
     const eq = a.indexOf('=');
     const key = eq >= 0 ? a.slice(0, eq) : a;
@@ -232,6 +236,7 @@ const marker = flags['--marker'] ?? '<div id="root"';
 
 // Repeatable --route <path> probes (synthetic multi-route checks). Default: "/".
 const routes = normalizeRoutes(flags['--route']);
+const jsonMode = flags['--json'] === true;
 
 function killTree(child) {
   try {
@@ -321,21 +326,24 @@ try {
       const res = await fetchOnce(`http://127.0.0.1:${port}${route}`);
       const hasMarker = res.body.includes(marker);
       const ok = isRouteOk(res.status);
-      console.log(`e2e-smoke: ${project} GET ${route} -> HTTP ${res.status} (${res.body.length}B, marker=${hasMarker ? 'found' : 'missing'})${ok ? '' : ' FAIL'}`);
+      if (!jsonMode) console.log(`e2e-smoke: ${project} GET ${route} -> HTTP ${res.status} (${res.body.length}B, marker=${hasMarker ? 'found' : 'missing'})${ok ? '' : ' FAIL'}`);
       if (!hasMarker && route === routes[0]) {
         console.warn(`e2e-smoke: warning — marker "${marker}" not present in response (informational)`);
       }
-      results.push({ status: res.status, hasMarker });
+      results.push({ route, status: res.status, hasMarker });
     } catch (err) {
       console.error(`e2e-smoke: ${project} GET ${route} -> FAIL ${err.message}`);
-      results.push({ status: 0, hasMarker: false });
+      results.push({ route, status: 0, hasMarker: false });
     }
   }
   const verdict = evaluateRoutes(results);
+  if (jsonMode) {
+    console.log(JSON.stringify({ project, routes: results, passed: verdict.passed, failures: verdict.failures }, null, 2));
+  }
   if (verdict.passed) {
     exitCode = 0;
   } else {
-    console.error(`e2e-smoke: FAIL — ${verdict.failures} of ${results.length} routes answered non-200`);
+    if (!jsonMode) console.error(`e2e-smoke: FAIL — ${verdict.failures} of ${results.length} routes answered non-200`);
   }
 } catch (err) {
   console.error(`e2e-smoke: FAIL — ${err.message}`);

@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # API Documentation Standards
 
 This guide ensures consistent, high-quality API documentation across all projects.

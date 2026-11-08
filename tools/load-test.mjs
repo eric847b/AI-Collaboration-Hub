@@ -42,7 +42,7 @@ const VALUE_FLAGS = new Set([
   '--max-error-rate',
   '--max-p95-ms',
 ]);
-const BOOL_FLAGS = new Set(['--help', '--self-test']);
+const BOOL_FLAGS = new Set(['--help', '--self-test', '--json']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -149,6 +149,7 @@ function usage() {
       '  --timeout-ms <ms>        per-request timeout (default 120000 - slow-laptop budget)',
       '  --max-error-rate <pct>   error-rate gate, percent (default 1)',
       '  --max-p95-ms <ms>        p95 latency gate in ms (default 3000)',
+      '  --json                  emit machine-readable JSON (measured, percentiles, gates)',
       '  --self-test             prove the gates and thresholds bite; needs no server    [no server]',
       '  --help                   print this text and exit 0',
       '',
@@ -357,17 +358,28 @@ try {
   const p99 = percentile(sorted, 99);
   const statusLine = [...statuses.entries()].sort((a, b) => a[0] - b[0]).map(([s, n]) => `${s}:${n}`).join('  ');
 
-  console.log(`load-test: ${measured} requests, ${concurrency} workers, ${seconds.toFixed(2)}s`);
-  console.log(`  RPS            ${rps.toFixed(1)}`);
-  console.log(`  latency p50    ${p50.toFixed(0)} ms`);
-  console.log(`  latency p95    ${p95.toFixed(0)} ms  (gate <= ${maxP95ms} ms)`);
-  console.log(`  latency p99    ${p99.toFixed(0)} ms`);
-  console.log(`  errors         ${errors}/${measured} (${errorRate.toFixed(2)}%)  (gate <= ${maxErrorRate}%)`);
-  console.log(`  statuses       ${statusLine}`);
+  const jsonMode = flags['--json'] === true;
+  if (jsonMode) {
+    console.log(JSON.stringify({
+      measured, concurrency, seconds: Number(seconds.toFixed(2)),
+      rps: Number(rps.toFixed(1)),
+      p50: Number(p50.toFixed(0)), p95: Number(p95.toFixed(0)), p99: Number(p99.toFixed(0)),
+      errors, errorRate: Number(errorRate.toFixed(2)), maxErrorRate, maxP95ms,
+      statuses: statusLine,
+    }, null, 2));
+  } else {
+    console.log(`load-test: ${measured} requests, ${concurrency} workers, ${seconds.toFixed(2)}s`);
+    console.log(`  RPS            ${rps.toFixed(1)}`);
+    console.log(`  latency p50    ${p50.toFixed(0)} ms`);
+    console.log(`  latency p95    ${p95.toFixed(0)} ms  (gate <= ${maxP95ms} ms)`);
+    console.log(`  latency p99    ${p99.toFixed(0)} ms`);
+    console.log(`  errors         ${errors}/${measured} (${errorRate.toFixed(2)}%)  (gate <= ${maxErrorRate}%)`);
+    console.log(`  statuses       ${statusLine}`);
+  }
 
   const { failed, reasons } = evaluateGates({ measured, errorRate, p95, maxErrorRate, maxP95ms });
   for (const reason of reasons) console.error(`load-test: FAIL - ${reason}`);
-  if (!failed) console.log('load-test: PASS');
+  if (!jsonMode && !failed) console.log('load-test: PASS');
   process.exit(failed ? 1 : 0);
 } catch (err) {
   console.error(`load-test: FAIL — ${err.message}`);

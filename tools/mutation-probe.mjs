@@ -494,6 +494,21 @@ const PROBES = [
     to: "return 'ok'; // warn, skip, absent, anything else",
   },
   {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-verbose-timing-bites',
+    why: 'the --verbose timing assertion must actually check for timing output - a no-op would let a missing timing silently pass',
+    from: "vbr.out.includes('ms)')",
+    to: "vbr.out.includes('NEVER')",
+
+  },
+  {
+    tool: 'quick-health.mjs',
+    id: 'qhealth-count-regex-bites',
+    why: 'the --count output assertion must actually validate the number - a permissive regex would accept any output',
+    from: "/^\\d+\\n?$/",
+    to: "/^NEVER$/",
+  },
+  {
     tool: 'check-doc-links.mjs',
     id: 'doclinks-http-scheme-skipped',
     why: 'the scheme regex must skip http(s)/mailto links; weakening it to require 5+ letters lets http: through',
@@ -514,7 +529,167 @@ const PROBES = [
     from: "if (!BOOLEAN_FLAGS.has(key)) {",
     to: "if (false) {",
   },
-
+  {
+    tool: 'check-npm-scripts.mjs',
+    id: 'npm-scripts-ignore-marker-bites',
+    why: 'the ignore marker must actually suppress a ref; hardcoding ignored=false lets stale refs through silently',
+    from: "const ignored = fileIgnored || /<!--",
+    to: "const ignored = false; //",
+  },
+  {
+    tool: 'check-npm-scripts.mjs',
+    id: 'npm-scripts-ignore-file-bites',
+    why: 'the file-level ignore marker must suppress all refs in a file; dropping it re-introduces every stale ref',
+    from: "const fileIgnored = /<!--",
+    to: "const fileIgnored = false; //",
+  },
+  {
+    tool: 'check-npm-scripts.mjs',
+    id: 'npm-scripts-skipfiles-guard-bites',
+    why: 'walk must skip generated OPS-DASHBOARD.md; dropping the guard re-scans its stale refs',
+    from: "if (SKIP_FILES.has(rel)) continue;",
+    to: "if (false) continue;",
+  },
+  {
+    tool: 'check-npm-scripts.mjs',
+    id: 'npm-scripts-version-output-assertion-bites',
+    why: 'the --version output assertion must actually validate the name; a permissive includes lets a broken --version pass',
+    from: "vr.out.includes('check-npm-scripts')",
+    to: "vr.out.includes('NEVER')",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-invalid-throws-assertion-bites',
+    why: 'the invalid-JSON self-test assertion must actually validate the throw; a valid input lets a broken scanner pass',
+    from: "JSON.parse('{ bad }')",
+    to: "JSON.parse('{}')",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-jsonc-strip-bites',
+    why: 'the JSONC self-test assertion must actually exercise comment stripping; dropping the strip leaves JSONC unparseable',
+    from: "JSON.parse(stripJsonComments(trimmed))",
+    to: "JSON.parse(trimmed)",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-version-output-assertion-bites',
+    why: 'the --version output assertion must actually validate the name; a permissive includes lets a broken --version pass',
+    from: "vr.out.includes('check-json-validity')",
+    to: "vr.out.includes('NEVER')",
+  },
+  {
+    tool: 'check-npm-scripts.mjs',
+    id: 'npm-scripts-check-exit-assertion-bites',
+    why: 'the --check exit-code assertion must actually validate the code; a tautology lets a broken --check pass silently',
+    from: "check('--check exits 0 or 1 (not 2)', cr.code === 0 || cr.code === 1, true);",
+    to: "check('--check exits 0 or 1 (not 2)', cr.code === 0 || cr.code === 1, false);",
+  },
+  {
+    tool: 'check-npm-scripts.mjs',
+    id: 'npm-scripts-suggest-threshold-bites',
+    why: 'the suggest threshold must actually allow close matches; hardcoding null disables suggestions entirely',
+    from: "return bestD <= 3 ? best : null;",
+    to: "return null;",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-empty-file-assertion-bites',
+    why: 'the empty-file self-test assertion must actually validate the empty branch; a tautology lets a broken scanner pass',
+    from: "if (trimmed === '') return true;",
+    to: "if (false) return true;",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-stripjsoncomments-assertion-bites',
+    why: 'the stripJsonComments self-test assertion must actually call the function; dropping the call leaves the comment in place',
+    from: "stripJsonComments('{\"a\":1 // x}')",
+    to: "('{\"a\":1 // x}')",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-list-exit-assertion-bites',
+    why: 'the --list exit-code assertion must actually validate the code; a tautology lets a broken --list pass silently',
+    from: "check('--list exits 0', cli(['--list']).code, 0);",
+    to: "check('--list exits 0', cli(['--list']).code, 999);",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-list-exit-assertion-bites',
+    why: 'the --list exit-code assertion must actually validate the code; a tautology lets a broken --list pass silently',
+    from: "check('--list exits 0', lr.code, 0);",
+    to: "check('--list exits 0', lr.code, 999);",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-check-exit-assertion-bites',
+    why: 'the --check exit-code assertion must actually validate the code; a tautology lets a broken --check pass silently',
+    from: "check('--check exits 0 or 1 (not 2)', cr.code === 0 || cr.code === 1, true);",
+    to: "check('--check exits 0 or 1 (not 2)', cr.code === 0 || cr.code === 1, false);",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-suggest-exit-assertion-bites',
+    why: 'the --suggest exit-code assertion must actually validate the code; a tautology lets a broken --suggest pass silently',
+    from: "check('--suggest exits 0', cli(['--suggest']).code, 0);",
+    to: "check('--suggest exits 0', cli(['--suggest']).code, 999);",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-check-exit-assertion-bites',
+    why: 'the --check exit-code assertion must actually validate the code; a tautology lets a broken --check pass silently',
+    from: "check('--check exits 0 or 1 (not 2)', cr.code === 0 || cr.code === 1, true);",
+    to: "check('--check exits 0 or 1 (not 2)', cr.code === 0 || cr.code === 1, false);",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-anchor-guard-bites',
+    why: 'the anchor-resolution guard must actually reject a link whose #fragment is not a heading; neutralising it lets a broken anchor pass silently',
+    from: "      anchorOk = headingsFor(abs).has(githubSlug(decodeURIComponent(fragment)));",
+    to: "      anchorOk = true; // mutated: anchor never checked",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-anchor-exists-combine-bites',
+    why: 'file existence and anchor validity must both gate `exists`; dropping anchorOk lets a broken-anchor link be reported as OK',
+    from: "    const exists = fileExists && anchorOk;",
+    to: "    const exists = fileExists;",
+  },
+  {
+    tool: 'check-doc-links.mjs',
+    id: 'doclinks-suggestanchor-bites',
+    why: 'suggestAnchor must actually compute the closest heading; neutralising it to always return null breaks the suggestion contract',
+    from: "  return bestD <= 4 && best !== target ? `#${best}` : null;",
+    to: "  return null; // mutated: never suggests",
+  },
+  {
+    tool: 'check-json-validity.mjs',
+    id: 'jsonvalidity-trailing-comma-bites',
+    why: 'stripTrailingCommas must actually remove trailing commas; disabling it leaves JSONC trailing commas unparseable',
+    from: "      if (j < n && (text[j] === '}' || text[j] === ']')) { i += 1; continue; }",
+    to: "      if (false) { i += 1; continue; }",
+  },
+  {
+    tool: 'cline-prompt-queue.mjs',
+    id: 'queue-selftest-empty-count-guard',
+    why: 'the empty-queue self-test check must actually assert emptiness, or a broken clear() would still pass',
+    from: "check('clear/empty count', tasks().length === 0);",
+    to: "check('clear/empty count', tasks().length !== 0);",
+  },
+  {
+    tool: 'cline-prompt-queue.mjs',
+    id: 'queue-selftest-add-count-guard',
+    why: 'the add self-test check must actually assert one item, or a broken add() would still pass',
+    from: "check('add via writeLines', tasks().length === 1);",
+    to: "check('add via writeLines', tasks().length === 0);",
+  },
+  {
+    tool: 'cline-prompt-queue.mjs',
+    id: 'queue-selftest-remove-count-guard',
+    why: 'the remove self-test check must actually assert emptiness, or a broken remove() would still pass',
+    from: "check('remove', tasks().length === 0);",
+    to: "check('remove', tasks().length !== 0);",
+  },
 ];
 
 /* ------------------------------- flag parsing ------------------------------ */
@@ -755,7 +930,20 @@ function runProbeSelfTest() {
   console.log('mutation-probe self-test: 13/13 passed');
 }
 
+function sweepStaleArtifacts() {
+  let swept = 0;
+  try {
+    for (const e of fs.readdirSync(TOOLS_DIR)) {
+      if (e.startsWith('.mutation-probe-')) {
+        try { fs.rmSync(path.join(TOOLS_DIR, e), { force: true, recursive: true }); swept += 1; } catch { }
+      }
+    }
+  } catch { }
+  if (swept > 0) console.error(`mutation-probe: swept ${swept} stale artifact(s) from a prior run`);
+}
+
 function main() {
+  sweepStaleArtifacts();
   let sel;
   try {
     sel = parseArgs(process.argv.slice(2));

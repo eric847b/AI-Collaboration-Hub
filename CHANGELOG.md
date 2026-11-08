@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Changelog
 
 All notable workspace-level changes are documented here.

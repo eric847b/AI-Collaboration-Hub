@@ -30,7 +30,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const isCI = argv.includes('--ci');
-const isQuiet = argv.includes('--quiet');
+const isQuiet = argv.includes('--quiet') || argv.includes('--json');
+const isJson = argv.includes('--json');
 const help = argv.includes('--help') || argv.includes('-h');
 
 const opt = (name, def) => {
@@ -44,7 +45,7 @@ const pairFilter = opt('--pair', null);
  * dropped silently, so `--ci` misspelled meant a silent run in lenient mode.
  * Unknown flags and stray positionals exit 2 (runner setup error) up front.
  */
-const CI_FLAGS = new Set(['--ci', '--quiet']);
+const CI_FLAGS = new Set(['--ci', '--quiet', '--json']);
 const CI_VALUE_FLAGS = new Set(['--pair']);
 
 function rejectBadFlags() {
@@ -370,6 +371,7 @@ Usage:
 Options:
   --ci        CI mode: stricter checks + summary table
   --quiet     Suppress all output except summary
+  --json      Emit machine-readable JSON report
   --pair <name>  Test only the specified fleet pair
   --help, -h  Show this help
 
@@ -465,15 +467,21 @@ const failures = results.filter((r) => r.status === 'FAIL');
 const skips = results.filter((r) => r.status === 'SKIP');
 
 if (failures.length > 0) {
-  logErr(`\ncross-repo-tests: ${failures.length} test(s) FAILED`);
-  for (const f of failures) logErr(`  FAIL: ${f.name}`);
+  if (isJson) {
+    console.log(JSON.stringify({ passed: results.filter((r) => r.status === 'PASS').length, failed: failures.length, skipped: skips.length, results: results.map((r) => ({ name: r.name, status: r.status })) }, null, 2));
+  } else {
+    logErr(`\ncross-repo-tests: ${failures.length} test(s) FAILED`);
+    for (const f of failures) logErr(`  FAIL: ${f.name}`);
+  }
   process.exit(1);
 }
 
 const passCount = results.filter((r) => r.status === 'PASS').length;
 const skipCount = skips.length;
 
-if (skipCount > 0) {
+if (isJson) {
+  console.log(JSON.stringify({ passed: passCount, failed: 0, skipped: skipCount, results: results.map((r) => ({ name: r.name, status: r.status })) }, null, 2));
+} else if (skipCount > 0) {
   log(`\ncross-repo-tests: ${passCount}/${results.length} passed, ${skipCount} skipped`);
 } else {
   log(`\ncross-repo-tests: ${passCount}/${results.length} passed`);

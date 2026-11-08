@@ -68,10 +68,16 @@ const onlyArg = opt('--only', '');
  * must be side-effect free — asserted by the self-test below.
  */
 const SMOKE = {
-  'check-doc-links.mjs': ['--quiet'],
+  'check-doc-links.mjs': ['--check'],
+  'check-json-validity.mjs': ['--check'],
+  'check-npm-scripts.mjs': ['--check'],
   'check-doc-facts.mjs': [],
   'check-flag-contract.mjs': [],
+  'cline-prompt-queue.mjs': ['--self-test'],
+  'e2e-smoke.mjs': ['--self-test'],
   'extension-check.mjs': ['--quiet'],
+  'fix-security-alerts.cjs': ['--self-test', '--quiet'],
+  'load-test.mjs': ['--self-test'],
   'secret-scan.mjs': ['--quiet'],
   'workflow-audit.mjs': ['--quiet'],
   'dependabot-check.mjs': [],
@@ -83,6 +89,7 @@ const SMOKE = {
   'repo-bloat.mjs': ['report', '--limit', '1'],
   'flake-tracker.cjs': ['report', '--limit', '1'],
   'ops-dashboard.mjs': ['--check'],
+  'quick-health.mjs': ['--self-test'],
   'telemetry-collector.mjs': ['report', '--limit', '1'],
   'telemetry-export.mjs': ['--self-test'],
   // Cheap and read-only on purpose: a bare run would spawn every probed tool's
@@ -275,7 +282,7 @@ function runSelfTest() {
     '--max-age-hours',
     '48',
   ]);
-  check('unknown tool is syntax-only', smokeArgsFor('load-test.mjs', {}), undefined);
+  check('load-test has smoke args', smokeArgsFor('load-test.mjs', {}), ['--self-test']);
   check(
     'matrix entries are copied',
     smokeArgsFor('check-doc-links.mjs', {}).length === SMOKE['check-doc-links.mjs'].length,

@@ -6,10 +6,11 @@
 // Tiers: ok=0, warn=0 (1 with --strict), fail=1, bad usage=2 (D-contract).
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.1.0';
+const TOOL_VERSION = '4.47.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -18,12 +19,72 @@ const FLAG_DECLARATIONS = [
   ['--json', 'machine-readable report'],
   ['--only <ids>', 'comma-separated check ids'],
   ['--list', 'print available check ids'],
+  ['--fail-fast', 'stop at first fail/warn'],
+  ['--verbose', 'print per-check timing'],
+  ['--list-checks', 'alias of --list'],
+  ['--count', 'print check count only'],
+  ['--sort', 'sort order: id|level (default id)'],
+  ['--no-suggestions', 'suppress suggestion hints'],
   ['--self-test', 'run built-in checks and exit'],
 ];
-const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'wiring', 'bloat'];
+const SUGGESTIONS = {
+  configs: 'npm run gate',
+  workflows: 'actionlint .github/workflows/*.yml',
+  lockfiles: 'npm install (regenerate lockfiles)',
+  engines: 'install Node >=26 (see .nvmrc)',
+  hooks: 'restore .husky/pre-commit',
+  handoff: 'write .renitor/handoff-result.json',
+  handoffmd: 'regenerate .renitor/current-handoff.md',
+  wiring: 'restore tools/workspace-gate.ps1 + parity map',
+  bloat: 'node tools/repo-bloat.mjs collect',
+  stray: 'remove stray dotfiles in tools/',
+  dashboard: 'node tools/ops-dashboard.mjs',
+  tmpfiles: 'rm -rf tools/.tmp',
+  nodemodules: 'npm install',
+  roadmap: 'restore docs/ROADMAP.md (## 2. Open Work)',
+  status: 'regenerate docs/STATUS.md',
+  verifytools: 'restore tools/verify-tools.mjs',
+  agentsmd: 'restore AGENTS.md',
+  gitclean: 'git add/commit or stash',
+  branch: 'git checkout a feature branch',
+  gitremote: 'git remote add origin <url>',
+  gitignore: 'add node_modules/.env to .gitignore',
+  rootpkg: 'fix root package.json',
+  readme: 'add README.md',
+  license: 'add a LICENSE file',
+  changelog: 'add CHANGELOG.md',
+  contributing: 'add CONTRIBUTING.md',
+  devcontainer: 'add .devcontainer/ config',
+  nvmrc: 'add .nvmrc pinning Node 26',
+  baselines: 'node tools/check-doc-links.mjs --update-baseline (and siblings)',
+  doclinks: 'node tools/check-doc-links.mjs',
+};
+let _gitSnapshot = null;
+function gitSnapshot() {
+  if (_gitSnapshot) return _gitSnapshot;
+  const snap = { branch: '', detached: false, dirty: 0, hasOrigin: false, available: true };
+  try {
+    const out = execFileSync('git', ['status', '--porcelain=v2', '--branch'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    for (const line of out.split(/\r?\n/)) {
+      if (line.startsWith('# branch.head ')) { const b = line.slice('# branch.head '.length).trim(); if (b === '(detached)') snap.detached = true; else snap.branch = b; }
+      else if (line.startsWith('# branch.upstream ')) { /* noop */ }
+      else if (line.startsWith('# branch.oid ')) { /* noop */ }
+      else if (line.trim() && !line.startsWith('#')) snap.dirty++;
+    }
+    try {
+      const rem = execFileSync('git', ['remote', '-v'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      snap.hasOrigin = /^origin\s/m.test(rem);
+    } catch (e) { snap.hasOrigin = false; }
+  } catch (e) {
+    snap.available = false;
+  }
+  _gitSnapshot = snap;
+  return snap;
+}
+const ALL_CHECK_IDS = ['configs', 'workflows', 'lockfiles', 'engines', 'hooks', 'handoff', 'handoffmd', 'wiring', 'bloat', 'stray', 'dashboard', 'tmpfiles', 'nodemodules', 'roadmap', 'status', 'verifytools', 'agentsmd', 'gitclean', 'branch', 'gitremote', 'gitignore', 'rootpkg', 'readme', 'license', 'changelog', 'contributing', 'devcontainer', 'nvmrc', 'baselines', 'doclinks'];
 
 export function parseArgs(argv) {
-  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false };
+  const opts = { strict: false, quiet: false, json: false, only: null, list: false, help: false, version: false, selfTest: false, failFast: false, noSuggestions: false, sort: 'id', count: false, verbose: false, listChecks: false };
   const errors = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -49,6 +110,12 @@ export function parseArgs(argv) {
       case '--list': opts.list = true; break;
       case '--help': case '-h': opts.help = true; break;
       case '--version': case '-V': opts.version = true; break;
+      case '--fail-fast': opts.failFast = true; break;
+      case '--no-suggestions': opts.noSuggestions = true; break;
+      case '--sort': { const v = takeValue(); if (v === null || !['id', 'level'].includes(v)) errors.push('--sort requires id|level'); else opts.sort = v; break; }
+      case '--count': opts.count = true; break;
+      case '--verbose': opts.verbose = true; break;
+      case '--list-checks': opts.listChecks = true; break;
       case '--self-test': opts.selfTest = true; break;
       default: errors.push(`unknown flag: ${arg}`); break;
     }
@@ -162,6 +229,203 @@ function checkWiring() {
   return { id: 'wiring', label: 'wiring', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || 'gate script + parity map present', findings };
 }
 
+function checkStray() {
+  const dir = path.join(ROOT, 'tools');
+  const stray = [];
+  try {
+    for (const f of fs.readdirSync(dir)) {
+      if (f.startsWith('.') && /\.(mjs|cjs|ps1|json)$/.test(f)) stray.push(f);
+    }
+  } catch (e) {
+    return { id: 'stray', label: 'stray', level: 'warn', detail: `tools/ unreadable: ${e.message}`, findings: [e.message] };
+  }
+  if (stray.length === 0) return { id: 'stray', label: 'stray', level: 'ok', detail: 'no stray dotfiles in tools/', findings: [] };
+
+
+  return { id: 'stray', label: 'stray', level: 'warn', detail: `${stray.length} stray dotfile(s) in tools/ (${stray.slice(0, 3).join(', ')}${stray.length > 3 ? ', ...' : ''})`, findings: stray };
+}
+
+function checkHandoffMd() {
+  const file = path.join(ROOT, '.renitor', 'current-handoff.md');
+  if (!fs.existsSync(file)) return { id: 'handoffmd', label: 'handoffmd', level: 'warn', detail: '.renitor/current-handoff.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 50) return { id: 'handoffmd', label: 'handoffmd', level: 'warn', detail: 'current-handoff.md suspiciously short', findings: [] };
+  return { id: 'handoffmd', label: 'handoffmd', level: 'ok', detail: 'current-handoff.md present', findings: [] };
+}
+
+function checkAgentsMd() {
+  const file = path.join(ROOT, 'AGENTS.md');
+  if (!fs.existsSync(file)) return { id: 'agentsmd', label: 'agentsmd', level: 'warn', detail: 'AGENTS.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 100) return { id: 'agentsmd', label: 'agentsmd', level: 'warn', detail: 'AGENTS.md suspiciously short', findings: [] };
+  return { id: 'agentsmd', label: 'agentsmd', level: 'ok', detail: 'AGENTS.md present', findings: [] };
+}
+
+function checkVerifyTools() {
+  const file = path.join(ROOT, 'tools', 'verify-tools.mjs');
+  if (!fs.existsSync(file)) return { id: 'verifytools', label: 'verifytools', level: 'warn', detail: 'tools/verify-tools.mjs missing', findings: [] };
+  return { id: 'verifytools', label: 'verifytools', level: 'ok', detail: 'verify-tools.mjs present', findings: [] };
+}
+
+function checkStatus() {
+  const file = path.join(ROOT, 'docs', 'STATUS.md');
+  if (!fs.existsSync(file)) return { id: 'status', label: 'status', level: 'warn', detail: 'docs/STATUS.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 100) return { id: 'status', label: 'status', level: 'warn', detail: 'STATUS.md suspiciously short', findings: [] };
+  return { id: 'status', label: 'status', level: 'ok', detail: 'STATUS.md present', findings: [] };
+}
+
+function checkRoadmap() {
+  const file = path.join(ROOT, 'docs', 'ROADMAP.md');
+  if (!fs.existsSync(file)) return { id: 'roadmap', label: 'roadmap', level: 'warn', detail: 'docs/ROADMAP.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (!raw.includes('## 2. Open Work')) return { id: 'roadmap', label: 'roadmap', level: 'warn', detail: 'ROADMAP.md lacks open-work section', findings: [] };
+  return { id: 'roadmap', label: 'roadmap', level: 'ok', detail: 'ROADMAP.md present', findings: [] };
+}
+
+function checkNodeModules() {
+  const dir = path.join(ROOT, 'node_modules');
+  if (!fs.existsSync(dir)) return { id: 'nodemodules', label: 'nodemodules', level: 'warn', detail: 'node_modules missing (run: npm install)', findings: [] };
+  const pkg = path.join(dir, '.package-lock.json');
+  return { id: 'nodemodules', label: 'nodemodules', level: 'ok', detail: 'node_modules present', findings: [] };
+}
+
+function checkTmpFiles() {
+  const dir = path.join(ROOT, 'tools', '.tmp');
+  if (!fs.existsSync(dir)) return { id: 'tmpfiles', label: 'tmpfiles', level: 'ok', detail: 'no tools/.tmp directory', findings: [] };
+  const files = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else files.push(path.relative(ROOT, p));
+    }
+  };
+  try { walk(dir); } catch (e) { return { id: 'tmpfiles', label: 'tmpfiles', level: 'warn', detail: `tools/.tmp unreadable: ${e.message}`, findings: [e.message] }; }
+  if (files.length === 0) return { id: 'tmpfiles', label: 'tmpfiles', level: 'ok', detail: 'tools/.tmp empty', findings: [] };
+  return { id: 'tmpfiles', label: 'tmpfiles', level: 'warn', detail: `${files.length} file(s) in tools/.tmp (${files.slice(0, 2).join(', ')}${files.length > 2 ? ', ...' : ''})`, findings: files };
+}
+
+function checkDashboard() {
+  const file = path.join(ROOT, 'docs', 'metrics', 'OPS-DASHBOARD.md');
+  if (!fs.existsSync(file)) return { id: 'dashboard', label: 'dashboard', level: 'warn', detail: 'OPS-DASHBOARD.md missing (run: node tools/ops-dashboard.mjs)', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (!raw.includes('<!-- ops-section:')) return { id: 'dashboard', label: 'dashboard', level: 'warn', detail: 'OPS-DASHBOARD.md lacks section markers (regenerate)', findings: [] };
+  const stamps = [...raw.matchAll(/<!-- ops-section:[a-z-]+ ts:([^ ]+) -->/g)].map((m) => m[1]);
+  return { id: 'dashboard', label: 'dashboard', level: 'ok', detail: `OPS-DASHBOARD.md present (${stamps.length} sections)`, findings: [] };
+}
+
+function checkGitClean() {
+  const snap = gitSnapshot();
+  if (!snap.available) return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: 'git status unavailable', findings: [], suggestion: SUGGESTIONS.gitclean };
+  if (snap.dirty === 0) return { id: 'gitclean', label: 'gitclean', level: 'ok', detail: 'working tree clean', findings: [], suggestion: null };
+  return { id: 'gitclean', label: 'gitclean', level: 'warn', detail: snap.dirty + ' uncommitted change(s)', findings: [], suggestion: SUGGESTIONS.gitclean };
+}
+
+function checkBranch() {
+  const snap = gitSnapshot();
+  if (!snap.available) return { id: 'branch', label: 'branch', level: 'warn', detail: 'git branch unavailable', findings: [], suggestion: SUGGESTIONS.branch };
+  if (snap.detached) return { id: 'branch', label: 'branch', level: 'warn', detail: 'detached HEAD', findings: [], suggestion: SUGGESTIONS.branch };
+  const findings = [];
+  if (snap.branch === 'main' || snap.branch === 'master') findings.push('on default branch (' + snap.branch + ')');
+  return { id: 'branch', label: 'branch', level: findings.length ? 'warn' : 'ok', detail: snap.branch + (findings.length ? ' — ' + findings.join('; ') : ''), findings, suggestion: findings.length ? SUGGESTIONS.branch : null };
+}
+
+function checkGitRemote() {
+  const snap = gitSnapshot();
+  if (!snap.available) return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'git remote unavailable', findings: [], suggestion: SUGGESTIONS.gitremote };
+  if (snap.hasOrigin) return { id: 'gitremote', label: 'gitremote', level: 'ok', detail: 'origin remote configured', findings: [], suggestion: null };
+  return { id: 'gitremote', label: 'gitremote', level: 'warn', detail: 'no origin remote', findings: [], suggestion: SUGGESTIONS.gitremote };
+}
+
+function checkGitIgnore() {
+  const file = path.join(ROOT, '.gitignore');
+  if (!fs.existsSync(file)) return { id: 'gitignore', label: 'gitignore', level: 'warn', detail: '.gitignore missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  const findings = [];
+  if (!/^node_modules\/?$/m.test(raw) && !raw.includes('node_modules')) findings.push('node_modules not ignored');
+  if (!raw.includes('.env')) findings.push('.env not ignored');
+  return { id: 'gitignore', label: 'gitignore', level: findings.length ? 'warn' : 'ok', detail: findings.length ? findings.join('; ') : '.gitignore present', findings };
+}
+
+function checkRootPkg() {
+  const file = path.join(ROOT, 'package.json');
+  if (!fs.existsSync(file)) return { id: 'rootpkg', label: 'rootpkg', level: 'warn', detail: 'root package.json missing', findings: [] };
+  let obj = null;
+  try { obj = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {
+    return { id: 'rootpkg', label: 'rootpkg', level: 'fail', detail: 'root package.json invalid JSON', findings: [e.message] };
+  }
+  const findings = [];
+  if (!obj.scripts) findings.push('no scripts');
+  if (!obj.name) findings.push('no name');
+  if (!obj.engines) findings.push('no engines');
+  return { id: 'rootpkg', label: 'rootpkg', level: findings.length ? 'warn' : 'ok', detail: findings.length ? findings.join('; ') : (obj.name + ' ok'), findings };
+}
+
+function checkReadme() {
+  const file = path.join(ROOT, 'README.md');
+  if (!fs.existsSync(file)) return { id: 'readme', label: 'readme', level: 'warn', detail: 'README.md missing', findings: [] };
+  const raw = fs.readFileSync(file, 'utf8');
+  if (raw.length < 100) return { id: 'readme', label: 'readme', level: 'warn', detail: 'README.md suspiciously short', findings: [] };
+  return { id: 'readme', label: 'readme', level: 'ok', detail: 'README.md present (' + raw.length + ' bytes)', findings: [] };
+}
+
+function checkLicense() {
+  const candidates = ['LICENSE', 'LICENSE.md', 'LICENSE.txt'];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(ROOT, c))) return { id: 'license', label: 'license', level: 'ok', detail: c + ' present', findings: [] };
+  }
+  return { id: 'license', label: 'license', level: 'warn', detail: 'no LICENSE file', findings: [] };
+}
+
+function checkChangelog() {
+  const candidates = ['CHANGELOG.md', 'CHANGELOG'];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(ROOT, c))) return { id: 'changelog', label: 'changelog', level: 'ok', detail: c + ' present', findings: [] };
+  }
+  return { id: 'changelog', label: 'changelog', level: 'warn', detail: 'no CHANGELOG file', findings: [] };
+}
+
+function checkContributing() {
+  const candidates = ['CONTRIBUTING.md', 'CONTRIBUTING'];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(ROOT, c))) return { id: 'contributing', label: 'contributing', level: 'ok', detail: c + ' present', findings: [] };
+  }
+  return { id: 'contributing', label: 'contributing', level: 'warn', detail: 'no CONTRIBUTING file', findings: [] };
+}
+
+function checkDevcontainer() {
+  const dir = path.join(ROOT, '.devcontainer');
+  if (!fs.existsSync(dir)) return { id: 'devcontainer', label: 'devcontainer', level: 'warn', detail: '.devcontainer missing', findings: [] };
+  return { id: 'devcontainer', label: 'devcontainer', level: 'ok', detail: '.devcontainer present', findings: [] };
+}
+
+function checkNvmrc() {
+  const candidates = ['.nvmrc', '.node-version'];
+  let found = null;
+  for (const c of candidates) { if (fs.existsSync(path.join(ROOT, c))) { found = c; break; } }
+  if (!found) return { id: 'nvmrc', label: 'nvmrc', level: 'warn', detail: 'no .nvmrc/.node-version', findings: [], suggestion: 'add .nvmrc pinning Node 26' };
+  const raw = fs.readFileSync(path.join(ROOT, found), 'utf8').trim();
+  return { id: 'nvmrc', label: 'nvmrc', level: 'ok', detail: found + ' = ' + raw, findings: [], suggestion: null };
+}
+function checkBaselines() {
+  const baselines = ['doc-links-baseline.json', 'json-validity-baseline.json', 'npm-scripts-baseline.json'];
+  const missing = baselines.filter((b) => !fs.existsSync(path.join(ROOT, 'docs', 'metrics', b)));
+  if (missing.length) return { id: 'baselines', label: 'baselines', level: 'warn', detail: 'missing ratchet baseline(s): ' + missing.join(', '), findings: missing };
+  return { id: 'baselines', label: 'baselines', level: 'ok', detail: baselines.length + ' ratchet baseline(s) present', findings: [] };
+}
+
+
+
+function checkDocLinks() {
+  const tool = path.join(ROOT, 'tools', 'check-doc-links.mjs');
+  if (!fs.existsSync(tool)) return { id: 'doclinks', label: 'doclinks', level: 'warn', detail: 'tools/check-doc-links.mjs missing', findings: [] };
+  const baseline = path.join(ROOT, 'docs', 'metrics', 'doc-links-baseline.json');
+  if (!fs.existsSync(baseline)) return { id: 'doclinks', label: 'doclinks', level: 'warn', detail: 'doc-links baseline missing', findings: [] };
+  return { id: 'doclinks', label: 'doclinks', level: 'ok', detail: 'link-health tool + baseline present', findings: [] };
+}
+
+
 function checkBloat() {
   const ledger = path.join(ROOT, 'docs', 'metrics', 'repo-bloat-history.json');
   if (!fs.existsSync(ledger)) return { id: 'bloat', label: 'bloat', level: 'warn', detail: 'repo-bloat ledger missing (run: node tools/repo-bloat.mjs collect)', findings: [] };
@@ -178,10 +442,20 @@ function checkBloat() {
   return { id: 'bloat', label: 'bloat', level: findings.length ? 'fail' : 'ok', detail: findings.join('; ') || detail, findings };
 }
 
-const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkWiring, checkBloat];
+const CHECKS = [checkConfigs, checkWorkflows, checkLockfiles, checkEngines, checkHooks, checkHandoff, checkHandoffMd, checkWiring, checkBloat, checkStray, checkDashboard, checkTmpFiles, checkNodeModules, checkRoadmap, checkStatus, checkVerifyTools, checkAgentsMd, checkGitClean, checkBranch, checkGitRemote, checkGitIgnore, checkRootPkg, checkReadme, checkLicense, checkChangelog, checkContributing, checkDevcontainer, checkNvmrc, checkBaselines, checkDocLinks];
 
 export function buildReport(opts) {
-  let checks = CHECKS.map((fn) => fn());
+  let checks = CHECKS.map((fn) => {
+    const t0 = Date.now();
+    const c = fn();
+    c.durationMs = Date.now() - t0;
+    return c;
+  });
+  if (opts.failFast) {
+    const idx = checks.findIndex((c) => c.level !== 'ok');
+    if (idx >= 0) checks = checks.slice(0, idx + 1);
+  }
+  checks = checks.map((c) => ({ ...c, suggestion: c.level === 'ok' ? null : (SUGGESTIONS[c.id] || null) }));
   if (opts.only?.length) {
     const unknown = opts.only.filter((id) => !ALL_CHECK_IDS.includes(id));
     if (unknown.length) return { usageError: `unknown check id(s): ${unknown.join(', ')} (use --list)` };
@@ -190,6 +464,10 @@ export function buildReport(opts) {
   const warn = checks.filter((c) => c.level === 'warn');
   const fail = checks.filter((c) => c.level === 'fail');
   const verdict = fail.length ? 'fail' : warn.length ? 'warn' : 'ok';
+  if (opts.sort === 'level') {
+    const rank = { fail: 0, warn: 1, ok: 2 };
+    checks.sort((a, b) => (rank[a.level] ?? 9) - (rank[b.level] ?? 9) || a.id.localeCompare(b.id));
+  }
   const exit = fail.length ? 1 : (opts.strict && warn.length) ? 1 : 0;
   return { tool: 'quick-health', version: TOOL_VERSION, verdict, checks, warn, fail, exit };
 }
@@ -206,18 +484,22 @@ export async function run(argv, io = { stdout: (s) => process.stdout.write(s), s
   if (errors.length) { io.stderr(`quick-health: ${errors.join('; ')}\nTry: node tools/quick-health.mjs --help\n`); return 2; }
   if (opts.help) { io.stdout(helpText()); return 0; }
   if (opts.version) { io.stdout(`quick-health ${TOOL_VERSION}\n`); return 0; }
-  if (opts.list) { io.stdout(ALL_CHECK_IDS.join('\n') + '\n'); return 0; }
+  if (opts.list || opts.listChecks) { io.stdout(ALL_CHECK_IDS.join('\n') + '\n'); return 0; }
   if (opts.selfTest) return selfTest(io);
   const report = buildReport(opts);
+  if (opts.count) { io.stdout(report.checks.length + '\n'); return report.exit; }
   if (report.usageError) { io.stderr(`quick-health: ${report.usageError}\n`); return 2; }
-  if (opts.json) { io.stdout(JSON.stringify(report) + '\n'); return report.exit; }
+  if (opts.json) { io.stdout(JSON.stringify({ ...report, generatedAt: new Date().toISOString() }) + '\n'); return report.exit; }
   if (opts.quiet) {
     const okCount = report.checks.filter((c) => c.level === 'ok').length;
     io.stdout(`quick-health: ${report.verdict} (${report.checks.length} checks: ${okCount} ok, ${report.warn.length} warn, ${report.fail.length} fail)\n`);
     return report.exit;
   }
   io.stdout(`quick-health v${TOOL_VERSION} — ${report.checks.length} checks\n`);
-  for (const c of report.checks) io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}\n`);
+  for (const c of report.checks) {
+    io.stdout(`  ${c.level.padEnd(4)} ${c.label.padEnd(10)} ${c.detail}${opts.verbose ? ` (${c.durationMs}ms)` : ''}\n`);
+    if (c.suggestion && !opts.noSuggestions) io.stdout(`         -> ${c.suggestion}\n`);
+  }
   io.stdout(`verdict: ${report.verdict}${opts.strict ? ' (strict)' : ''}\n`);
   return report.exit;
 }
@@ -266,7 +548,67 @@ async function selfTest(io) {
   check('default run prints per-check lines', normal.out.includes('quick-health v'));
   check('all output modes agree on exit code', normal.code === json.code && quiet.code === json.code);
 
-  // Pure helpers (mutation-bite targets).
+  // --only scoping works for EVERY check id (not just 'engines').
+  for (const id of ALL_CHECK_IDS) {
+    const r = await runCapture(['--only', id, '--json']);
+    check(`--only ${id} never exits 2`, r.code === 0 || r.code === 1, `got ${r.code}`);
+    let parsed = null;
+    try { parsed = JSON.parse(r.out); } catch { parsed = null; }
+    check(`--only ${id} emits parseable JSON`, !!parsed);
+    check(`--only ${id} scopes to one check`, !!parsed && parsed.checks.length === 1 && parsed.checks[0].id === id);
+    check(`--only ${id} check has valid tier`, !!parsed && ['ok', 'warn', 'fail'].includes(parsed.checks[0].level));
+  }
+
+  // Every check result carries the documented shape.
+  const full = await runCapture(['--json']);
+  const fullReport = JSON.parse(full.out);
+  check('full report has all checks', fullReport.checks.length === ALL_CHECK_IDS.length);
+  check('full report checks have id/label/detail/level', fullReport.checks.every((c) => typeof c.id === 'string' && typeof c.label === 'string' && typeof c.detail === 'string' && ['ok', 'warn', 'fail'].includes(c.level)));
+  check('verdict is one of ok/warn/fail', ['ok', 'warn', 'fail'].includes(fullReport.verdict));
+
+  // --quiet prints verdict line for scoped runs.
+  const q2 = await runCapture(['--only', 'engines', '--quiet']);
+  check('--quiet scopes verdict line', q2.out.includes('quick-health:'));
+
+  // Suggestion map covers every check id.
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const vb = await runCapture(['--verbose']);
+  // --verbose prints timing.
+  const vbr = await runCapture(['--verbose']);
+  check('--verbose prints timing', vbr.out.includes('ms)'));
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const cnt = await runCapture(['--count']);
+  // --count prints a number.
+  const cntr = await runCapture(['--count']);
+  check('--count prints a number', /^\d+\n?$/.test(cntr.out));
+  check('--count prints a number', /^\d+\n?$/.test(cnt.out));
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const sl = await runCapture(['--sort', 'level', '--json']);
+  // --sort level orders checks by level.
+  const slr = await runCapture(['--sort', 'level', '--json']);
+  const slrReport = JSON.parse(slr.out);
+  const levels = slrReport.checks.map((c) => c.level);
+  const rank = { fail: 0, warn: 1, ok: 2 };
+  check('--sort level orders by level', levels.every((l, i) => i === 0 || rank[levels[i - 1]] <= rank[l]));
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const j = await runCapture(['--json']);
+  // --json includes generatedAt timestamp.
+  const jr = await runCapture(['--json']);
+  const jrReport = JSON.parse(jr.out);
+  check('--json includes generatedAt', typeof jrReport.generatedAt === 'string' && jrReport.generatedAt.length > 0);
+  const jReport = JSON.parse(j.out);
+  check('--json includes generatedAt', typeof jReport.generatedAt === 'string' && jReport.generatedAt.length > 0);
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
+  const ff = await runCapture(['--fail-fast', '--json']);
+  // --fail-fast stops at the first non-ok check.
+  const ffr = await runCapture(['--fail-fast', '--json']);
+  const ffrReport = JSON.parse(ffr.out);
+  check('--fail-fast exits 0 or 1', ffr.code === 0 || ffr.code === 1, `got ${ffr.code}`);
+  check('--fail-fast never runs more checks than full run', ffrReport.checks.length <= ALL_CHECK_IDS.length);
+  const ffReport = JSON.parse(ff.out);
+  check('--fail-fast exits 0 or 1', ff.code === 0 || ff.code === 1, `got ${ff.code}`);
+  check('--fail-fast never runs more checks than full run', ffReport.checks.length <= ALL_CHECK_IDS.length);
+  check('SUGGESTIONS covers all check ids', ALL_CHECK_IDS.every((id) => Object.prototype.hasOwnProperty.call(SUGGESTIONS, id)));
   check('enginesVerdict 24<26 warns', enginesVerdict('26', '24.0.0').level === 'warn');
   check('enginesVerdict 26>=26 ok', enginesVerdict('26', '26.0.0').level === 'ok');
   check('compareSemver orders', compareSemver([1, 2, 3], [1, 10, 0]) === -1 && compareSemver([2, 0, 0], [1, 99, 99]) === 1);

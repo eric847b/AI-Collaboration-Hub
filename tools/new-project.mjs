@@ -44,7 +44,7 @@ function canonicalTelemetry() {
 }
 
 function printHelp() {
-  console.log('new-project.mjs — scaffold a workspace-standard Vite/React app\nUsage:\n  node tools/new-project.mjs --name <kebab> [--out <dir>] [--port N] [--app-id <id>] [--force] [--dry-run]\n  node tools/new-project.mjs --self-test\nFlags: --name required ^[a-z0-9][a-z0-9-]*$; --out relative resolves under root (default: <name>); --port default 4173; --app-id default <name>');
+  console.log('new-project.mjs — scaffold a workspace-standard Vite/React app\nUsage:\n  node tools/new-project.mjs --name <kebab> [--out <dir>] [--port N] [--app-id <id>] [--force] [--dry-run] [--json]\n  node tools/new-project.mjs --self-test\nFlags: --name required ^[a-z0-9][a-z0-9-]*$; --out relative resolves under root (default: <name>); --port default 4173; --app-id default <name>');
 }
 
 function filePlan({ name, appId, port }) {
@@ -131,7 +131,7 @@ function runSelfTest() {
  * scaffolded real files where the caller expected a dry run. Unknown flags and
  * stray positionals exit 1 (its documented usage-error code) before any write.
  */
-const BOOL_FLAGS = new Set(['--force', '--dry-run', '--self-test']);
+const BOOL_FLAGS = new Set(['--force', '--dry-run', '--self-test', '--json']);
 const VAL_FLAGS = new Set(['--name', '--out', '--port', '--app-id']);
 
 function rejectBadFlags() {
@@ -162,6 +162,13 @@ function runMain() {
   const outRaw = opt('--out', pname);
   const t = path.isAbsolute(outRaw) ? outRaw : path.join(ROOT, outRaw);
   const plan = addPart4(addPart3(addPart2(filePlan({ name: pname, appId: opt('--app-id', pname), port: portN }))));
+  if (has('--json')) {
+    const files = [...plan.m.keys()].sort();
+    if (has('--dry-run')) {
+      console.log(JSON.stringify({ dryRun: true, name: pname, count: files.length, files }, null, 2));
+      return;
+    }
+  }
   if (has('--dry-run')) {
     console.log('new-project: dry-run ' + plan.m.size + ' files for ' + pname + ':');
     for (const f of [...plan.m.keys()].sort()) console.log('  ' + f);
@@ -173,6 +180,10 @@ function runMain() {
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, content, 'utf8');
   }
-  console.log('new-project: scaffolded ' + plan.m.size + ' files -> ' + t);
+  if (has('--json')) {
+    console.log(JSON.stringify({ dryRun: false, name: pname, count: plan.m.size, target: t }, null, 2));
+  } else {
+    console.log('new-project: scaffolded ' + plan.m.size + ' files -> ' + t);
+  }
 }
 runMain();

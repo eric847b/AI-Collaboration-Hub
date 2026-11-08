@@ -1,0 +1,35 @@
+{
+  "// Fleet merge policy (2026-10-31)": "Every PR must be mergeable to main. Incomplete work must be inert (flag/stub). See singularity-operator/MERGE_POLICY.md",
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "githubPullRequests.pullRequestDescription": "template",
+  "githubPullRequests.defaultMergeMethod": "squash",
+  "githubPullRequests.query": "is:open assignee:@me",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "markdown.extension.toc.levels": "2..3",
+  "workbench.editorAssociations": {
+    "*.md": "default"
+  }
+}

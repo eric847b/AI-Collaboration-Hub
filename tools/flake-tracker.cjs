@@ -46,6 +46,10 @@ for (let i = 0; i < argv.length; i += 1) {
     flags['--self-test'] = true;
     continue;
   }
+  if (a === '--json') {
+    flags['--json'] = true;
+    continue;
+  }
   if (a.startsWith('-')) {
     const eq = a.indexOf('=');
     const key = eq >= 0 ? a.slice(0, eq) : a;
@@ -100,6 +104,7 @@ function usage() {
       '  --out <path>              markdown output (default docs/metrics/flake-report.md)',
       '  --help                    print this text and exit 0',
   '  --self-test               prove the rate/spark rules bite (no ledger needed)      [no ledger]',
+  '  --json                    emit machine-readable JSON (report command)             [report]',
       '',
       'Exit codes: 0 = success, 1 = command failure, 2 = bad usage.',
       'Unknown flags, unknown commands and missing flag values exit 2.',
@@ -239,10 +244,23 @@ function report() {
   const ledger = loadLedger(ledgerPath());
   const entries = ledger.entries.slice(-Math.max(limit, 1));
   if (entries.length === 0) {
-    console.log('flake-tracker: ledger is empty; record a run first.');
+    if (flags['--json']) console.log(JSON.stringify({ entries: [], suites: [] }, null, 2));
+    else console.log('flake-tracker: ledger is empty; record a run first.');
     return 0;
   }
   const suites = [...new Set(ledger.entries.map((e) => e.suite))].sort();
+  const seriesBySuite = {};
+  for (const s of suites) seriesBySuite[s] = suiteSeries(ledger.entries, s);
+  if (flags['--json']) {
+    console.log(JSON.stringify({
+      entries: entries.map((e) => ({
+        timestamp: e.timestamp, gitSha: e.gitSha, suite: e.suite, note: e.note || null,
+        tests: e.tests, passed: e.passed, failed: e.failed, retries: e.retries, flakes: e.flakes, rate: e.rate,
+      })),
+      suites: suites.map((s) => ({ suite: s, series: seriesBySuite[s], latest: seriesBySuite[s][seriesBySuite[s].length - 1] })),
+    }, null, 2));
+    return 0;
+  }
   for (const e of entries) {
     console.log(e.timestamp + ' (' + e.gitSha + ', ' + e.suite + (e.note ? ', ' + e.note : '') + ')');
     console.log('  tests=' + e.tests + ' passed=' + e.passed + ' failed=' + e.failed + ' retries=' + e.retries + ' flakes=' + e.flakes + ' rate=' + fmtRate(e.rate));
@@ -250,7 +268,7 @@ function report() {
   console.log('');
   console.log('Flake rate trend (%, latest last):');
   for (const s of suites) {
-    const series = suiteSeries(ledger.entries, s);
+    const series = seriesBySuite[s];
     console.log('  ' + s.padEnd(28) + ' ' + spark(series) + ' (latest ' + fmtRate(series[series.length - 1]) + ')');
   }
   console.log('');

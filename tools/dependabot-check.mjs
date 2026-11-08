@@ -215,9 +215,10 @@ function main() {
       [
         'dependabot-check.mjs - read-only coverage check for .github/dependabot.yml',
         '',
-        'usage: node tools/dependabot-check.mjs [--list]',
+        'usage: node tools/dependabot-check.mjs [--list] [--json]',
         '',
         '  --list, -l  print the per-manifest coverage table (still exit 1 on gaps)',
+        '  --json      emit machine-readable JSON (checked, covered, gaps, rows, placeholders)',
         '  --help     print this text and exit 0',
   '  --self-test  prove coverage/glob/parse rules bite (no repo access needed)',
         '',
@@ -229,7 +230,7 @@ function main() {
   }
   // Round 12 D: a typo'd flag used to be silently ignored and the run still
   // exited 0/1, so CI could not tell "verified clean" from "never checked".
-  const ALLOWED = new Set(['--list', '-l']);
+  const ALLOWED = new Set(['--list', '-l', '--json']);
   for (const a of args) {
     if (a === '--self-test') continue; // consumed before main(); keep the table accurate
     if (!a.startsWith('-')) {
@@ -242,6 +243,7 @@ function main() {
     }
   }
   const verbose = args.includes('--list') || args.includes('-l');
+  const jsonMode = args.includes('--json');
 
   if (!fs.existsSync(CONFIG)) {
     console.error('dependabot-check: .github/dependabot.yml not found');
@@ -274,7 +276,7 @@ function main() {
     rows.push({ file: f, ecosystem: rule.ecosystem, dir, hit: covers(entries, rule.ecosystem, dir) });
   }
 
-  if (verbose) {
+  if (verbose && !jsonMode) {
     for (const p of placeholders) {
       console.log(`skip ${p.ecosystem.padEnd(5)} ${'(AGA placeholder)'.padEnd(30)} ${p.file}`);
     }
@@ -285,19 +287,34 @@ function main() {
 
   const verdict = summarize(rows);
   const gapRows = rows.filter((r) => !r.hit);
-  console.log(
-    `dependabot-check: ${verdict.checked} manifests (${placeholders.length} skipped AGA placeholders), ` +
-    `${verdict.covered} covered, ${verdict.gaps} uncovered (${entries.length} config entries)`
-  );
-  if (verdict.exitCode === 2 && !rows.length) {
-    console.error(`dependabot-check: ${verdict.reason}`);
-    return 2;
-  }
-  for (const p of placeholders) console.log(`  SKIP (AGA placeholder) ${p.file}`);
-  for (const g of gapRows) console.error(`  GAP ${g.ecosystem} ${g.dir} <- ${g.file}`);
-  if (verdict.gaps && process.env.GITHUB_ACTIONS === 'true') {
-    for (const g of gapRows) {
-      console.log(`::error file=${g.file}::manifest directory ${g.dir} not covered by .github/dependabot.yml`);
+  if (jsonMode) {
+    console.log(JSON.stringify({
+      manifests: rows.length + placeholders.length,
+      checked: verdict.checked,
+      covered: verdict.covered,
+      gaps: verdict.gaps,
+      placeholders: placeholders.length,
+      entries: entries.length,
+      exitCode: verdict.exitCode,
+      rows,
+      placeholders,
+      gapRows,
+    }, null, 2));
+  } else {
+    console.log(
+      `dependabot-check: ${verdict.checked} manifests (${placeholders.length} skipped AGA placeholders), ` +
+      `${verdict.covered} covered, ${verdict.gaps} uncovered (${entries.length} config entries)`
+    );
+    if (verdict.exitCode === 2 && !rows.length) {
+      console.error(`dependabot-check: ${verdict.reason}`);
+      return 2;
+    }
+    for (const p of placeholders) console.log(`  SKIP (AGA placeholder) ${p.file}`);
+    for (const g of gapRows) console.error(`  GAP ${g.ecosystem} ${g.dir} <- ${g.file}`);
+    if (verdict.gaps && process.env.GITHUB_ACTIONS === 'true') {
+      for (const g of gapRows) {
+        console.log(`::error file=${g.file}::manifest directory ${g.dir} not covered by .github/dependabot.yml`);
+      }
     }
   }
   return verdict.exitCode;
