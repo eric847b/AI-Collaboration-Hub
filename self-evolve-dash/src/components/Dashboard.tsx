@@ -26,6 +26,7 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { PerformanceMonitor } from "./PerformanceMonitor";
 import { OmegaCorePanel } from "./OmegaCorePanel";
+import { CollaborationMetricsPanel } from "./CollaborationMetricsPanel";
 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -146,7 +147,8 @@ export const Dashboard = () => {
                 ["recovery", "Recovery"],
                 ["bg-tasks", "Tasks BG"],
                 ["omega", "Ω∞ Core"],
-                ["test", "Test"]
+                ["test", "Test"],
+                ["collaboration", "Collaboration"]
               ].map(([value, label]) => (
                 <TabsTrigger
                   key={value}
@@ -222,6 +224,10 @@ export const Dashboard = () => {
 
             <TabsContent value="test" className="space-y-6">
               <TestPanel />
+            </TabsContent>
+
+            <TabsContent value="collaboration" className="space-y-6">
+              <CollaborationMetricsPanel />
             </TabsContent>
           </Tabs>
         </div>
