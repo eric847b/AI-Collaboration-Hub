@@ -1,11 +1,8 @@
 #include "sweep.h"
 #include "mark.h"
-#include "../metadata/metadata_store.h"
+#include "metadata/metadata_store.h"
 
-extern MetadataStore* g_metadata;
-extern Mark* g_mark;
-
-Sweep::Sweep() {}
+Sweep::Sweep(MetadataStore* metadata, Mark* mark) : g_metadata(metadata), g_mark(mark) {}
 
 void Sweep::run() {
     sweep_unreachable();

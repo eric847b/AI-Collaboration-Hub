@@ -2,22 +2,18 @@
 #include "mark.h"
 #include "sweep.h"
 
-// Global Mark instance shared between mark and sweep phases
-Mark g_mark_instance;
-Mark* g_mark = &g_mark_instance;
+GC_Runner::GC_Runner(CasStore* cas, LineageStore* lineage,
+                     MetadataStore* metadata, Mark* mark, Sweep* sweep)
+    : runner_(cas, lineage, metadata, mark, sweep) {}
 
-GC_Runner::GC_Runner() {}
-
-void GC_Runner::run(uint64_t root_inode) {
-    mark_phase(root_inode);
-    sweep_phase();
+void GC_Runner::run(const std::vector<Hash>& roots) {
+    runner_.run(roots);
 }
 
-void GC_Runner::mark_phase(uint64_t root_inode) {
-    g_mark_instance.run(root_inode);
+void GC_Runner::mark(const std::vector<Hash>& roots) {
+    runner_.mark(roots);
 }
 
-void GC_Runner::sweep_phase() {
-    Sweep sweep;
-    sweep.run();
+void GC_Runner::sweep() {
+    runner_.sweep();
 }

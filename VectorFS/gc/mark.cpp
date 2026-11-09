@@ -1,7 +1,7 @@
 #include "mark.h"
-#include "../metadata/metadata_store.h"
+#include "metadata/metadata_store.h"
 
-extern MetadataStore* g_metadata; // global pointer for now
+Mark::Mark(MetadataStore* metadata) : g_metadata(metadata) {}
 
 void Mark::run(uint64_t root_inode) {
     reachable_set.clear();
