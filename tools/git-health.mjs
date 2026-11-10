@@ -48,7 +48,7 @@ function getUncommittedChanges() {
 }
 
 function getWorkflowStatus() {
-  const workflowsDir = path.join(root, '.github', 'workflows');
+  const workflowsDir = new URL('../.github/workflows/', import.meta.url);
   if (!fs.existsSync(workflowsDir)) return 0;
   return fs.readdirSync(workflowsDir)
     .filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
