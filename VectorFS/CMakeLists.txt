@@ -168,6 +168,59 @@ if(VECTORFS_BUILD_TESTS)
         include
     )
     add_test(NAME SmokeReachability COMMAND smoke_reachability)
+
+    # Garbage collector runner test
+    add_executable(test_gc
+        gc/mark.cpp
+        gc/sweep.cpp
+        gc/gc_runner.cpp
+        metadata/metadata_store.cpp
+        tests/test_gc.cpp
+    )
+    target_include_directories(test_gc PRIVATE
+        .
+        core
+        gc
+        metadata
+        include
+    )
+    add_test(NAME GarbageCollectorRunner COMMAND test_gc)
+
+    # Division series demo
+    add_executable(division_demo
+        src/cas.cpp
+        src/hash.cpp
+        tests/division_demo.cpp
+    )
+    target_include_directories(division_demo PRIVATE
+        .
+        core
+        cas
+        include
+        src
+    )
+    add_test(NAME DivisionSeriesDemo COMMAND division_demo)
+
+    # Holistic framework demo
+    add_executable(philosophy_demo
+        gc/gc.cc
+        gc/gc_mark.cc
+        gc/gc_sweep.cc
+        gc/mark.cpp
+        src/cas.cpp
+        src/hash.cpp
+        metadata/metadata_store.cpp
+        tests/philosophy_demo.cpp
+    )
+    target_include_directories(philosophy_demo PRIVATE
+        .
+        core
+        cas
+        gc
+        include
+        metadata
+    )
+    add_test(NAME HolisticFrameworkDemo COMMAND philosophy_demo)
 endif()
 
 # ---- Dense Core Target ----

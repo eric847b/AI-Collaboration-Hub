@@ -50,3 +50,7 @@ Node CAS::get(const Hash& h) const {
     }
     return it->second;
 }
+
+bool CAS::contains(const Hash& h) const {
+    return store.find(h) != store.end();
+}

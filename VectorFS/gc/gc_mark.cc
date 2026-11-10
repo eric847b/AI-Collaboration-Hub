@@ -1,4 +1,5 @@
 #include "gc_mark.h"
+#include <queue>
 
 namespace vfs::gc {
 
