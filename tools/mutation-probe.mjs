@@ -567,9 +567,9 @@ const PROBES = [
   {
     tool: 'check-json-validity.mjs',
     id: 'jsonvalidity-jsonc-strip-bites',
-    why: 'the JSONC self-test assertion must actually exercise comment stripping; dropping the strip leaves JSONC unparseable',
-    from: "JSON.parse(stripJsonComments(trimmed))",
-    to: "JSON.parse(trimmed)",
+    why: 'the JSONC line-comment assertion must detect when line-comment stripping is disabled',
+    from: "if (text[i] === '/' && text[i+1] === '/') {",
+    to: "if (false) {",
   },
   {
     tool: 'check-json-validity.mjs',
@@ -922,12 +922,27 @@ function runProbeSelfTest() {
   check('drift is not counted as verified', counted('drift') === 0);
   check('a failed control is not counted as verified', counted('control-failed') === 0);
 
+  const sentinel = path.join(TOOLS_DIR, `.mutation-probe-self-test-${process.pid}.mjs`);
+  fs.writeFileSync(sentinel, '// active probe sentinel\n');
+  let help;
+  try {
+    help = spawnSync(process.execPath, [process.argv[1], '--help'], {
+      encoding: 'utf8',
+      timeout: 10000,
+      windowsHide: true,
+    });
+    check('help succeeds', help.status === 0);
+    check('help does not sweep active probe artifacts', fs.existsSync(sentinel));
+  } finally {
+    fs.rmSync(sentinel, { force: true });
+  }
+
   if (failures.length) {
     console.error(`mutation-probe self-test FAIL: ${failures.length} problem(s):`);
     for (const f of failures) console.error(`  FAIL  ${f}`);
     process.exit(1);
   }
-  console.log('mutation-probe self-test: 13/13 passed');
+  console.log('mutation-probe self-test: 15/15 passed');
 }
 
 function sweepStaleArtifacts() {
@@ -943,7 +958,6 @@ function sweepStaleArtifacts() {
 }
 
 function main() {
-  sweepStaleArtifacts();
   let sel;
   try {
     sel = parseArgs(process.argv.slice(2));
@@ -981,6 +995,8 @@ function main() {
     }
     return 2;
   }
+
+  sweepStaleArtifacts();
 
   const results = probes.map((p) => runProbe(p, sel.maxSeconds));
   const caught = results.filter((r) => r.verdict === 'caught');
