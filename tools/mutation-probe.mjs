@@ -43,6 +43,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const TOOLS_DIR = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 
@@ -922,12 +923,11 @@ function runProbeSelfTest() {
   check('drift is not counted as verified', counted('drift') === 0);
   check('a failed control is not counted as verified', counted('control-failed') === 0);
 
-  const sentinel = path.join(TOOLS_DIR, '.mutation-probe-self-test-sentinel.mjs');
+  const sentinel = new URL('.mutation-probe-self-test-sentinel.mjs', import.meta.url);
   fs.writeFileSync(sentinel, '// active probe sentinel\n');
   let help;
   try {
-    help = spawnSync(process.execPath, ['mutation-probe.mjs', '--help'], {
-      cwd: TOOLS_DIR,
+    help = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--help'], {
       encoding: 'utf8',
       timeout: 10000,
       windowsHide: true,
