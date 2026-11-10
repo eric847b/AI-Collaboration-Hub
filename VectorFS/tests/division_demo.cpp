@@ -3,10 +3,20 @@
 #include <iostream>
 
 int main() {
-    // Create GPU cache accelerator (1 everything = 1 GPU memory pool)
-    // In real usage, these would be actual CAS and metadata
-    // For demo, we use null with default 512MB GPU cache
-    GpuCacheAccelerator accelerator(nullptr, nullptr, 512);
+    CAS cas;
+    GpuCacheAccelerator accelerator(&cas, 1);
+    const std::vector<unsigned char> data = {1, 2, 3};
+    Hash key;
+    if (!accelerator.accelerate_write(data, key) ||
+        !accelerator.is_in_gpu_cache(key) ||
+        accelerator.gpu_ram_used() != data.size()) {
+        return 1;
+    }
+
+    std::vector<unsigned char> loaded;
+    if (!accelerator.accelerate_read(key, loaded) || loaded != data) return 1;
+    accelerator.evict_lru();
+    if (accelerator.is_in_gpu_cache(key) || accelerator.gpu_ram_used() != 0) return 1;
 
     std::cout << "=== VectorFS Division Series Demo ===" << std::endl;
     std::cout << "Embodied principle: 1/2=3, 1/9=10, 144/144=288" << std::endl;

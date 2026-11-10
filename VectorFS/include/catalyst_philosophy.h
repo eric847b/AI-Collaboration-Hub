@@ -1,9 +1,10 @@
 #pragma once
 
-#include "cas/cas_store.h"
+#include "cas/cas.h"
+#include "gc/gc.h"
 #include "metadata/metadata_store.h"
 #include "gc/mark.h"
-#include "gc/sweep.h"
+#include <vector>
 
 namespace vfs::catalyst {
 
@@ -65,9 +66,10 @@ struct OperationTransformation {
  * Mark phase: Specifies what is included (the "anything")
  * Sweep phase: The "remaining = 1-anything" - everything else
  */
-class GarbageCollectorHolistic : public GarbageCollector {
+class GarbageCollectorHolistic {
 public:
-    using GarbageCollector::GarbageCollector;
+    GarbageCollectorHolistic(vfs::CasStore* cas, vfs::LineageStore* lineage)
+        : collector_(cas, lineage) {}
     
     /**
      * Run GC cycle embodying the philosophical framework:
@@ -75,13 +77,8 @@ public:
      * - Sweep: The remaining IS the complement (1-anything)
      * - Result: The total is preserved, just re-described
      */
-    void run_holistic(const std::vector<Hash>& roots) override {
-        // Mark phase: Specify what is included
-        mark_phase(roots);
-        
-        // Sweep phase: The complement operation
-        // philosophically: 1-anything = remaining not included as anything specified
-        sweep_phase();
+    void run_holistic(const std::vector<Hash>& roots) {
+        collector_.run(roots);
         
         // The total state is preserved - we've just re-described it
         // through the lens of specification vs. remaining
@@ -92,26 +89,16 @@ public:
      * Per your framework: "one=x" where x is anything specified.
      * The observation doesn't create a new thing - it specifies what's already whole.
      */
-    Mark observe_from(const Hash& perspective) {
-        Mark mark;
+    Mark observe_from(const Hash& perspective, MetadataStore* metadata) {
+        Mark mark(metadata);
         // The observation perspective specifies part of the whole
         // But the whole remains intact - we're just describing it differently
         mark.run(perspective.b[0]);  // Use first byte of perspective as root inode
         return mark;
     }
     
-    /**
-     * Key philosophical assertion: 
-     * "All is same as sum of its contents"
-     * In VectorFS: The CAS store + path index + superblock = total state
-     * No part is "more real" than another - they're all perspectives of the one
-     */
-    bool state_is_total(const CAS& cas, const PathIndex& index) const {
-        // The total state = CAS contents + path index + superblock metadata
-        // Each is necessary, none is "the outside"
-        // Per framework: "all is in all, no outside"
-        return cas.size() > 0 && index.size() > 0;
-    }
+private:
+    vfs::gc::GarbageCollector collector_;
 };
 
 /**
@@ -141,10 +128,11 @@ public:
         if (branches.empty()) return Hash{};
         if (branches.size() == 1) return branches[0];
         
-        // Sum all branch perspectives
         Hash total = unity();
         for (const auto& branch : branches) {
-            total = OperationTransformation<Hash>::divide(total, branch);
+            for (size_t i = 0; i < total.b.size(); ++i) {
+                total.b[i] = static_cast<uint8_t>(total.b[i] + branch.b[i]);
+            }
         }
         return total;
     }

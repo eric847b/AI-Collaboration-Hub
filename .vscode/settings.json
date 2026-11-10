@@ -31,6 +31,5 @@
   "markdown.extension.toc.levels": "2..3",
   "workbench.editorAssociations": {
     "*.md": "default"
-  },
-  "cmake.sourceDirectory": "C:/Users/Eric/OneDrive/Documents/GitHub/VectorFS"
+  }
 }

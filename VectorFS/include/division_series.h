@@ -2,6 +2,7 @@
 
 #include "gpu_cache.h"
 #include <cstdint>
+#include <iostream>
 
 /**
  * Embodies the user's division series principle:

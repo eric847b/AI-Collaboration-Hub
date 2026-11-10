@@ -2,131 +2,105 @@
 // git-health.mjs — Workspace git health diagnostics and lightweight fix
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-const __dirname = path.dirname(process.argv[1] || 'C:\\Users\\Eric\\OneDrive\\Documents\\GitHub\\tools\\git-health.mjs');
-const ROOT = path.resolve(__dirname, '..');
+const scriptPath = fileURLToPath(import.meta.url);
+const root = path.resolve(path.dirname(scriptPath), '..');
 
 function runGit(args) {
-  return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 }
 
 function getBranchInfo() {
-  try {
-    const out = runGit(['status', '--porcelain=v2', '--branch']);
-    const lines = out.split(/\r?\n/);
-    let branch = 'main';
-    let detached = false;
-    let ahead = 0;
-    let behind = 0;
-    
-    for (const line of lines) {
-      if (line.startsWith('# branch.head ')) {
-        const b = line.slice('# branch.head '.length).trim();
-        if (b === '(detached)') detached = true;
-        else branch = b;
-      } else if (line.startsWith('# branch.upstream ')) {
-        // noop
-      } else if (line.startsWith('# branch.oid ')) {
-        // noop
-      }
-    }
-    
-    // Count ahead/behind from branch.ab
-    for (const line of lines) {
-      if (line.startsWith('# branch.ab ')) {
-        const ab = line.slice('# branch.ab '.length).trim();
-        const parts = ab.split(' ');
-        ahead = parseInt(parts[0]) || 0;
-        behind = parseInt(parts[1]) || 0;
-      }
-    }
-    
-    return { branch, detached, ahead, behind };
-  } catch (e) {
-    return { branch: 'unknown', detached: false, ahead: 0, behind: 0 };
-  }
+  const lines = runGit(['status', '--porcelain=v2', '--branch']).split(/\r?\n/);
+  const head = lines.find(line => line.startsWith('# branch.head '));
+  const aheadBehind = lines.find(line => line.startsWith('# branch.ab '));
+  const branch = head?.slice('# branch.head '.length).trim() ?? 'unknown';
+  const counts = aheadBehind?.match(/^# branch\.ab \+(\d+) -(\d+)$/);
+
+  return {
+    branch,
+    detached: branch === '(detached)',
+    ahead: counts ? Number(counts[1]) : 0,
+    behind: counts ? Number(counts[2]) : 0,
+  };
 }
 
 function getUncommittedChanges() {
-  try {
-    const out = runGit(['status', '--porcelain=v2']);
-    const lines = out.split(/\r?\n/).filter(l => l);
-    const modified = [];
-    const added = [];
-    const deleted = [];
-    
-    for (const line of lines) {
-      const status = line.slice(0, 2);
-      const file = line.slice(3);
-      if (status[0] === 'M') modified.push(file);
-      else if (status[0] === 'A') added.push(file);
-      else if (status[0] === 'D') deleted.push(file);
-    }
-    
-    return { modified, added, deleted, count: modified.length + added.length + deleted.length };
-  } catch (e) {
-    return { modified: [], added: [], deleted: [], count: 0 };
+  const lines = runGit(['status', '--short', '--untracked-files=all'])
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const changes = { modified: [], added: [], deleted: [] };
+
+  for (const line of lines) {
+    const status = line.slice(0, 2);
+    const file = line.slice(3);
+    if (status.includes('D')) changes.deleted.push(file);
+    else if (status.includes('A') || status === '??') changes.added.push(file);
+    else changes.modified.push(file);
   }
+
+  return {
+    ...changes,
+    count: changes.modified.length + changes.added.length + changes.deleted.length,
+  };
 }
 
 function getWorkflowStatus() {
-  try {
-    const workflowsDir = path.join(ROOT, '.github', 'workflows');
-    if (!fs.existsSync(workflowsDir)) return { count: 0, issues: [] };
-    
-    const files = fs.readdirSync(workflowsDir).filter(f => f.endsWith('.yml') || f.endsWith('.yaml'));
-    const issues = [];
-    
-    for (const file of files) {
-      const content = fs.readFileSync(path.join(workflowsDir, file), 'utf8');
-      // Check for common issues
-      if (content.includes(': ')) {
-        // bare colon in step names - just note it
-      }
-    }
-    
-    return { count: files.length, issues };
-  } catch (e) {
-    return { count: 0, issues: [] };
-  }
+  const workflowsDir = path.join(root, '.github', 'workflows');
+  if (!fs.existsSync(workflowsDir)) return 0;
+  return fs.readdirSync(workflowsDir)
+    .filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
+    .length;
 }
 
 function main() {
-  console.log('=== Workspace Git Health Diagnostics ===\\n');
-  
+  console.log('=== Workspace Git Health Diagnostics ===\n');
+
   const { branch, detached, ahead, behind } = getBranchInfo();
   console.log(`Branch: ${branch}`);
   console.log(`Detached: ${detached}`);
   if (ahead > 0 || behind > 0) {
     console.log(`Ahead: ${ahead}, Behind: ${behind}`);
   }
-  
+
   const { modified, added, deleted, count } = getUncommittedChanges();
-  console.log(`\\nUncommitted changes: ${count}`);
+  console.log(`\nUncommitted changes: ${count}`);
   if (modified.length > 0) console.log(`  Modified: ${modified.length} files`);
   if (added.length > 0) console.log(`  Added: ${added.length} files`);
   if (deleted.length > 0) console.log(`  Deleted: ${deleted.length} files`);
-  
+
   if (count > 0) {
-    console.log('\\n  Modified files:');
-    for (const f of modified.slice(0, 10)) {
-      console.log(`    - ${f}`);
+    console.log('\n  Changed files:');
+    for (const file of [...modified, ...added, ...deleted].slice(0, 10)) {
+      console.log(`    - ${file}`);
     }
-    if (modified.length > 10) console.log(`    ... and ${modified.length - 10} more`);
+    const remaining = count - 10;
+    if (remaining > 0) console.log(`    ... and ${remaining} more`);
   }
-  
-  const { count: wfCount, issues: wfIssues } = getWorkflowStatus();
-  console.log(`\\nGitHub Workflows: ${wfCount}`);
-  
-  console.log('\\n=== Suggestions ===');
+
+  const wfCount = getWorkflowStatus();
+  console.log(`\nGitHub Workflows: ${wfCount}`);
+
+  console.log('\n=== Suggestions ===');
   if (count > 0) console.log('  `git add` or `git commit` to clean up uncommitted changes');
-  if (behind > 0) console.log('  Pull remote changes with `git pull`');
-  if (ahead > 0) console.log('  Push local commits with `git push`');
+  if (behind > 0) console.log('  Sync this branch with its upstream');
+  if (ahead > 0) console.log('  Push local commits to the configured upstream');
   if (detached) console.log('  Check out a named branch');
-  
-  process.exit(0);
 }
 
-const isMain = process.argv[1] && process.argv[1] === __filename;
-if (isMain) main();
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === scriptPath;
+if (isMain) {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    main();
+  } else if (args.length === 1 && (args[0] === '--help' || args[0] === '-h')) {
+    console.log('Usage: node tools/git-health.mjs');
+    console.log('Prints repository branch, working-tree, and workflow-count diagnostics.');
+  } else {
+    console.error(`Unknown argument: ${args[0]}`);
+    console.error('Use --help for usage.');
+    process.exitCode = 2;
+  }
+}

@@ -64,10 +64,12 @@ int main() {
     
     // Demonstrate branch division
     std::cout << "Demonstrating branch division (a/b := a+b):\n";
-    auto branches = BranchableExecution::divide_perspective(Hash{}, 3);
+    auto branches = vfs::catalyst::BranchableExecution::divide_perspective(Hash{}, 3);
     std::cout << "  - Divided into " << branches.size() << " perspectives\n";
     std::cout << "  - Original root remains - we added, not destroyed\n";
-    std::cout << "  - Reuniting: " << BranchableExecution::reunite(branches).to_string() << "\n\n";
+    std::cout << "  - Reuniting: "
+              << vfs::catalyst::BranchableExecution::reunite(branches).to_string()
+              << "\n\n";
     
     std::cout << "=== Framework Complete ===\n";
     std::cout << "VectorFS embodies these principles through:\n";

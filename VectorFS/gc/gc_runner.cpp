@@ -1,19 +1,10 @@
 #include "gc_runner.h"
-#include "mark.h"
-#include "sweep.h"
+#include "../metadata/metadata_store.h"
 
-GC_Runner::GC_Runner(CasStore* cas, LineageStore* lineage,
-                     MetadataStore* metadata, Mark* mark, Sweep* sweep)
-    : runner_(cas, lineage, metadata, mark, sweep) {}
+GC_Runner::GC_Runner(MetadataStore* metadata)
+    : mark_(metadata), sweep_(metadata, &mark_) {}
 
-void GC_Runner::run(const std::vector<Hash>& roots) {
-    runner_.run(roots);
-}
-
-void GC_Runner::mark(const std::vector<Hash>& roots) {
-    runner_.mark(roots);
-}
-
-void GC_Runner::sweep() {
-    runner_.sweep();
+void GC_Runner::run(uint64_t root_inode) {
+    mark_.run(root_inode);
+    sweep_.run();
 }

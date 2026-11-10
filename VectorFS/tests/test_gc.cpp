@@ -1,17 +1,16 @@
-#include "gc.h"
-#include "gc_runner.h"
+#include "gc/gc_runner.h"
+#include "metadata/metadata_store.h"
 
 int main() {
-    // Create dependencies with proper injection
-    // CasStore cas;
-    // LineageStore lineage;
-    // MetadataStore metadata;
-    // Mark mark(&metadata);
-    // Sweep sweep(&metadata, &mark);
-    //
-    // GarbageCollectorRunner runner(&cas, &lineage, &metadata, &mark, &sweep);
-    // runner.run({});  // Run GC cycle with appropriate roots
-    //
-    // For this smoke test, verify the header compiles correctly
-    return 0;
+    MetadataStore metadata;
+    const auto root = metadata.create_inode(InodeType::Directory);
+    const auto child = metadata.create_inode(InodeType::File);
+    const auto unreachable = metadata.create_inode(InodeType::File);
+    metadata.get_inode(root)->children.push_back(child);
+
+    GC_Runner runner(&metadata);
+    runner.run(root);
+
+    return metadata.get_inode(root) && metadata.get_inode(child) &&
+            !metadata.get_inode(unreachable) ? 0 : 1;
 }

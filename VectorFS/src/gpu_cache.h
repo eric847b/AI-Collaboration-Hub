@@ -1,146 +1,138 @@
 #pragma once
 
-#include "cas/cas_store.h"
-#include "metadata/metadata_store.h"
+#include "cas/cas.h"
+#include <algorithm>
 #include <chrono>
+#include <limits>
 #include <mutex>
 #include <vector>
 
 struct CacheLine {
     Hash key;
-    Hash value;
+    std::vector<unsigned char> value;
     std::chrono::steady_clock::time_point timestamp;
-    bool gpu_resident = false;
-    size_t size_bytes = 0;
 };
 
 class GpuCacheAccelerator {
 public:
-    GpuCacheAccelerator(CAS* cas, MetadataStore* metadata, size_t gpu_ram_mb = 1024)
-        : cas_(cas), metadata_(metadata), gpu_ram_bytes_(gpu_ram_mb * 1024 * 1024) {
-        cache_capacity_ = gpu_ram_bytes_ / sizeof(CacheLine);
-        cache_.reserve(cache_capacity_);
-        initialize_gpu_memory();
-    }
+    explicit GpuCacheAccelerator(CAS* cas, size_t gpu_ram_mb = 1024)
+        : cas_(cas),
+          gpu_ram_bytes_(gpu_ram_mb > std::numeric_limits<size_t>::max() / (1024 * 1024)
+              ? std::numeric_limits<size_t>::max()
+              : gpu_ram_mb * 1024 * 1024) {}
 
     bool accelerate_read(const Hash& key, std::vector<unsigned char>& data) {
         std::lock_guard<std::mutex> lock(cache_mutex_);
-
-        // Check GPU cache first (fast path)
-        for (const auto& line : cache_) {
-            if (line.key == key && line.gpu_resident && !line.value.b.empty()) {
-                data = retrieve_from_gpu(key);
-                return true;
-            }
-        }
-
-        // Cache miss - read from storage (slow path)
-        return cas_->get(key, data);
-    }
-
-    bool accelerate_write(const Hash& key, const std::vector<unsigned char>& data) {
-        std::lock_guard<std::mutex> lock(cache_mutex_);
-
-        // Store in GPU RAM first
-        if (store_in_gpu(key, data)) {
-            // Then persist to storage
-            cas_->put(key, Node::file());
+        auto cached = find(key);
+        if (cached != cache_.end()) {
+            cached->timestamp = std::chrono::steady_clock::now();
+            data = cached->value;
             return true;
         }
 
-        // Fallback: store directly to storage
-        return cas_->put(key, data);
+        if (!cas_ || !cas_->contains(key)) return false;
+        data = cas_->get(key).data;
+        store_in_gpu(key, data);
+        return true;
+    }
+
+    bool accelerate_write(const Hash& key, const std::vector<unsigned char>& data) {
+        if (!cas_) return false;
+
+        Node node = Node::file();
+        node.data = data;
+        if (cas_->hash_node(node) != key || cas_->put(node) != key) return false;
+
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        store_in_gpu(key, data);
+        return true;
+    }
+
+    bool accelerate_write(const std::vector<unsigned char>& data, Hash& key) {
+        if (!cas_) return false;
+
+        Node node = Node::file();
+        node.data = data;
+        key = cas_->hash_node(node);
+        return accelerate_write(key, data);
     }
 
     void gc_cache(std::chrono::minutes max_age = std::chrono::minutes(30)) {
         std::lock_guard<std::mutex> lock(cache_mutex_);
-
-        auto now = std::chrono::steady_clock::now();
-        cache.erase(
-            std::remove_if(cache_.begin(), cache_.end(),
-                [&](const CacheLine& line) {
-                    return std::chrono::duration_cast<std::chrono::minutes>(now - line.timestamp).count() > max_age.count();
-                }),
-            cache_.end()
-        );
-
-        free_expired_gpu_memory();
+        const auto now = std::chrono::steady_clock::now();
+        for (auto line = cache_.begin(); line != cache_.end();) {
+            if (now - line->timestamp > max_age) {
+                cache_used_bytes_ -= line->value.size();
+                line = cache_.erase(line);
+            } else {
+                ++line;
+            }
+        }
     }
 
-    size_t cache_size() const { return cache_.size(); }
+    size_t cache_size() const {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        return cache_.size();
+    }
+
     size_t gpu_ram_used() const {
         std::lock_guard<std::mutex> lock(cache_mutex_);
-        return cache_.size() * sizeof(CacheLine);
+        return cache_used_bytes_;
     }
 
     bool is_in_gpu_cache(const Hash& key) const {
         std::lock_guard<std::mutex> lock(cache_mutex_);
-        for (const auto& line : cache_) {
-            if (line.key == key && line.gpu_resident) {
-                return true;
-            }
-        }
-        return false;
+        return find(key) != cache_.end();
+    }
+
+    void evict_lru() {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        evict_lru_locked();
     }
 
 private:
     CAS* cas_;
-    MetadataStore* metadata_;
     size_t gpu_ram_bytes_;
-    size_t cache_capacity_;
+    size_t cache_used_bytes_ = 0;
     std::vector<CacheLine> cache_;
     mutable std::mutex cache_mutex_;
 
-    void initialize_gpu_memory() {
-        cache_.resize(cache_capacity_);
-        for (auto& line : cache_) {
-            line.gpu_resident = false;
-        }
+    std::vector<CacheLine>::iterator find(const Hash& key) {
+        return std::find_if(cache_.begin(), cache_.end(),
+            [&](const CacheLine& line) { return line.key == key; });
     }
 
-    bool store_in_gpu(const Hash& key, const std::vector<unsigned char>& data) {
-        if (cache_.size() >= cache_capacity_) {
-            evict_lru();
-        }
-
-        for (auto& line : cache_) {
-            if (!line.gpu_resident || line.key == key) {
-                line.key = key;
-                line.value = Hash(data.empty() ? Hash{} : data.data(), data.size());
-                line.timestamp = std::chrono::steady_clock::now();
-                line.gpu_resident = true;
-                line.size_bytes = data.size();
-                return true;
-            }
-        }
-        return false;
+    std::vector<CacheLine>::const_iterator find(const Hash& key) const {
+        return std::find_if(cache_.begin(), cache_.end(),
+            [&](const CacheLine& line) { return line.key == key; });
     }
 
-    void evict_lru() {
+    void store_in_gpu(const Hash& key, const std::vector<unsigned char>& data) {
+        if (data.size() > gpu_ram_bytes_) return;
+
+        auto existing = find(key);
+        if (existing != cache_.end()) {
+            cache_used_bytes_ -= existing->value.size();
+            cache_.erase(existing);
+        }
+
+        while (cache_used_bytes_ > gpu_ram_bytes_ - data.size()) {
+            evict_lru_locked();
+        }
+
+        cache_.push_back({key, data, std::chrono::steady_clock::now()});
+        cache_used_bytes_ += data.size();
+    }
+
+    void evict_lru_locked() {
         if (cache_.empty()) return;
-        auto oldest = std::min_element(cache_.begin(), cache_.end(),
-            [](const CacheLine& a, const CacheLine& b) {
-                return a.timestamp < b.timestamp;
+
+        const auto oldest = std::min_element(cache_.begin(), cache_.end(),
+            [](const CacheLine& left, const CacheLine& right) {
+                return left.timestamp < right.timestamp;
             });
-        oldest->gpu_resident = false;
-        oldest.key = Hash{};
-    }
-
-    std::vector<unsigned char> retrieve_from_gpu(const Hash& key) {
-        for (const auto& line : cache_) {
-            if (line.key == key && line.gpu_resident) {
-                return std::vector<unsigned char>(line.value.b.begin(), line.value.b.end());
-            }
-        }
-        return {};
-    }
-
-    void free_expired_gpu_memory() {
-        for (auto& line : cache_) {
-            if (line.gpu_resident) {
-                line.gpu_resident = false;
-            }
-        }
+        cache_used_bytes_ -= oldest->value.size();
+        cache_.erase(oldest);
     }
 };
 
@@ -151,14 +143,14 @@ struct CacheJournalEntry {
     size_t compressed_size = 0;
 };
 
-bool write_cached_journal(const std::vector<unsigned char>& data, GpuCacheAccelerator* accelerator) {
+inline CacheJournalEntry write_cached_journal(const std::vector<unsigned char>& data,
+                                               GpuCacheAccelerator* accelerator) {
     CacheJournalEntry entry;
-    entry.data_hash = Hash(data.empty() ? Hash{} : data.data(), data.size());
     entry.created = std::chrono::steady_clock::now();
     entry.compressed_size = data.size();
-
     if (accelerator) {
-        entry.gpu_cached = accelerator->accelerate_write(entry.data_hash, data);
+        const bool persisted = accelerator->accelerate_write(data, entry.data_hash);
+        entry.gpu_cached = persisted && accelerator->is_in_gpu_cache(entry.data_hash);
     }
-    return true;
+    return entry;
 }
