@@ -6,12 +6,11 @@ class MetadataStore;
 
 class Sweep {
 public:
-    Sweep(MetadataStore* metadata, Mark* mark);
+    explicit Sweep(Mark* mark);
 
     void run();
 
 private:
-    MetadataStore* metadata_;
     Mark* mark_;
     void sweep_unreachable();
 };

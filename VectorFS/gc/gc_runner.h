@@ -1,7 +1,6 @@
 #pragma once
 
 #include "mark.h"
-#include "sweep.h"
 
 class MetadataStore;
 
@@ -12,5 +11,4 @@ public:
 
 private:
     Mark mark_;
-    Sweep sweep_;
 };

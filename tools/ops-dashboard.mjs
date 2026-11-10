@@ -203,12 +203,12 @@ function bundleSection() {
     (width, row) => Math.max(width, row[index].length),
     header.length,
   ));
-  const formatRow = (row, isData = false) => `| ${row.map((cell, index) => {
+  const formatRow = (row, isData = false) => '| ' + row.map((cell, index) => {
     const value = isData && (index === 1 || index === 2)
       ? cell.padStart(widths[index])
       : cell.padEnd(widths[index]);
     return value;
-  }).join(' | ')} |`;
+  }).join(' | ') + ' |';
   const separator = widths.map((width, index) => (
     index === 1 || index === 2 ? `${'-'.repeat(width - 1)}:` : '-'.repeat(width)
   ));
@@ -671,4 +671,3 @@ if (flags['--json']) {
   process.exit(0);
 }
 console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sectionsToRender.length} sections stamped)`);
-
