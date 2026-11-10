@@ -922,11 +922,12 @@ function runProbeSelfTest() {
   check('drift is not counted as verified', counted('drift') === 0);
   check('a failed control is not counted as verified', counted('control-failed') === 0);
 
-  const sentinel = path.join(TOOLS_DIR, `.mutation-probe-self-test-${process.pid}.mjs`);
+  const sentinel = path.join(TOOLS_DIR, '.mutation-probe-self-test-sentinel.mjs');
   fs.writeFileSync(sentinel, '// active probe sentinel\n');
   let help;
   try {
-    help = spawnSync(process.execPath, [process.argv[1], '--help'], {
+    help = spawnSync(process.execPath, ['mutation-probe.mjs', '--help'], {
+      cwd: TOOLS_DIR,
       encoding: 'utf8',
       timeout: 10000,
       windowsHide: true,
