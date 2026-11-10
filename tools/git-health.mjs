@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // git-health.mjs — Workspace git health diagnostics and lightweight fix
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -48,10 +47,11 @@ function getUncommittedChanges() {
 }
 
 function getWorkflowStatus() {
-  const workflowsDir = new URL('../.github/workflows/', import.meta.url);
-  if (!fs.existsSync(workflowsDir)) return 0;
-  return fs.readdirSync(workflowsDir)
-    .filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
+  return runGit(['ls-files', '--cached', '--others', '--exclude-standard', '--', '.github/workflows'])
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .filter(file => !file.slice('.github/workflows/'.length).includes('/')
+      && (file.endsWith('.yml') || file.endsWith('.yaml')))
     .length;
 }
 
