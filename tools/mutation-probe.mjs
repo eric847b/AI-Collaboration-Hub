@@ -43,7 +43,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 
 const TOOLS_DIR = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 
@@ -923,20 +922,10 @@ function runProbeSelfTest() {
   check('drift is not counted as verified', counted('drift') === 0);
   check('a failed control is not counted as verified', counted('control-failed') === 0);
 
-  const sentinel = new URL('.mutation-probe-self-test-sentinel.mjs', import.meta.url);
-  fs.writeFileSync(sentinel, '// active probe sentinel\n');
-  let help;
-  try {
-    help = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--help'], {
-      encoding: 'utf8',
-      timeout: 10000,
-      windowsHide: true,
-    });
-    check('help succeeds', help.status === 0);
-    check('help does not sweep active probe artifacts', fs.existsSync(sentinel));
-  } finally {
-    fs.rmSync(sentinel, { force: true });
-  }
+  let sweptOnHelp = false;
+  const helpExit = main(['--help'], () => { sweptOnHelp = true; }, () => {});
+  check('help succeeds', helpExit === 0);
+  check('help does not sweep active probe artifacts', !sweptOnHelp);
 
   if (failures.length) {
     console.error(`mutation-probe self-test FAIL: ${failures.length} problem(s):`);
@@ -958,10 +947,10 @@ function sweepStaleArtifacts() {
   if (swept > 0) console.error(`mutation-probe: swept ${swept} stale artifact(s) from a prior run`);
 }
 
-function main() {
+function main(argv = process.argv.slice(2), onSweep = sweepStaleArtifacts, showUsage = () => console.log(HELP)) {
   let sel;
   try {
-    sel = parseArgs(process.argv.slice(2));
+    sel = parseArgs(argv);
   } catch (e) {
     console.error('mutation-probe: ' + e.message);
     console.error('try --help');
@@ -969,7 +958,7 @@ function main() {
   }
 
   if (sel.help) {
-    console.log(HELP);
+    showUsage();
     return 0;
   }
   if (sel.selfTest) {
@@ -997,7 +986,7 @@ function main() {
     return 2;
   }
 
-  sweepStaleArtifacts();
+  onSweep();
 
   const results = probes.map((p) => runProbe(p, sel.maxSeconds));
   const caught = results.filter((r) => r.verdict === 'caught');
