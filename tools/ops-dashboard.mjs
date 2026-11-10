@@ -190,16 +190,31 @@ function bundleSection() {
   const prev = entries.length > 1 ? entries[entries.length - 2] : null;
   const names = Object.keys(latest.projects || {}).sort();
   lines.push(`## Bundle Ledger (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
-  lines.push('| Project | Size | Files | vs prev |');
-  lines.push('|---------|-----:|------:|---------|');
-  for (const n of names) {
+  const headers = ['Project', 'Size', 'Files', 'vs prev'];
+  const rows = names.map((n) => {
     let delta = '—';
     if (prev && prev.projects && prev.projects[n] && prev.projects[n].bytes > 0) {
       const growth = ((latest.projects[n].bytes - prev.projects[n].bytes) / prev.projects[n].bytes) * 100;
       delta = `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
     }
-    lines.push(`| ${n} | ${human(latest.projects[n].bytes)} | ${latest.projects[n].files} | ${delta} |`);
-  }
+    return [n, human(latest.projects[n].bytes), String(latest.projects[n].files), delta];
+  });
+  const widths = headers.map((header, index) => rows.reduce(
+    (width, row) => Math.max(width, row[index].length),
+    header.length,
+  ));
+  const formatRow = (row, isData = false) => `| ${row.map((cell, index) => {
+    const value = isData && (index === 1 || index === 2)
+      ? cell.padStart(widths[index])
+      : cell.padEnd(widths[index]);
+    return value;
+  }).join(' | ')} |`;
+  const separator = widths.map((width, index) => (
+    index === 1 || index === 2 ? `${'-'.repeat(width - 1)}:` : '-'.repeat(width)
+  ));
+  lines.push(formatRow(headers));
+  lines.push(`| ${separator.join(' | ')} |`);
+  for (const row of rows) lines.push(formatRow(row, true));
   lines.push('');
   return { id: 'bundle', lines };
 }
@@ -656,5 +671,4 @@ if (flags['--json']) {
   process.exit(0);
 }
 console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sectionsToRender.length} sections stamped)`);
-
 

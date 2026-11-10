@@ -2,7 +2,7 @@
 #include "mark.h"
 #include "../metadata/metadata_store.h"
 
-Sweep::Sweep(MetadataStore* metadata, Mark* mark) : metadata_(metadata), mark_(mark) {}
+Sweep::Sweep(MetadataStore* metadata, Mark* mark) : metadata_(metadata), mark_(mark) {} // NOSONAR: initializer separators are not comma operators.
 
 void Sweep::run() {
     sweep_unreachable();

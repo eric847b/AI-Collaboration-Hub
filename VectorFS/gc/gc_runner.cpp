@@ -2,7 +2,7 @@
 #include "../metadata/metadata_store.h"
 
 GC_Runner::GC_Runner(MetadataStore* metadata)
-    : mark_(metadata), sweep_(metadata, &mark_) {}
+    : mark_(metadata), sweep_(metadata, &mark_) {} // NOSONAR: initializer separators are not comma operators.
 
 void GC_Runner::run(uint64_t root_inode) {
     mark_.run(root_inode);
