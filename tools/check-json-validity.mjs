@@ -43,8 +43,9 @@ function rejectBadFlags() {
 }
 function usage() {
   console.log(['check-json-validity.mjs - verify tracked JSON files parse',
-    'Usage: node tools/check-json-validity.mjs [--quiet] [--json] [--self-test] [--list] [--check] [--update-baseline] [--fail-fast] [--version]',
+    'Usage: node tools/check-json-validity.mjs [--quiet] [--json] [--self-test] [--list] [--count] [--check] [--update-baseline] [--fail-fast] [--version]',
     '  --list            enumerate every file with verdict (ok/invalid)',
+    '  --count           print the number of tracked JSON files',
     '  --check           ratchet: fail only on NEW invalid files vs baseline',
     '  --update-baseline (re)seed docs/metrics/json-validity-baseline.json',
     'Exit codes: 0 ok, 1 invalid, 2 bad usage.'].join('\n'));
