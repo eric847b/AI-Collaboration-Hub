@@ -9,6 +9,7 @@ public:
 
     virtual Hash put(const Node& n);
     virtual Node get(const Hash& h) const;
+    bool contains(const Hash& h) const;
     
     // Content-based hash computation for deduplication
     Hash hash_node(const Node& n);

@@ -567,9 +567,9 @@ const PROBES = [
   {
     tool: 'check-json-validity.mjs',
     id: 'jsonvalidity-jsonc-strip-bites',
-    why: 'the JSONC self-test assertion must actually exercise comment stripping; dropping the strip leaves JSONC unparseable',
-    from: "JSON.parse(stripJsonComments(trimmed))",
-    to: "JSON.parse(trimmed)",
+    why: 'the JSONC line-comment assertion must detect when line-comment stripping is disabled',
+    from: "if (text[i] === '/' && text[i+1] === '/') {",
+    to: "if (false) {",
   },
   {
     tool: 'check-json-validity.mjs',
@@ -922,12 +922,17 @@ function runProbeSelfTest() {
   check('drift is not counted as verified', counted('drift') === 0);
   check('a failed control is not counted as verified', counted('control-failed') === 0);
 
+  let sweptOnHelp = false;
+  const helpExit = main(['--help'], () => { sweptOnHelp = true; }, () => {});
+  check('help succeeds', helpExit === 0);
+  check('help does not sweep active probe artifacts', !sweptOnHelp);
+
   if (failures.length) {
     console.error(`mutation-probe self-test FAIL: ${failures.length} problem(s):`);
     for (const f of failures) console.error(`  FAIL  ${f}`);
     process.exit(1);
   }
-  console.log('mutation-probe self-test: 13/13 passed');
+  console.log('mutation-probe self-test: 15/15 passed');
 }
 
 function sweepStaleArtifacts() {
@@ -942,11 +947,10 @@ function sweepStaleArtifacts() {
   if (swept > 0) console.error(`mutation-probe: swept ${swept} stale artifact(s) from a prior run`);
 }
 
-function main() {
-  sweepStaleArtifacts();
+function main(argv = process.argv.slice(2), onSweep = sweepStaleArtifacts, showUsage = () => console.log(HELP)) {
   let sel;
   try {
-    sel = parseArgs(process.argv.slice(2));
+    sel = parseArgs(argv);
   } catch (e) {
     console.error('mutation-probe: ' + e.message);
     console.error('try --help');
@@ -954,7 +958,7 @@ function main() {
   }
 
   if (sel.help) {
-    console.log(HELP);
+    showUsage();
     return 0;
   }
   if (sel.selfTest) {
@@ -981,6 +985,8 @@ function main() {
     }
     return 2;
   }
+
+  onSweep();
 
   const results = probes.map((p) => runProbe(p, sel.maxSeconds));
   const caught = results.filter((r) => r.verdict === 'caught');
