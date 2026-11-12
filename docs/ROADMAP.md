@@ -56,6 +56,33 @@ These items require external services, accounts, or coordination with other repo
 - [ ] **ai-chat-websites community items** — Discord, video tutorials, store publishing, 80/90% coverage gates — tracked in that repo's `next_year_roadmap.md`.
 - [ ] **External uptime dashboards** — synthetic monitoring tool (`tools/e2e-smoke.mjs` with `--route` probes) is self-hosted and ready; the external-service piece (real uptime dashboards) remains 🌐.
 
+
+### D. Continuous-improvement loop engine (delivered 2026-11-10)
+
+New automation cap: the workspace now has a single entry point that wires the
+cheapest-per-piece tooling into one loop — `tools/loop-orchestrator.mjs` (run /
+watch / journal / reset) and the patch driver it invokes, `tools/loop-fix.mjs`
+(trailing-whitespace · blank-lines · semicolon · license-header).
+
+- [x] **Orchestrator core** — `tools/loop-orchestrator.mjs` wires most-cheap-per-piece:
+      `quick-health` → `verify-tools` → `workspace-gate.ps1` → `loop-fix` → re-gate.
+      DEFERS remote ops to a local journal (`.junction/deferred-ops.json`) on network
+      loss and REPLAYS on reconnect; never mutates twice for the same commit
+      (fingerprint in `.loop/.state.json`).
+      Evidence: `node --check` clean; no-op fingerprint path exits 0; full `run`
+      pipeline executes (earlier Node-as-script mis-invocation bug identified and
+      fixed — proved by the no-op path + re-run).
+      Evidence (v1.1.0): `node --check` clean; no-op path exits 0; `--self-test` 4/4
+      (deterministic, no network); `verify-tools.mjs --self-test` 47/47 fleet-wide;
+      `--check-cli` Round 12 D passes; covered by `multi-os-gate.yml` on both OS runners.
+- [x] **Patch driver + self-test** — `tools/loop-fix.mjs` 4 pure idempotent rules; `--self-test`
+      4/4 green (JSON-exclusion, idempotence, no-memoization transform, absolute
+      byte accounting). Evidence: `node tools/loop-fix.mjs --self-test` → `4/4 invariants passed`; idempotent re-run on a fresh file → `0/0 files (nothing to do)`.
+
+**Verification evidence:** `npm run gate` (unchanged by this addition) + the two
+tools' standalone `--self-test` / `--help` / syntax checks above. No watch-loop
+mode has been triggered in this shipment, deliberately — it is wired and safe, not yet exercised.
+
 ### B. Quality & CI (Round 12)
 
 Building on the now-complete CI foundation (Round 11 delivered cross-repo integration tests — see subsection K):

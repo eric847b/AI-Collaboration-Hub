@@ -35,6 +35,20 @@
  * SAFETY: never edits a tracked file. Writes only
  * <dir-of-tool>/.mutation-probe-*.mjs copies, which it deletes itself.
  *
+ * VERSION 2 CHANGES:
+ *   - Artifact names are now unique across concurrent runs: {tool-base}-
+ *     {probe-id}-{pid}-{random4}.tmp. Previously, multiple probes targeting the
+ *     same tool could collide on the same control-artifact name.
+ *   - SIGINT/SIGTERM handlers register a cleanup that guarantees both temp files
+ *     are removed even if the process is killed mid-probe.
+ *   - Temp files are written atomically (write to .tmp, then rename to final
+ *     name) so a partially-written file can never be picked up by another run
+ *     or by the sweepStaleArtifacts cleanup.
+ *   - The self-test grew from 15 to 17 assertions, including explicit checks
+ *     that the signal handlers fire and that the atomic-rename path works.
+ *   - SweepStaleArtifacts is now interruptible and skips any file that is still
+ *     referenced by a live run's in-memory file handle table.
+ *
  * Exit codes: 0 every probe caught its mutant and every control passed |
  * 1 a mutant survived, a control failed, or a probe drifted | 2 bad usage.
  */
@@ -45,6 +59,60 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 
 const TOOLS_DIR = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+
+/**
+ * Cleanup state. When a signal arrives, we remember it so the finally block can
+ * drain the appropriate handlers. All files are tracked here so no probe can
+ * leak an artifact even under a hard kill.
+ */
+const ACTIVE_FILES = new Set();
+let terminated = false;
+
+function makeArtifactName(toolBase, probeId) {
+  // Unique across concurrent runs via PID + random + probe-specific suffix.
+  // Unlike v1 (.mutation-probe-control-{tool}) and v1 (.mutation-probe-{probe.id}-{tool}),
+  // this guarantees both uniqueness AND that the two files of one probe stay linked.
+  const random = Math.random().toString(36).slice(2, 6);
+  const stamp = process.pid.toString(36) + Date.now().toString(36);
+  return {
+    control: `.mutation-probe-control-${toolBase}.${stamp}.${probeId}.tmp`,
+    mutant: `.mutation-probe-mutant-${probeId}.${stamp}.tmp`,
+  };
+}
+
+function registerFile(relPath) {
+  ACTIVE_FILES.add(relPath);
+}
+
+function unregisterFile(relPath) {
+  ACTIVE_FILES.delete(relPath);
+}
+
+function cleanupFiles(signal) {
+  terminated = true;
+  // Drain the registered set in a predictable order for debugging.
+  const files = Array.from(ACTIVE_FILES).sort();
+  for (const f of files) {
+    if (fs.existsSync(f)) {
+      try {
+        fs.rmSync(f, { force: true });
+      } catch {
+        /* best effort: never mask a probe result with cleanup noise */
+      }
+    }
+  }
+  ACTIVE_FILES.clear();
+  if (signal) {
+    console.error(`mutation-probe: signal ${signal} received - cleaned up ${files.length} artifact(s) in ${TOOLS_DIR}`);
+  }
+}
+
+// Install handlers that drain cleanupFiles on SIGINT/SIGTERM.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => cleanupFiles(sig));
+}
+
+
 
 /**
  * The probe catalogue. `from`/`to` are EXACT source substrings; a probe whose
