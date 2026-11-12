@@ -31,8 +31,9 @@ function runTool(toolPath, args) {
 
 // List of all probe tools in the tools/ directory
 function discoverTools() {
+  const toolsDir = path.join(ROOT, 'tools');
   try {
-    return fs.readdirSync(ROOT)
+    return fs.readdirSync(toolsDir)
       .filter((f) => f.startsWith('mutation-probe') && f.endsWith('.mjs'))
       .sort();
   } catch {
@@ -120,11 +121,19 @@ Exit codes:
     process.exit(0);
   }
 
-  const selectedOnly = opt('--only', '');
-  const selected = selectToolsByOnly(buildCatalogue(), selectedOnly);
+  // Select tools: if --tool is given, use it; otherwise probe all discovered tools
+  let selected;
+  const toolArg = opt('--tool', '');
+  if (toolArg) {
+    const requested = toolArg.split(',').map(s => s.trim()).filter(s => s);
+    const probes = buildCatalogue();
+    selected = probes.filter(p => requested.includes(p.tool));
+  } else {
+    selected = buildCatalogue();
+  }
 
   if (selected.length === 0) {
-    console.error('FAIL: no tools matched the --only selector');
+    console.error(`FAIL: no tools matched the --tool selector: ${toolArg}`);
     process.exit(2);
   }
 
