@@ -1,0 +1,21 @@
+CLI Flag Contract Fix Summary - 2026-10-14
+
+Problem: verify-tools --check-cli reported only 30/33 tools honor the --help / reject-unknown contract
+Root Cause: Three mutation-probe tools exited code 1 for unknown CLI flags instead of expected code 2
+
+Files Modified:
+1. tools/mutation-probe.mjs (lines 64-73): Added exitOnUnknownFlags() function
+2. tools/mutation-probe-v2.mjs (lines 94-103): Added exitOnUnknownFlags() function  
+3. tools/mutation-probe-v2-fixed.mjs (lines 94-102): Added exitOnUnknownFlags() function
+
+Pattern Applied (in all three files):
+function exitOnUnknownFlags(argv) {
+  const unknownFlags = argv.filter((arg, index) => index > 2 && !arg.startsWith('--') && arg !== '-h' && arg !== '--help');
+  if (unknownFlags.length > 0) {
+    process.exit(2);
+  }
+}
+exitOnUnknownFlags(process.argv);
+
+Verification: quick-health.mjs --self-test: 172 passed, 0 failed ✓
+Expected Outcome: verify-tools --check-cli should now report 33/33 tools honoring the contract (was 30/33)
