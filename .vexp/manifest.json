@@ -176,8 +176,8 @@
     "ai-chat-websites/tests/validator.test.js": "3bd12b3dd5631a93f7cafcc5f372fab74ba0cd029bf22c58d713151d3913bf6d",
     "ai-chat-websites/tests/versioning.test.js": "bb8f98820dc2d80322461fdf70171a1303c60b8ce812122b1b8b90147933ef2b"
   },
-  "indexed_at_commit": "50265ba47b1f64dbbbb6fba06b3238a223eaca8e",
-  "indexed_at_timestamp": "2026-10-16T12:43:02.448846500+00:00",
+  "indexed_at_commit": "398e19625bedfa04ba878180f115cf98631d15c9",
+  "indexed_at_timestamp": "2026-11-15T13:31:41.500575100+00:00",
   "languages": {
     "javascript": {
       "calls": 1134,
