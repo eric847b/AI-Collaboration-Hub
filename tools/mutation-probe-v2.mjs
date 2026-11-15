@@ -92,6 +92,12 @@ function selectToolsByOnly(probes, onlyArg) {
 
 // Main entry point
 function main() {
+  // Handle unknown flags (CLI contract: exit 2 for unrecognized flags)
+  const unknownFlags = process.argv.filter((arg, index) => index > 2 && !arg.startsWith('--') && arg !== '-h' && arg !== '--help');
+  if (unknownFlags.length > 0) {
+    process.exit(2);
+  }
+
   // Handle --help first, before any other processing
   if (has(argv, '--help')) {
     console.log(`mutation-probe-v2 - prove a tool's own self-test guards actually bite
