@@ -2,6 +2,7 @@
 
 - **Status:** ready for implementation
 - **Date:** 2026-11-15
+- **Revised:** 2026-11-15 — approve-path line numbers corrected against the live blob; step 5 rewritten (the gate needs `GH_FULL_PAT` exposed to the review workflow, or it fails closed on every run)
 - **Owner:** Grok implements; Muse steers, verifies by read-back, holds the merge gate; Eric reviews
 - **Protocol:** GitHub files are the only shared memory (cite path + hash, never re-send content); diffs, not prose; batched decisions; one-line vetoes; one no-go vetoes
 - **Target repo:** `eric847b/autonomous-github-agent` (AGA), branch `main`
@@ -36,11 +37,12 @@ while admins bypass every protection.
   - `main()` exit codes: 0 ok, 2 incomplete evidence (soft outcome in the
     workflow).
 - `.github/ai_pr_review.py` — blob `142a3c187df61de4f9cff769b1feec61a08614ca`
-  - `run()` L246-323. Approve path: consensus approve (L288) ->
-    `_checks_green` (L289) -> submit APPROVE review (L293) -> head re-check
-    (L294-296) -> checks re-check (L297-298) -> `_enable_auto_merge`
-    (L299). **The evidence gate goes between L298 and L299.**
-  - `_enable_auto_merge` L225-244: GraphQL `enablePullRequestAutoMerge`
+  - `run()` L246-312. Approve path: approve branch (L288; `consensus()`
+    is called at L275) -> `_checks_green` (L289) -> submit APPROVE review
+    (L292) -> head re-check (L293-295) -> checks re-check (L296-297) ->
+    `_enable_auto_merge` (L298). **The evidence gate goes between L297
+    and L298.**
+  - `_enable_auto_merge` L225-243: GraphQL `enablePullRequestAutoMerge`
     (SQUASH). Already fails closed on GraphQL errors.
   - `_checks_green` L216-222 / `checks_are_green` L193-214: narrow
     carve-outs (skipped dependency-review/scorecard, neutral coderabbit)
@@ -54,10 +56,14 @@ while admins bypass every protection.
 1. **Gate the auto-merge call on evidence.** In `run()`, after the final
    head re-check and checks re-check and before `_enable_auto_merge`:
    call `protection_evidence.fetch_protection(owner, repo, base_branch)`
-   in-process (import it; do not shell out, do not read a file). If
-   evidence `ok` is false, do NOT call `_enable_auto_merge`: post a
-   COMMENT review stating approve (review only) with the protection
-   reasons, and return `auto_merge: false`. Unreadable evidence
+   in-process (import it; do not shell out, do not read a file). `run()`
+   holds `repo` as `"owner/name"`; split it (`repo.split("/", 1)`) —
+   `protection_evidence.main()` does the same. If evidence `ok` is
+   false, do NOT call `_enable_auto_merge`: post a COMMENT review
+   stating approve (review only) with the protection reasons, and
+   return verdict `"approve"` with a reason following the existing
+   `native_auto_merge_unavailable:{detail}` pattern and
+   `auto_merge: false`. Unreadable evidence
    (403/404/exception) already yields `ok: false` — fail closed, no
    special-casing.
 2. **Make `enforce_admins=false` a hard fail.** In `evaluate_protection`,
@@ -71,12 +77,26 @@ while admins bypass every protection.
    "approve (review only)" shape is the model for the gated outcome.
 4. **Base branch comes from the PR** (`pr["base"]["ref"]`), never
    hardcoded `"main"`.
-5. **No new secrets, no permission broadening.** The evidence fetch is a
-   GET with the existing token. No workflow permission changes.
+5. **Expose `GH_FULL_PAT` to the review workflow.** `ai-pr-review.yml`
+   is the only invoker of `ai_pr_review.py`, and its review job env
+   sets only `GITHUB_TOKEN` — which cannot read branch protection
+   (the reviewer's own docstring records a 403; the workflow's
+   permissions also lack `administration: read`).
+   `protection_evidence._token()` prefers `GH_FULL_PAT` and falls back
+   to `GITHUB_TOKEN`, so without the PAT the fetch 403s on every run
+   and the gate fails closed always — silently and permanently
+   disabling the only live merge route instead of gating it on actual
+   protections. Add `GH_FULL_PAT: ${{ secrets.GH_FULL_PAT }}` to the
+   review job's env, following `protection-evidence.yml:37-39` as the
+   model. No *new* secret must be created (`GH_FULL_PAT` already
+   exists as a repo secret) — it is newly *exposed* to this workflow.
+   (Alternative: grant the workflow token `administration: read` —
+   but that is permission broadening; say so explicitly if chosen.)
 
 ## Tests (required, run locally)
 
-Add or extend tests under `.github/tests/` covering:
+Extend `.github/tests/test_ai_pr_review.py` (the module the review
+workflow already runs) with tests covering:
 
 - evidence `ok: true` -> auto-merge call proceeds;
 - evidence `ok: false` -> no auto-merge call, COMMENT posted, `auto_merge: false`;
