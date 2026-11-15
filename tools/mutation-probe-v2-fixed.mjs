@@ -6,11 +6,37 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const argv = process.argv.slice(2);
 
-const has = (flag) => argv.includes(flag);
+const has = (args, flag) => args.includes(flag);
 const opt = (name, def) => {
+  const inlineValue = argv.find((arg) => arg.startsWith(`${name}=`));
+  if (inlineValue) return inlineValue.slice(name.length + 1);
   const i = argv.indexOf(name);
   return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
 };
+
+function validateArguments(args) {
+  const valueFlags = new Set(['--tool', '--probe', '--only', '--max-seconds']);
+  const booleanFlags = new Set(['--json', '--quiet', '--list-probes', '--self-test', '--help', '-h']);
+
+  for (let i = 0; i < args.length; i += 1) {
+    const raw = args[i];
+    const equalsAt = raw.indexOf('=');
+    const flag = equalsAt < 0 ? raw : raw.slice(0, equalsAt);
+
+    if (valueFlags.has(flag)) {
+      const value = equalsAt < 0 ? args[++i] : raw.slice(equalsAt + 1);
+      if (!value || value.startsWith('-')) {
+        console.error(`Error: ${flag} requires a value`);
+        return false;
+      }
+    } else if (!booleanFlags.has(flag) || equalsAt >= 0) {
+      console.error(`Error: unknown option "${flag}"`);
+      return false;
+    }
+  }
+
+  return true;
+}
 
 // Helper: run a child process and capture exit code + stdout/stderr
 function runTool(toolPath, args) {
@@ -91,14 +117,10 @@ function selectToolsByOnly(probes, onlyArg) {
 
 // Main entry point
 function main() {
-  // Handle unknown flags (CLI contract: exit 2 for unrecognized flags)
-  const unknownFlags = process.argv.filter((arg, index) => index > 2 && !arg.startsWith('--') && arg !== '-h' && arg !== '--help');
-  if (unknownFlags.length > 0) {
-    process.exit(2);
-  }
+  if (!validateArguments(argv)) process.exit(2);
 
   // Handle --help first, before any other processing
-  if (has(argv, '--help')) {
+  if (has(argv, '--help') || has(argv, '-h')) {
     console.log(`mutation-probe-v2 - prove a tool's own self-test guards actually bite
 
 Usage:
@@ -135,7 +157,7 @@ Exit codes:
   }
 
   // Print help if --help is passed (should not reach here, but safety)
-  if (has(argv, '--help')) {
+  if (has(argv, '--help') || has(argv, '-h')) {
     console.log(`mutation-probe-v2 - prove a tool's own self-test guards actually bite
 
 Usage:
