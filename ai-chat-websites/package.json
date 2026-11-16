@@ -76,13 +76,13 @@
   "homepage": "https://github.com/eric847b/ai-chat-websites#readme",
   "dependencies": {
     "@utcp/code-mode-mcp": "^1.2.1",
-    "@vapi-ai/mcp-server": "^0.0.11"
+    "@vapi-ai/mcp-server": "^0.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@jest/globals": "^30.5.2",
-    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
     "@typescript-eslint/parser": "^8.69.0",
     "babel-jest": "^30.5.2",
     "eslint": "^10.14.0",
@@ -90,7 +90,7 @@
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
     "markdownlint-cli": "^0.50.0",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "typescript": "~5.9.3"
   },
   "overrides": {
