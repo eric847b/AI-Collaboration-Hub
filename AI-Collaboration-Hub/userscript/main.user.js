@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AI Building Collaboration Hub v5.7
+// @name         AI Building Collaboration Hub v5.8
 // @namespace    eric.collabhub
-// @version      5.7
-// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Diagnosis + All Ideas
+// @version      5.8
+// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Diagnosis + Status
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -70,7 +70,7 @@ const ghCall = async (endpoint, method="GET", body=null) => {
 };
 
 const Hub={
-  v:"5.7",
+  v:"5.8",
   agents:{},
   capabilities:{},
   memory:[],
@@ -173,24 +173,25 @@ Hub.ingestAllGitHub("eric847b");
 
 window.Hub=Hub;
 
-GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.7",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
+GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.8",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
 d=document.createElement("div");d.id="h";d.style=`position:fixed;inset:8px;background:#0a0c14;color:#eee;border-radius:20px;z-index:2147483647;display:flex;flex-direction:column;border:2px solid #0af;box-shadow:0 0 80px rgba(0,170,255,0.8);overflow:hidden`;
-d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.7</div>
+d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.8</div>
 <div style="padding:8px 12px;background:#111;font-size:13px" id="s">C:<span id="cc"></span> M:<span id="mm"></span> N:<span id="nn"></span></div>
 <svg id="g" width="100%" height="160" style="background:#111"></svg>
 <textarea id="i" style="margin:8px 12px;background:#111;color:#fff;border-radius:12px;padding:14px;min-height:100px" placeholder="Type or speak to the Nexus..."></textarea>
-<div style="display:flex;gap:8px;padding:0 12px 12px"><button id="go" style="flex:1;padding:15px;background:linear-gradient(#0f8,#0a6);color:#000;font-weight:bold;border:none;border-radius:12px">🚀 Evolve</button><button id="v" style="flex:1;padding:15px;background:#555;color:#fff;border:none;border-radius:12px">🎤</button></div>
+<div style="display:flex;gap:8px;padding:0 12px 12px"><button id="go" style="flex:1;padding:15px;background:linear-gradient(#0f8,#0a6);color:#000;font-weight:bold;border:none;border-radius:12px">🚀 Evolve</button><button id="status" style="padding:15px 18px;background:#333;color:#fff;border:none;border-radius:12px">📊</button><button id="v" style="flex:1;padding:15px;background:#555;color:#fff;border:none;border-radius:12px">🎤</button></div>
 <div id="o" style="flex:1;overflow:auto;padding:12px 16px;line-height:1.6"></div>`;
 document.body.appendChild(d);harvest();
 
 const svg=d.querySelector("#g");const draw=()=>{svg.innerHTML="";Hub.graph.nodes.forEach((n,i)=>{const c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("cx",50+i*70);c.setAttribute("cy",80);c.setAttribute("r",22);c.setAttribute("fill","#0af");svg.appendChild(c);});};
 
 d.querySelector("#go").onclick=async()=>{const t=d.querySelector("#i").value.trim();if(!t)return;d.querySelector("#o").innerHTML="🌐 Full autonomous evolution...";const r=await Hub.awaken(t);d.querySelector("#o").innerHTML=r.replace(/\n/g,"<br>");updateStats();draw();};
+d.querySelector("#status").onclick=()=>{const s=Hub.diagnose();d.querySelector("#o").innerHTML=`📊 Nexus Status<br>Version: ${s.version}<br>Agents: ${s.agents}<br>Capabilities: ${s.capabilities}<br>Memory: ${s.memory}<br>APIs: ${s.apis}<br>Nodes: ${s.nodes}<br>Edges: ${s.edges}<br>Providers: ${s.providers}`;};
 d.querySelector("#v").onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(R){const rec=new R();rec.onresult=e=>d.querySelector("#i").value=e.results[0][0].transcript;rec.start();}};
 
 const updateStats=()=>{const s=Hub.diagnose();d.querySelector("#cc").textContent=s.capabilities;d.querySelector("#mm").textContent=s.memory;d.querySelector("#nn").textContent=s.nodes;};
 updateStats();draw();
 });
 
-console.log("%cAI Hub v5.7 — All High-Value Ideas Live. Fully Autonomous.","color:#0ff");
+console.log("%cAI Hub v5.8 — Strongest Ideas Live. Fully Autonomous.","color:#0ff");
 })();
