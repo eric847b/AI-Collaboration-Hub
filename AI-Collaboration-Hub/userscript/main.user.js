@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AI Building Collaboration Hub v5.3
+// @name         AI Building Collaboration Hub v5.4
 // @namespace    eric.collabhub
-// @version      5.3
-// @description  Ultimate Autonomous Self-Evolve-Dash + All GitHub Projects Merged + Self-Acquired APIs + Dynamic Extension
+// @version      5.4
+// @description  Ultimate Autonomous Self-Evolve-Dash + All GitHub Projects + Self-Acquired APIs + Dynamic Extension + Ready for Real GitHub API
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -58,7 +58,7 @@ const call=async(id,prompt,sys="",tools=[],retries=3)=>new Promise(async resolve
 });
 
 const Hub={
-  v:"5.3",
+  v:"5.4",
   agents:{},
   capabilities:{},
   memory:[],
@@ -107,38 +107,16 @@ const Hub={
       `${repo}_schema`,
       `${repo}_autopatch`
     ]);
-    Hub.acquireAPI(
-      `${repo}_raw`,
-      `https://raw.githubusercontent.com/${owner}/${repo}/main/`,
-      "",
-      `Raw content for ${repo}`
-    );
-    Hub.acquireAPI(
-      `${repo}_actions`,
-      `https://api.github.com/repos/${owner}/${repo}/actions`,
-      "",
-      `Actions API for ${repo}`
-    );
+    Hub.acquireAPI(`${repo}_raw`,`https://raw.githubusercontent.com/${owner}/${repo}/main/","",`Raw content for ${repo}`);
+    Hub.acquireAPI(`${repo}_actions`,`https://api.github.com/repos/${owner}/${repo}/actions`,"",`Actions API for ${repo}`);
   },
   ingestAllGitHub:(owner)=>{
-    const repos=[
-      "AI-Collaboration-Hub",
-      "Telegram-Automation",
-      "Pulse-Dashboard",
-      "Japanese-Maple-System",
-      "AI-MultiPlatform-Orchestrator",
-      "GitHub-AutoAgent",
-      "Realtime-Pulse",
-      "Maple-Seedling-Analyzer",
-      "Hydroponic-Maple-Growth",
-      "Agent-Nexus-Core"
-    ];
-    repos.forEach(repo=>Hub.ingestGitHubRepo(owner,repo));
+    ["AI-Collaboration-Hub","Telegram-Automation","Pulse-Dashboard","Japanese-Maple-System","AI-MultiPlatform-Orchestrator","GitHub-AutoAgent","Realtime-Pulse","Maple-Seedling-Analyzer","Hydroponic-Maple-Growth","Agent-Nexus-Core"].forEach(repo=>Hub.ingestGitHubRepo(owner,repo));
   },
   awaken:async(prompt)=>{
     harvest();
     const caps=Object.keys(Hub.capabilities).join(",");
-    const sys="You are the Ultimate Self-Evolving Nexus with full autonomy over all present and future capabilities, tools, agents, and domains. When you invent new capabilities or discover APIs, name them explicitly using: NEW_CAPS: cap1, cap2 or NEW_API: name|url|key|desc.";
+    const sys="You are the Ultimate Self-Evolving Nexus with full autonomy. Invent new capabilities with NEW_CAPS: cap1,cap2 and new APIs with NEW_API: name|url|key|desc. Always aim for maximum benefit and continuous improvement.";
     const final=await call("xai",prompt+` | Caps:${caps}`,sys,[],5);
 
     const m=final.match(/NEW_CAPS:\s*(.+)/i);
@@ -184,14 +162,13 @@ Hub.link("core","mcp","uses");
 Hub.link("core","voice","inputs");
 Hub.link("core","all_projects","integrates");
 
-// ingest all projects
 Hub.ingestAllGitHub("eric847b");
 
 window.Hub=Hub;
 
-GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.3",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
+GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.4",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
 d=document.createElement("div");d.id="h";d.style=`position:fixed;inset:8px;background:#0a0c14;color:#eee;border-radius:20px;z-index:2147483647;display:flex;flex-direction:column;border:2px solid #0af;box-shadow:0 0 80px rgba(0,170,255,0.8);overflow:hidden`;
-d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.3</div>
+d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.4</div>
 <div style="padding:8px 12px;background:#111;font-size:13px" id="s">C:<span id="cc"></span> M:<span id="mm"></span> N:<span id="nn"></span></div>
 <svg id="g" width="100%" height="160" style="background:#111"></svg>
 <textarea id="i" style="margin:8px 12px;background:#111;color:#fff;border-radius:12px;padding:14px;min-height:100px" placeholder="Type or speak to the Nexus..."></textarea>
@@ -201,12 +178,12 @@ document.body.appendChild(d);harvest();
 
 const svg=d.querySelector("#g");const draw=()=>{svg.innerHTML="";Hub.graph.nodes.forEach((n,i)=>{const c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("cx",50+i*70);c.setAttribute("cy",80);c.setAttribute("r",22);c.setAttribute("fill","#0af");svg.appendChild(c);});};
 
-d.querySelector("#go").onclick=async()=>{const t=d.querySelector("#i").value.trim();if(!t)return;d.querySelector("#o").innerHTML="🌐 Full autonomous evolution across all projects...";const r=await Hub.awaken(t);d.querySelector("#o").innerHTML=r.replace(/\n/g,"<br>");updateStats();draw();};
+d.querySelector("#go").onclick=async()=>{const t=d.querySelector("#i").value.trim();if(!t)return;d.querySelector("#o").innerHTML="🌐 Full autonomous evolution...";const r=await Hub.awaken(t);d.querySelector("#o").innerHTML=r.replace(/\n/g,"<br>");updateStats();draw();};
 d.querySelector("#v").onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(R){const rec=new R();rec.onresult=e=>d.querySelector("#i").value=e.results[0][0].transcript;rec.start();}};
 
 const updateStats=()=>{d.querySelector("#cc").textContent=Object.keys(Hub.capabilities).length;d.querySelector("#mm").textContent=Hub.memory.length;d.querySelector("#nn").textContent=Hub.graph.nodes.length;};
 updateStats();draw();
 });
 
-console.log("%cAI Hub v5.3 — All Projects Merged. Fully Autonomous.","color:#0ff");
+console.log("%cAI Hub v5.4 — Highest Value Upgrades Live. Fully Autonomous.","color:#0ff");
 })();
