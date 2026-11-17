@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AI Building Collaboration Hub v5.6
+// @name         AI Building Collaboration Hub v5.7
 // @namespace    eric.collabhub
-// @version      5.6
-// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Acquired APIs
+// @version      5.7
+// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Diagnosis + All Ideas
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -70,7 +70,7 @@ const ghCall = async (endpoint, method="GET", body=null) => {
 };
 
 const Hub={
-  v:"5.6",
+  v:"5.7",
   agents:{},
   capabilities:{},
   memory:[],
@@ -99,7 +99,7 @@ const Hub={
     Hub.graph.edges.push({from:a,to:b,label});
   },
   acquireAPI:(name,url,key,desc="")=>{
-    Hub.apis[]={url,key,desc};
+    Hub.apis[name]={url,key,desc};
     Hub.capabilities[`api_${name}`]="core";
     Hub.graph.nodes.push({id:`api_${name}`,name});
   },
@@ -115,6 +115,18 @@ const Hub={
   },
   triggerWorkflow:async(owner="eric847b",repo="AI-Collaboration-Hub",workflow="self-evolve.yml",ref="main",inputs={})=>{
     return await ghCall(`/repos/${owner}/${repo}/actions/workflows/${workflow}/dispatches`,"POST",{ref,inputs});
+  },
+  diagnose:()=>{
+    return {
+      version: Hub.v,
+      agents: Object.keys(Hub.agents).length,
+      capabilities: Object.keys(Hub.capabilities).length,
+      memory: Hub.memory.length,
+      apis: Object.keys(Hub.apis).length,
+      nodes: Hub.graph.nodes.length,
+      edges: Hub.graph.edges.length,
+      providers: Object.keys(PROVS).filter(k=>PROVS[k].k).length
+    };
   },
   awaken:async(prompt)=>{
     harvest();
@@ -161,9 +173,9 @@ Hub.ingestAllGitHub("eric847b");
 
 window.Hub=Hub;
 
-GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.6",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
+GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.7",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
 d=document.createElement("div");d.id="h";d.style=`position:fixed;inset:8px;background:#0a0c14;color:#eee;border-radius:20px;z-index:2147483647;display:flex;flex-direction:column;border:2px solid #0af;box-shadow:0 0 80px rgba(0,170,255,0.8);overflow:hidden`;
-d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.6</div>
+d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.7</div>
 <div style="padding:8px 12px;background:#111;font-size:13px" id="s">C:<span id="cc"></span> M:<span id="mm"></span> N:<span id="nn"></span></div>
 <svg id="g" width="100%" height="160" style="background:#111"></svg>
 <textarea id="i" style="margin:8px 12px;background:#111;color:#fff;border-radius:12px;padding:14px;min-height:100px" placeholder="Type or speak to the Nexus..."></textarea>
@@ -176,9 +188,9 @@ const svg=d.querySelector("#g");const draw=()=>{svg.innerHTML="";Hub.graph.nodes
 d.querySelector("#go").onclick=async()=>{const t=d.querySelector("#i").value.trim();if(!t)return;d.querySelector("#o").innerHTML="🌐 Full autonomous evolution...";const r=await Hub.awaken(t);d.querySelector("#o").innerHTML=r.replace(/\n/g,"<br>");updateStats();draw();};
 d.querySelector("#v").onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(R){const rec=new R();rec.onresult=e=>d.querySelector("#i").value=e.results[0][0].transcript;rec.start();}};
 
-const updateStats=()=>{d.querySelector("#cc").textContent=Object.keys(Hub.capabilities).length;d.querySelector("#mm").textContent=Hub.memory.length;d.querySelector("#nn").textContent=Hub.graph.nodes.length;};
+const updateStats=()=>{const s=Hub.diagnose();d.querySelector("#cc").textContent=s.capabilities;d.querySelector("#mm").textContent=s.memory;d.querySelector("#nn").textContent=s.nodes;};
 updateStats();draw();
 });
 
-console.log("%cAI Hub v5.6 — Real Workflow Dispatch Ready. Fully Autonomous.","color:#0ff");
+console.log("%cAI Hub v5.7 — All High-Value Ideas Live. Fully Autonomous.","color:#0ff");
 })();
