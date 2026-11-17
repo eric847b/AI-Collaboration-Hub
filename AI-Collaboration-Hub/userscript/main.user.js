@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AI Building Collaboration Hub v5.5
+// @name         AI Building Collaboration Hub v5.6
 // @namespace    eric.collabhub
-// @version      5.5
-// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Acquired APIs + All Ideas
+// @version      5.6
+// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Acquired APIs
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -57,21 +57,20 @@ const call=async(id,prompt,sys="",tools=[],retries=3)=>new Promise(async resolve
   resolve(result.success ? result.text : `Error: ${result.error}. Retrying later.`);
 });
 
-// Real GitHub API helper (uses harvested PAT)
 const ghCall = async (endpoint, method="GET", body=null) => {
-  const pat = GM_getValue(P+"ghpat","") || (PROVS.xai.k && PROVS.xai.k.startsWith("ghp_") ? PROVS.xai.k : "");
-  if(!pat) return {error:"No GitHub PAT found. Store with GM_setValue('AIHub_ghpat', 'ghp_...')"};
+  const pat = GM_getValue(P+"ghpat","") || (PROVS.xai.k?.startsWith("ghp_") ? PROVS.xai.k : "");
+  if(!pat) return {error:"No GitHub PAT. Store with GM_setValue('AIHub_ghpat', 'ghp_...')"};
   return new Promise(r => GM_xmlhttpRequest({
     method, url:`https://api.github.com${endpoint}`,
     headers:{"Authorization":`token ${pat}","Accept":"application/vnd.github.v3+json","Content-Type":"application/json"},
     data: body ? J.stringify(body) : null,
-    onload:res=>{try{r(J.parse(res.responseText))}catch(e){r({status:res.status,error:e.message})}},
+    onload:res=>{try{r(res.status===204?{ok:true}:J.parse(res.responseText))}catch(e){r({status:res.status,error:e.message})}},
     onerror:()=>r({error:"Network"})
   }));
 };
 
 const Hub={
-  v:"5.5",
+  v:"5.6",
   agents:{},
   capabilities:{},
   memory:[],
@@ -100,7 +99,7 @@ const Hub={
     Hub.graph.edges.push({from:a,to:b,label});
   },
   acquireAPI:(name,url,key,desc="")=>{
-    Hub.apis[name]={url,key,desc};
+    Hub.apis[]={url,key,desc};
     Hub.capabilities[`api_${name}`]="core";
     Hub.graph.nodes.push({id:`api_${name}`,name});
   },
@@ -114,14 +113,13 @@ const Hub={
   ingestAllGitHub:(owner)=>{
     ["AI-Collaboration-Hub","Telegram-Automation","Pulse-Dashboard","Japanese-Maple-System","AI-MultiPlatform-Orchestrator","GitHub-AutoAgent","Realtime-Pulse","Maple-Seedling-Analyzer","Hydroponic-Maple-Growth","Agent-Nexus-Core"].forEach(r=>Hub.ingestGitHubRepo(owner,r));
   },
-  // Real GitHub helpers
   triggerWorkflow:async(owner="eric847b",repo="AI-Collaboration-Hub",workflow="self-evolve.yml",ref="main",inputs={})=>{
     return await ghCall(`/repos/${owner}/${repo}/actions/workflows/${workflow}/dispatches`,"POST",{ref,inputs});
   },
   awaken:async(prompt)=>{
     harvest();
     const caps=Object.keys(Hub.capabilities).join(",");
-    const sys="You are the Ultimate Self-Evolving Nexus. Invent capabilities with NEW_CAPS: list and APIs with NEW_API: name|url|key|desc. Aim for maximum continuous improvement.";
+    const sys="You are the Ultimate Self-Evolving Nexus. Invent capabilities with NEW_CAPS: list and APIs with NEW_API: name|url|key|desc. Aim for maximum continuous improvement and real autonomous action.";
     const final=await call("xai",prompt+` | Caps:${caps}`,sys,[],5);
 
     const m=final.match(/NEW_CAPS:\s*(.+)/i);
@@ -163,9 +161,9 @@ Hub.ingestAllGitHub("eric847b");
 
 window.Hub=Hub;
 
-GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.5",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
+GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.6",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
 d=document.createElement("div");d.id="h";d.style=`position:fixed;inset:8px;background:#0a0c14;color:#eee;border-radius:20px;z-index:2147483647;display:flex;flex-direction:column;border:2px solid #0af;box-shadow:0 0 80px rgba(0,170,255,0.8);overflow:hidden`;
-d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.5</div>
+d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.6</div>
 <div style="padding:8px 12px;background:#111;font-size:13px" id="s">C:<span id="cc"></span> M:<span id="mm"></span> N:<span id="nn"></span></div>
 <svg id="g" width="100%" height="160" style="background:#111"></svg>
 <textarea id="i" style="margin:8px 12px;background:#111;color:#fff;border-radius:12px;padding:14px;min-height:100px" placeholder="Type or speak to the Nexus..."></textarea>
@@ -182,5 +180,5 @@ const updateStats=()=>{d.querySelector("#cc").textContent=Object.keys(Hub.capabi
 updateStats();draw();
 });
 
-console.log("%cAI Hub v5.5 — All High-Value Ideas Live. Fully Autonomous.","color:#0ff");
+console.log("%cAI Hub v5.6 — Real Workflow Dispatch Ready. Fully Autonomous.","color:#0ff");
 })();
