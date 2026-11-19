@@ -15,8 +15,7 @@ on:
 # Prevent duplicate runs
 concurrency:
   group: ops-dashboard-refresh
-  # Deliberately cancel-in-progress: false (fleet convention for scheduled flows —
-  # never kill a mid-run dashboard refresh; duplicate triggers just queue up).
+  cancel-in-progress: false # scheduled flow — never kill mid-run refresh; duplicates queue
 
 permissions:
   contents: write  # For committing dashboard updates
@@ -67,6 +66,8 @@ jobs:
 
       - name: Push Changes
         if: steps.changes.outputs.changed == 'true'
+        # NOTE: was a Windows-local path (C:\Users\Eric\...) that cannot run on ubuntu-latest;
+        # replaced with a plain push (workflow already has contents:write). 2026-10-21.
         run: git push
 
       - name: Notify on Manual Dispatch

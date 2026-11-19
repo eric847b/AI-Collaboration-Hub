@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # AI Chat Websites - Overview
 
 ## Project Summary

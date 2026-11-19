@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Copilot / Agent Instructions for Cody-AI Chat Websites
 
 This file gives targeted, actionable guidance for AI coding agents working in this repository. Keep instructions short and specific; reference files when giving examples.

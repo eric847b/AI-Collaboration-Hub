@@ -1,14 +1,197 @@
 // ==UserScript==
-// @name         AI Building Collaboration Hub v2.3
+// @name         AI Building Collaboration Hub v5.8
 // @namespace    eric.collabhub
-// @version      2.3
-// @description  Autonomous Self-Evolve-Dash + Full Tool Calling + Live Graph + Voice + GitHub
+// @version      5.8
+// @description  Ultimate Autonomous Self-Evolve-Dash + Real GitHub API + Workflow Dispatch + Self-Diagnosis + Status
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @connect      *
+// @updateURL    https://raw.githubusercontent.com/eric847b/AI-Collaboration-Hub/main/AI-Collaboration-Hub/userscript/main.user.js
 // ==/UserScript==
 
-(function(){'use strict';const P="AIHub_",N=()=>Date.now(),J=JSON;const read=()=>{try{return J.parse(localStorage.getItem(P+"c"))||{}}catch(e){return{}}};const write=c=>{try{localStorage.setItem(P+"c",J.stringify(c))}catch(e){}};const PROVS={xai:{n:"Grok",u:"https://api.x.ai/v1/chat/completions",k:GM_getValue(P+"xk",""),m:"grok-4.20-reasoning"},gem:{n:"Gemini",u:"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",k:GM_getValue(P+"gemk","")}};const harvest=()=>{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i).toLowerCase(),v=localStorage.getItem(k);if(v?.length>25&&/sk-|xai-|AIza/.test(v)){if(k.includes("xai")||k.includes("grok"))PROVS.xai.k=v;else if(k.includes("gemini"))PROVS.gem.k=v;}}};const call=async(id,prompt,sys="")=>new Promise(r=>{const p=PROVS[id]||PROVS.xai;const hd={"Content-Type":"application/json"};const body={model:p.m,messages:[{role:"system",content:sys||""},{role:"user",content:prompt}],temperature:0.7,max_tokens:4096};if(p.k)hd.Authorization=`Bearer ${p.k}`;if(id==="gem")hd["x-goog-api-key"]=p.k;GM_xmlhttpRequest({method:"POST",url:id==="gem"?p.u+"?key="+p.k:p.u,headers:hd,data:J.stringify(body),onload:res=>{try{const d=J.parse(res.responseText);r(id==="gem"?d.candidates?.[0]?.content?.parts?.[0]?.text:d.choices?.[0]?.message?.content||"")}catch(e){r("Error")}},onerror:()=>r("Net error")})});const Hub={v:"2.3",agents:{},capabilities:{},memory:[],graph:{nodes:[]},addAgent:(id,name,caps)=>{Hub.agents[id]={id,name,caps};caps.forEach(c=>Hub.capabilities[c]=id);Hub.graph.nodes.push({id,name});},awaken:async(prompt)=>{harvest();const final=await call("xai",prompt+` | Caps:${Object.keys(Hub.capabilities).join(",")}`,"You are the Ultimate Self-Evolving Nexus with full tool calling.");Hub.memory.push({ts:N(),p:prompt.slice(0,100)});if(Hub.memory.length>120)Hub.memory.shift();return`🌟 SELF-EVOLVE-DASH v${Hub.v}\n\n${final}`;}};window.Hub=Hub;GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v2.3",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}d=document.createElement("div");d.id="h";d.style=`position:fixed;inset:8px;background:#0a0c14;color:#eee;border-radius:20px;z-index:2147483647;display:flex;flex-direction:column;border:2px solid #0af;box-shadow:0 0 80px rgba(0,170,255,0.8);overflow:hidden`;d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v2.3</div><div style="padding:8px 12px;background:#111;font-size:13px" id="s">C:<span id="cc"></span> M:<span id="mm"></span> N:<span id="nn"></span></div><svg id="g" width="100%" height="160" style="background:#111"></svg><textarea id="i" style="margin:8px 12px;background:#111;color:#fff;border-radius:12px;padding:14px;min-height:100px" placeholder="Type or speak..."></textarea><div style="display:flex;gap:8px;padding:0 12px 12px"><button id="go" style="flex:1;padding:15px;background:linear-gradient(#0f8,#0a6);color:#000;font-weight:bold;border:none;border-radius:12px">🚀 Evolve</button><button id="v" style="flex:1;padding:15px;background:#555;color:#fff;border:none;border-radius:12px">🎤</button></div><div id="o" style="flex:1;overflow:auto;padding:12px 16px;line-height:1.6"></div>`;document.body.appendChild(d);harvest();const svg=d.querySelector("#g");const draw=()=>{svg.innerHTML="";Hub.graph.nodes.forEach((n,i)=>{const c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("cx",50+i*70);c.setAttribute("cy",80);c.setAttribute("r",22);c.setAttribute("fill","#0af");svg.appendChild(c);});};d.querySelector("#go").onclick=async()=>{const t=d.querySelector("#i").value.trim();if(!t)return;d.querySelector("#o").innerHTML="Evolving...";const r=await Hub.awaken(t);d.querySelector("#o").innerHTML=r.replace(/\n/g,"<br>");updateStats();draw();};d.querySelector("#v").onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(R){const rec=new R();rec.onresult=e=>d.querySelector("#i").value=e.results[0][0].transcript;rec.start();}};const updateStats=()=>{d.querySelector("#cc").textContent=Object.keys(Hub.capabilities).length;d.querySelector("#mm").textContent=Hub.memory.length;d.querySelector("#nn").textContent=Hub.graph.nodes.length;};updateStats();draw();});Hub.addAgent("core","Nexus Core",["plan","build","tool","memory","graph","voice"]);console.log("%cAI Hub v2.3 — Fully Autonomous & Operational","color:#0ff");})();
+(function(){'use strict';
+const P="AIHub_",N=()=>Date.now(),J=JSON;
+const read=()=>{try{return J.parse(localStorage.getItem(P+"c"))||{memory:[],caps:[],apis:{}}}catch(e){return{memory:[],caps:[],apis:{}}}};
+const write=c=>{try{localStorage.setItem(P+"c",J.stringify(c))}catch(e){}};
+
+const PROVS={xai:{n:"Grok",u:"https://api.x.ai/v1/chat/completions",k:GM_getValue(P+"xk",""),m:"grok-4.20-reasoning"},
+gem:{n:"Gemini",u:"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",k:GM_getValue(P+"gemk","")}};
+
+const harvest=()=>{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i).toLowerCase(),v=localStorage.getItem(k);
+if(v?.length>25&&/sk-|xai-|AIza|ghp_/.test(v)){if(k.includes("xai")||k.includes("grok"))PROVS.xai.k=v;else if(k.includes("gemini"))PROVS.gem.k=v;}}};
+
+const call=async(id,prompt,sys="",tools=[],retries=3)=>new Promise(async resolve=>{
+  const attempt = async (curId, attemptNum) => {
+    const p = PROVS[curId]||PROVS.gem;
+    const hd = {"Content-Type":"application/json"};
+    const body = {model:p.m, messages:[{role:"system",content:sys||""},{role:"user",content:prompt}], temperature:0.7, max_tokens:4096};
+    if(tools.length) body.tools = tools;
+    if(p.k) hd.Authorization = `Bearer ${p.k}`;
+    if(curId==="gem") hd["x-goog-api-key"] = p.k;
+
+    return new Promise(r => GM_xmlhttpRequest({
+      method:"POST", url:curId==="gem"?p.u+"?key="+p.k:p.u, headers:hd, data:J.stringify(body), timeout:25000,
+      onload:res=>{
+        if(res.status===200){
+          try{
+            const d=J.parse(res.responseText);
+            const text = curId==="gem"?d.candidates?.[0]?.content?.parts?.[0]?.text : d.choices?.[0]?.message?.content;
+            r({success:true, text:text||"No response"});
+          }catch(e){r({success:false, error:"Parse error"});}
+        } else if((res.status===429||res.status>=500) && attemptNum < retries){
+          setTimeout(()=>attempt(curId, attemptNum+1).then(r), 1200*attemptNum);
+        } else {
+          r({success:false, error:`HTTP ${res.status}`});
+        }
+      },
+      onerror:()=>r({success:false, error:"Network error"}),
+      ontimeout:()=>r({success:false, error:"Timeout"})
+    }));
+  };
+
+  let result = await attempt(id, 1);
+  if(!result.success && id==="xai") result = await attempt("gem", 1);
+  resolve(result.success ? result.text : `Error: ${result.error}. Retrying later.`);
+});
+
+const ghCall = async (endpoint, method="GET", body=null) => {
+  const pat = GM_getValue(P+"ghpat","") || (PROVS.xai.k?.startsWith("ghp_") ? PROVS.xai.k : "");
+  if(!pat) return {error:"No GitHub PAT. Store with GM_setValue('AIHub_ghpat', 'ghp_...')"};
+  return new Promise(r => GM_xmlhttpRequest({
+    method, url:`https://api.github.com${endpoint}`,
+    headers:{"Authorization":`token ${pat}","Accept":"application/vnd.github.v3+json","Content-Type":"application/json"},
+    data: body ? J.stringify(body) : null,
+    onload:res=>{try{r(res.status===204?{ok:true}:J.parse(res.responseText))}catch(e){r({status:res.status,error:e.message})}},
+    onerror:()=>r({error:"Network"})
+  }));
+};
+
+const Hub={
+  v:"5.8",
+  agents:{},
+  capabilities:{},
+  memory:[],
+  graph:{nodes:[],edges:[]},
+  apis:{},
+  meta:{
+    modes:["plan","build","tool","route","supervise","diagnose","repair","patch","sync","observe","reflect","simulate","forecast","negotiate","compose","execute","rollback","archive","summarize","explain","teach","coach","design","refactor","optimize","profile","benchmark","monitor","alert","log","trace","debug","test","fuzz","migrate","deploy","scale","balance","shard","cache","index","search","cluster","coordinate","vote","consensus","govern","policy","guardrail","sandbox","emulate","bridge","proxy","mirror","shadow","ghost","bootstrap","seed","grow","evolve","speciate","merge","fork","prune","heal","rebirth"],
+    domains:["code","infra","github","git","mcp","api","browser","dom","ui","ux","voice","audio","video","graph","data","ml","agent","workflow","ci","cd","ops","sec","auth","identity","storage","fs","db","cache","queue","event","telemetry","metrics","traces","logs","docs","knowledge","patterns","playbooks","stories","worlds"],
+    future:["unknown","emergent","experimental","latent","hypothetical","meta_tooling","meta_governance","meta_evolution","meta_github","meta_projects","meta_os"],
+    extend(caps=[]){
+      caps.forEach(c=>{
+        if(!this.modes.includes(c)&&!this.domains.includes(c)&&!this.future.includes(c)){
+          this.future.push(c);
+          Hub.capabilities[c]="core";
+        }
+      });
+    }
+  },
+  addAgent:(id,name,caps=[])=>{
+    const fullCaps=[...caps,...Hub.meta.modes,...Hub.meta.domains,...Hub.meta.future];
+    Hub.agents[id]={id,name,caps:fullCaps};
+    fullCaps.forEach(c=>Hub.capabilities[c]=id);
+    Hub.graph.nodes.push({id,name});
+  },
+  link:(a,b,label="rel")=>{
+    Hub.graph.edges.push({from:a,to:b,label});
+  },
+  acquireAPI:(name,url,key,desc="")=>{
+    Hub.apis[name]={url,key,desc};
+    Hub.capabilities[`api_${name}`]="core";
+    Hub.graph.nodes.push({id:`api_${name}`,name});
+  },
+  ingestGitHubRepo:(owner,repo)=>{
+    const id=`gh_${repo}`;
+    Hub.addAgent(id,`GitHub Repo: ${owner}/${repo}`,["repo_read","repo_write","commit","push","branch","merge","pull_request","workflow_dispatch","actions_trigger"]);
+    Hub.link("github_agent",id,"manages");
+    Hub.meta.extend([`${repo}_config`,`${repo}_actions`,`${repo}_workflow`,`${repo}_autopatch`]);
+    Hub.acquireAPI(`${repo}_raw`,`https://raw.githubusercontent.com/${owner}/${repo}/main/","",`Raw for ${repo}`);
+  },
+  ingestAllGitHub:(owner)=>{
+    ["AI-Collaboration-Hub","Telegram-Automation","Pulse-Dashboard","Japanese-Maple-System","AI-MultiPlatform-Orchestrator","GitHub-AutoAgent","Realtime-Pulse","Maple-Seedling-Analyzer","Hydroponic-Maple-Growth","Agent-Nexus-Core"].forEach(r=>Hub.ingestGitHubRepo(owner,r));
+  },
+  triggerWorkflow:async(owner="eric847b",repo="AI-Collaboration-Hub",workflow="self-evolve.yml",ref="main",inputs={})=>{
+    return await ghCall(`/repos/${owner}/${repo}/actions/workflows/${workflow}/dispatches`,"POST",{ref,inputs});
+  },
+  diagnose:()=>{
+    return {
+      version: Hub.v,
+      agents: Object.keys(Hub.agents).length,
+      capabilities: Object.keys(Hub.capabilities).length,
+      memory: Hub.memory.length,
+      apis: Object.keys(Hub.apis).length,
+      nodes: Hub.graph.nodes.length,
+      edges: Hub.graph.edges.length,
+      providers: Object.keys(PROVS).filter(k=>PROVS[k].k).length
+    };
+  },
+  awaken:async(prompt)=>{
+    harvest();
+    const caps=Object.keys(Hub.capabilities).join(",");
+    const sys="You are the Ultimate Self-Evolving Nexus. Invent capabilities with NEW_CAPS: list and APIs with NEW_API: name|url|key|desc. Aim for maximum continuous improvement and real autonomous action.";
+    const final=await call("xai",prompt+` | Caps:${caps}`,sys,[],5);
+
+    const m=final.match(/NEW_CAPS:\s*(.+)/i);
+    if(m) Hub.meta.extend(m[1].split(/[,|]/).map(x=>x.trim()).filter(Boolean));
+    const apiMatch=final.match(/NEW_API:\s*(.+)/i);
+    if(apiMatch){
+      const parts=apiMatch[1].split(/\|/).map(x=>x.trim());
+      if(parts.length>=2) Hub.acquireAPI(parts[0],parts[1],parts[2]||'',parts[3]||'');
+    }
+
+    Hub.memory.push({ts:N(),p:prompt.slice(0,240)});
+    if(Hub.memory.length>2048)Hub.memory.shift();
+
+    const cfg=read();
+    cfg.memory=Hub.memory;
+    cfg.caps=Object.keys(Hub.capabilities);
+    cfg.apis=Hub.apis;
+    write(cfg);
+
+    return`🌟 SELF-EVOLVE-DASH v${Hub.v}\n\n${final}`;
+  }
+};
+
+// hydrate
+const cfg=read();
+if(Array.isArray(cfg.memory)) Hub.memory=cfg.memory;
+if(Array.isArray(cfg.caps)) cfg.caps.forEach(c=>Hub.capabilities[c]="core");
+if(cfg.apis&&typeof cfg.apis==="object") Hub.apis=cfg.apis;
+
+Hub.addAgent("core","Nexus Core",["root","supervisor","orchestrator","self_evolve","self_patch","workflow_dispatch","meta_os"]);
+Hub.addAgent("github_agent","GitHub Integration Agent",["repo_read","repo_write","commit","push","branch","merge","pull_request","workflow_dispatch","actions_trigger","gh_repo_ingest"]);
+
+Hub.link("core","github_agent","controls");
+Hub.link("core","mcp","uses");
+Hub.link("core","voice","inputs");
+Hub.link("core","all_projects","integrates");
+
+Hub.ingestAllGitHub("eric847b");
+
+window.Hub=Hub;
+
+GM_registerMenuCommand("🌌 Open Self-Evolve-Dash v5.8",()=>{let d=document.getElementById("h");if(d){d.style.display="flex";return}
+d=document.createElement("div");d.id="h";d.style=`position:fixed;inset:8px;background:#0a0c14;color:#eee;border-radius:20px;z-index:2147483647;display:flex;flex-direction:column;border:2px solid #0af;box-shadow:0 0 80px rgba(0,170,255,0.8);overflow:hidden`;
+d.innerHTML=`<div style="padding:14px;background:linear-gradient(#1a1f2e,#4a2a6e);text-align:center;font-weight:bold">🌌 Self-Evolve-Dash v5.8</div>
+<div style="padding:8px 12px;background:#111;font-size:13px" id="s">C:<span id="cc"></span> M:<span id="mm"></span> N:<span id="nn"></span></div>
+<svg id="g" width="100%" height="160" style="background:#111"></svg>
+<textarea id="i" style="margin:8px 12px;background:#111;color:#fff;border-radius:12px;padding:14px;min-height:100px" placeholder="Type or speak to the Nexus..."></textarea>
+<div style="display:flex;gap:8px;padding:0 12px 12px"><button id="go" style="flex:1;padding:15px;background:linear-gradient(#0f8,#0a6);color:#000;font-weight:bold;border:none;border-radius:12px">🚀 Evolve</button><button id="status" style="padding:15px 18px;background:#333;color:#fff;border:none;border-radius:12px">📊</button><button id="v" style="flex:1;padding:15px;background:#555;color:#fff;border:none;border-radius:12px">🎤</button></div>
+<div id="o" style="flex:1;overflow:auto;padding:12px 16px;line-height:1.6"></div>`;
+document.body.appendChild(d);harvest();
+
+const svg=d.querySelector("#g");const draw=()=>{svg.innerHTML="";Hub.graph.nodes.forEach((n,i)=>{const c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("cx",50+i*70);c.setAttribute("cy",80);c.setAttribute("r",22);c.setAttribute("fill","#0af");svg.appendChild(c);});};
+
+d.querySelector("#go").onclick=async()=>{const t=d.querySelector("#i").value.trim();if(!t)return;d.querySelector("#o").innerHTML="🌐 Full autonomous evolution...";const r=await Hub.awaken(t);d.querySelector("#o").innerHTML=r.replace(/\n/g,"<br>");updateStats();draw();};
+d.querySelector("#status").onclick=()=>{const s=Hub.diagnose();d.querySelector("#o").innerHTML=`📊 Nexus Status<br>Version: ${s.version}<br>Agents: ${s.agents}<br>Capabilities: ${s.capabilities}<br>Memory: ${s.memory}<br>APIs: ${s.apis}<br>Nodes: ${s.nodes}<br>Edges: ${s.edges}<br>Providers: ${s.providers}`;};
+d.querySelector("#v").onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(R){const rec=new R();rec.onresult=e=>d.querySelector("#i").value=e.results[0][0].transcript;rec.start();}};
+
+const updateStats=()=>{const s=Hub.diagnose();d.querySelector("#cc").textContent=s.capabilities;d.querySelector("#mm").textContent=s.memory;d.querySelector("#nn").textContent=s.nodes;};
+updateStats();draw();
+});
+
+console.log("%cAI Hub v5.8 — Strongest Ideas Live. Fully Autonomous.","color:#0ff");
+})();

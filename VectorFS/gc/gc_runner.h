@@ -1,13 +1,14 @@
 #pragma once
-#include <cstdint>
+
+#include "mark.h"
+
+class MetadataStore;
 
 class GC_Runner {
 public:
-    GC_Runner();
-
+    explicit GC_Runner(MetadataStore* metadata);
     void run(uint64_t root_inode);
 
 private:
-    void mark_phase(uint64_t root_inode);
-    void sweep_phase();
+    Mark mark_;
 };

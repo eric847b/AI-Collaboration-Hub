@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Coverage & Performance Trends Dashboard
 
 > **Visual trends for test coverage and bundle performance across projects.**

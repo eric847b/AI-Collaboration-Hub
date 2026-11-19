@@ -11,6 +11,98 @@ const state = (typeof window !== 'undefined' && window.UnifiedSuite?.state) || {
 const debugLog = (typeof window !== 'undefined' && window.UnifiedSuite?.debugLog) || (() => {});
 
 const DebuggerModule = {
+    /**
+     * Add a structured log entry (v2.1.0 contract)
+     * @param {string} message - Log message
+     * @param {*} [data] - Optional payload
+     * @param {string} [level='log'] - Log level: log|info|warn|error|debug
+     * @returns {Object} The created entry
+     */
+    log(message, data = null, level = 'log') {
+        const entry = {
+            message: String(message),
+            data: data === undefined ? null : data,
+            level,
+            type: level,
+            timestamp: Date.now()
+        };
+        this.addLogEntry(entry);
+        this.persistLogs();
+        return entry;
+    },
+
+    /**
+     * Log an error
+     * @param {string} message - Error message
+     * @param {Error|string} [error] - Optional error object
+     * @returns {Object} The created entry
+     */
+    error(message, error = null) {
+        const entry = this.log(message, error, 'error');
+        if (error && error.stack) entry.stack = error.stack;
+        return entry;
+    },
+
+    /**
+     * Log a warning
+     * @param {string} message - Warning message
+     * @param {*} [data] - Optional payload
+     * @returns {Object} The created entry
+     */
+    warn(message, data = null) {
+        return this.log(message, data, 'warn');
+    },
+
+    /**
+     * Log an informational message
+     * @param {string} message - Info message
+     * @param {*} [data] - Optional payload
+     * @returns {Object} The created entry
+     */
+    info(message, data = null) {
+        return this.log(message, data, 'info');
+    },
+
+    /**
+     * Persist logs to GM storage (best effort)
+     */
+    persistLogs() {
+        try {
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('debugger_logs', JSON.stringify(this.logs.slice(-this.maxLogEntries)));
+            }
+        } catch (e) { /* storage unavailable */ }
+    },
+
+    /**
+     * Get only error entries
+     * @returns {Array} Error logs
+     */
+    getErrors() {
+        return this.getLogs({ level: 'error' });
+    },
+
+    /**
+     * Get only warning entries
+     * @returns {Array} Warning logs
+     */
+    getWarnings() {
+        return this.getLogs({ level: 'warn' });
+    },
+
+    /**
+     * Export logs as JSON string
+     * @returns {string} JSON export
+     */
+    exportLogs() {
+        return JSON.stringify({
+            logs: this.getLogs(),
+            traces: this.traces.slice(-50),
+            exportedAt: new Date().toISOString()
+        }, null, 2);
+    },
+
+
     logs: [],
     traces: [],
     profileData: {},
@@ -147,6 +239,7 @@ const DebuggerModule = {
     getLogs(filters = {}) {
         let filtered = [...this.logs];
         if (filters.type) filtered = filtered.filter(l => l.type === filters.type);
+        if (filters.level) filtered = filtered.filter(l => l.level === filters.level);
         if (filters.since) filtered = filtered.filter(l => l.timestamp >= filters.since);
         if (filters.search) filtered = filtered.filter(l => l.message.toLowerCase().includes(filters.search.toLowerCase()));
         return filtered.slice(-100);
@@ -204,6 +297,11 @@ const DebuggerModule = {
     clearLogs() {
         this.logs = [];
         this.traces = [];
+        try {
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('debugger_logs', '[]');
+            }
+        } catch (e) { /* storage unavailable */ }
     },
 
     /**

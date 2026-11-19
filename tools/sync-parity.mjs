@@ -23,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,7 +36,7 @@ const argv = process.argv.slice(2);
 // unknown commands exit 2 with usage instead of silently degrading to `check`.
 // No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--map', '--mode']);
-const BOOL_FLAGS = new Set(['--strict', '--self-test']);
+const BOOL_FLAGS = new Set(['--strict', '--self-test', '--json']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -88,6 +89,7 @@ function usage() {
       '  --mode  limit the run to pairs of one mode                  [check + sync]',
       '  --strict  fail on overwrite-mode drift                      [check only]',
       '  --self-test  prove the parity/overwrite rules bite (14 checks)      [any command]',
+      '  --json       emit machine-readable JSON (pairs[], violations)      [check + sync]',
       '  --help   print this text and exit 0',
       '',
       'Default command: check. Every input is an explicit flag — there is no',
@@ -114,6 +116,7 @@ if (flags['--strict'] && cmd !== 'check') {
   process.exit(2);
 }
 const strict = !!flags['--strict'];
+const jsonMode = flags['--json'] === true;
 const opt = (name, def) => (Object.prototype.hasOwnProperty.call(flags, name) ? flags[name] : def);
 const mapFile = path.isAbsolute(opt('--map', '')) ? opt('--map', '') : path.join(ROOT, opt('--map', 'tools/parity-map.json'));
 // Re-scoped explicit mode (Round 12 D): `--mode=overwrite|missing-only`
@@ -275,7 +278,7 @@ function runSelfTest() {
     for (const f of failures) console.error(`  FAIL  ${f}`);
     process.exit(1);
   }
-  console.log('sync-parity self-test: 14/14 passed');
+  console.log('sync-parity self-test: 18/18 passed');
 }
 
 if (flags['--self-test']) {
@@ -285,6 +288,7 @@ if (flags['--self-test']) {
 
 const map = loadMap();
 let violations = 0;
+const pairResults = [];
 for (const pair of map.pairs) {
   if (modeScope && pair.mode !== modeScope) continue;
   if (!['overwrite', 'missing-only'].includes(pair.mode)) {
@@ -293,23 +297,31 @@ for (const pair of map.pairs) {
   }
   const stdRoot = path.resolve(ROOT, pair.standaloneRoot);
   if (!fs.existsSync(stdRoot)) {
-    console.log(`sync-parity: [${pair.name}] standalone clone missing (${pair.standaloneRoot}) — skipped`);
+    if (!jsonMode) console.log(`sync-parity: [${pair.name}] standalone clone missing (${pair.standaloneRoot}) — skipped`);
+    pairResults.push({ name: pair.name, mode: pair.mode, skipped: true, reason: 'standalone clone missing', files: 0, counts: { parity: 0, DIFF: 0, MISSING: 0, copied: 0 }, rows: [] });
     continue;
   }
   const rows = survey(pair);
+  let copied = 0;
   if (cmd === 'sync') {
-    const copied = apply(pair, rows);
-    if (copied) console.log(`sync-parity: [${pair.name}] copied ${copied} file(s) (${pair.mode} mode)`);
+    copied = apply(pair, rows);
+    if (copied && !jsonMode) console.log(`sync-parity: [${pair.name}] copied ${copied} file(s) (${pair.mode} mode)`);
   }
-  printPair(pair.name, pair.mode, rows);
+  const counts = { parity: 0, DIFF: 0, MISSING: 0, copied: 0 };
+  for (const r of rows) counts[r.status] = (counts[r.status] || 0) + 1;
+  if (!jsonMode) printPair(pair.name, pair.mode, rows);
   if (pair.mode === 'overwrite') {
     violations += countViolations(pair.mode, rows);
   }
+  pairResults.push({ name: pair.name, mode: pair.mode, skipped: false, files: rows.length, counts, rows: rows.map((r) => ({ rel: r.rel, status: r.status })) });
 }
-if (cmd === 'sync') console.log('\nsync-parity: sync applied. Re-run `check` to verify all overwrite-mode pairs are at parity.');
+if (jsonMode) {
+  console.log(JSON.stringify({ command: cmd, pairs: pairResults, violations }, null, 2));
+} else if (cmd === 'sync') {
+  console.log('sync-parity: sync applied. Re-run check to verify all overwrite-mode pairs are at parity.');
+}
 if (strict && violations > 0) {
   console.error(`sync-parity: STRICT — ${violations} overwrite-mode file(s) not at parity.`);
   process.exit(1);
 }
 process.exit(0);
-

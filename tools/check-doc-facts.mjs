@@ -8,6 +8,7 @@
 *   node tools/check-doc-facts.mjs --quiet    # only print drifted facts
 *   node tools/check-doc-facts.mjs --help     # usage (Round 12 D: unknown flags exit 2)
 *   node tools/check-doc-facts.mjs --self-test # prove the checkers fire on fixtures
+ *   node tools/check-doc-facts.mjs --list     # every count-bearing claim + verdict
 *
 * WHY (real drift found 2026-10-01, not hypothetical): after the CLI-contract
 * work, STATUS.md, ROADMAP.md and AGENTS.md all still claimed `--check-cli` was
@@ -44,7 +45,7 @@ const SELF = fileURLToPath(import.meta.url);
 // Unknown flags, missing values, booleans given a value and stray positionals
 // all exit 2 instead of being silently ignored. No stdin prompts, ever.
 const VALUE_FLAGS = new Set(['--only']);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test', '--json', '--list', '--count', '--version']);
 const argv = process.argv.slice(2);
 const flags = {};
 const positionals = [];
@@ -83,7 +84,7 @@ flags[key] = value;
 function usage() {
 console.log(
 [
-'Usage: node tools/check-doc-facts.mjs [--only <file,...>] [--quiet] [--json] [--self-test]',
+'Usage: node tools/check-doc-facts.mjs [--only <file,...>] [--quiet] [--json] [--list] [--self-test]',
 '',
 'Verifies that count-bearing claims in AGENTS.md, docs/STATUS.md and',
 'docs/ROADMAP.md still match runtime truth (totals derived from the',
@@ -92,14 +93,17 @@ console.log(
 'Flags:',
 '  --only <file,...>  only check these files (comma-separated, repo-relative)',
 '  --quiet            only print drifted facts (no summary line)',
+'  --json             emit a schema-1 report instead of human lines',
+'  --list             enumerate EVERY count-bearing claim found (ok / stale / illustration)',
+  '                   plus a by-subject footer; with --json emits claims[] + claimSummary',
+'  --count            print only the total number of count-bearing claims checked',
 '  --self-test        prove the checkers fire on synthetic fixtures and exit',
+'  --version          print version and exit 0',
 '  --help             print this text and exit 0',
 '',
 'Exit codes: 0 = every documented count still true, 1 = drift found,',
 '            2 = bad usage (also: no documents matched — never a clean pass).',
 'Unknown flags and unexpected arguments exit 2.',
-  '  --json            emit a schema-1 report instead of human lines',
-
 ].join('\n'),
 );
 }
@@ -108,11 +112,16 @@ if (flags['--help']) {
 usage();
 process.exit(0);
 }
+if (flags['--version']) {
+console.log('check-doc-facts 1.1.0');
+process.exit(0);
+}
 if (positionals.length) {
 console.error(`check-doc-facts: unexpected argument "${positionals[0]}" — flags only (see \`node tools/check-doc-facts.mjs --help\`)`);
 process.exit(2);
 }
 const quiet = flags['--quiet'] === true;
+const countMode = flags['--count'] === true;
 
 /** Documents that make count claims. Narrow and deliberate, not a tree walk. */
 const DOC_FILES = ['AGENTS.md', 'docs/STATUS.md', 'docs/ROADMAP.md'];
@@ -164,6 +173,62 @@ out.push({ file: relFile, claimed: f[0], subject: label, total });
 }
 }
 return out;
+}
+
+/**
+ * EVERY subject-anchored count with its verdict — the informational mirror of
+ * claimFindings above and what `--list` prints. Same window, same illustration
+ * cue, but nothing is skipped: a true claim is `ok`, a mismatch is `stale`,
+ * dated/illustrative text is `illustration`. The gate itself keeps using
+ * claimFindings (which returns only what must FAIL) so the two cannot blur —
+ * a list that quietly dropped true claims would hide exactly what a reader
+ * opened it to audit.
+ */
+function enumerateClaims(text, subjects, relFile) {
+  const out = [];
+  for (const { re, total, label } of subjects) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const window = text.slice(m.index, m.index + 160);
+      const f = window.match(/(\d+)\/(\d+)/);
+      if (!f) continue; // subject mentioned, no count attached
+      const before =
+        text.slice(Math.max(0, m.index - 60), m.index) + window.slice(0, window.indexOf(f[0]));
+      const status = NON_CLAIM_CUE.test(before)
+        ? 'illustration'
+        : Number(f[1]) === total && Number(f[2]) === total
+          ? 'ok'
+          : 'stale';
+      out.push({ file: relFile, subject: label, claimed: f[0], status });
+    }
+  }
+  return out;
+}
+
+/**
+ * Totals + per-subject matrix for enumerated claims — the shape `--list --json`
+ * reports as `claimSummary`. Derived from the SAME claims array it ships with,
+ * so the matrix cannot disagree with the rows a human reads; the self-test
+ * re-derives every total from the live report and compares both directions
+ * (overall, per subject and per file), so a summary that drifts from its own
+ * claims fails CI instead of misleading a dashboard.
+ */
+function buildClaimSummary(claims) {
+  const s = { total: claims.length, ok: 0, stale: 0, illustration: 0, bySubject: {}, byFile: {} };
+  for (const c of claims) {
+    s[c.status] += 1;
+    const b = (s.bySubject[c.subject] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });
+    b.total += 1;
+    b[c.status] += 1;
+    // Second axis of the same matrix: WHICH document carries the claims.
+    // A dashboard asking "which doc goes stale most often" should not have to
+    // re-derive counts from claims[] — the summary answers it directly.
+    const f = (s.byFile[c.file] ||= { total: 0, ok: 0, stale: 0, illustration: 0 });
+    f.total += 1;
+    f[c.status] += 1;
+  }
+  return s;
 }
 
 /**
@@ -258,6 +323,14 @@ check('an ILLUSTRATION of the bug is not a claim', claimFindings('Motivated by r
   // These two execute that path so it can never be untested again.
   check('a drifted claim renders its live-totals hint', formatHint({ denominator: 21 }, 23, 22), ' (live totals: 23 / 22)');
   check('a hintless finding renders an empty hint', formatHint({ denominator: null }), '');
+  // Same two shapes for the JSON twin: a drifted entry carries the live
+  // totals, a denominator-less one keeps them null (order matters: check()
+  // compares via JSON.stringify).
+  check('a drifted JSON entry carries the live totals',
+    driftedEntry({ file: 'x.md', claimed: '19/19', subject: '--check-cli', denominator: 21 }, 24, 23),
+    { file: 'x.md', claimed: '19/19', subject: '--check-cli', liveTotals: { cli: 24, flag: 23 } });
+  check('a hintless JSON entry keeps liveTotals null',
+    driftedEntry({ file: 'x.md', claimed: '19/19', subject: null, denominator: null }, 24, 23).liveTotals, null);
 check('a "claims like" illustration is not a claim', claimFindings('catches stale claims like "`--check-cli` 19/19" after the total moved', SUBJ, 'x.md').length, 0);
 check('an "e.g." illustration is not a claim', claimFindings('e.g. `--check-cli` 19/19 is now wrong', SUBJ, 'x.md').length, 0);
 check('CONTROL: a real claim is still caught after a cue word', claimFindings('`--check-cli` reports 21/22 tools honor the contract', SUBJ, 'x.md').length, 1);
@@ -334,9 +407,24 @@ check('extra tools are parsed from verify-tools', parseExtraTools(vt), ['.husky/
 check('a missing list yields no extras', parseExtraTools('const NOPE = 1;'), []);
 
 // ---- CLI contract, end to end (child runs WITHOUT --self-test) ----
+// Memoized: identical argv must not pay the process launch + full corpus
+// scan twice (~1.5 s each here). The counters are ASSERTED by the self-test
+// (3 calls cost at most 1 spawn), so silently dropping this cache or making
+// the cache stop recording spawns both fail CI rather than quietly making
+// the self-test slower or greener.
+const cliCache = new Map();
+let cliCalls = 0;
+let cliSpawns = 0;
 const cli = (args) => {
+cliCalls++;
+const key = JSON.stringify(args);
+const hit = cliCache.get(key);
+if (hit !== undefined) return hit;
+cliSpawns++;
 const r = spawnSync(process.execPath, [SELF, ...args], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
-return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+const res = { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+cliCache.set(key, res);
+return res;
 };
 check('--help exits 0', cli(['--help']).code, 0);
 check('unknown flag exits 2', cli(['--nope']).code, 2);
@@ -364,6 +452,10 @@ check('--json --quiet emits a schema-1 object', parsed && parsed.schema, 1);
 check('--json reports liveTotals', parsed && typeof parsed.liveTotals?.checkCli, 'number');
 check('--json agrees with the human path on drift count', parsed && parsed.driftedCount, 0);
 check('--json is listed in --help', cli(['--help']).out.includes('--json'), true);
+// Discoverability is contract: a help line that drops the matrix details
+// silently shrinks what a reader knows exists (memoized argv, no new spawn).
+check('--help describes the claim matrix (by-subject footer + claimSummary)',
+  (() => { const h = cli(['--help']).out; return h.includes('by-subject') && h.includes('claimSummary'); })(), true);
 check('--json alone still emits parseable JSON (prose may follow)', (() => {
 try {
 return JSON.parse(cli(['--json']).out.split('\n').find((l) => l.trim().startsWith('{'))).schema;
@@ -374,6 +466,150 @@ return null;
 }
 check('--json given a value exits 2 (it is boolean)', cli(['--json=1']).code, 2);
 
+// ---- --list: a declared flag must DO something, not just parse ---------
+// Same defect class as --json above: a flag that is accepted but does
+// nothing still exits 0, so these assert on OUTPUT, never on the exit code.
+{
+  const statuses = (t) => enumerateClaims(t, SUBJ, 'x.md').map((c) => c.status);
+  check('enumerateClaims labels a true claim ok', statuses('`--check-cli` 21/21 tools'), ['ok']);
+  check('enumerateClaims labels a stale claim stale', statuses('`--check-cli` 19/19 tools'), ['stale']);
+  check('enumerateClaims labels dated evidence illustration', statuses('six stale `--check-cli` 19/19 claims'), ['illustration']);
+  check('enumerateClaims skips a subject with no count', statuses('run `--check-cli` in CI'), []);
+  check('enumerateClaims carries the owning file', enumerateClaims('`--check-cli` 19/19', SUBJ, 'docs/STATUS.md')[0].file, 'docs/STATUS.md');
+  // claimSummary as a pure function: totals and the subject/file matrices are
+  // derived, never hand-added — key order matters (check() compares via
+  // JSON.stringify), so this also pins the exact reported shape.
+  check('buildClaimSummary totals every claim overall, per subject and per file', buildClaimSummary([
+    { file: 'a.md', subject: 's', claimed: '1/1', status: 'ok' },
+    { file: 'b.md', subject: 's', claimed: '9/9', status: 'stale' },
+    { file: 'c.md', subject: 't', claimed: '3/3', status: 'illustration' },
+  ]), {
+    total: 3, ok: 1, stale: 1, illustration: 1,
+    bySubject: {
+      s: { total: 2, ok: 1, stale: 1, illustration: 0 },
+      t: { total: 1, ok: 0, stale: 0, illustration: 1 },
+    },
+    byFile: {
+      'a.md': { total: 1, ok: 1, stale: 0, illustration: 0 },
+      'b.md': { total: 1, ok: 0, stale: 1, illustration: 0 },
+      'c.md': { total: 1, ok: 0, stale: 0, illustration: 1 },
+    },
+  });
+  const listing = cli(['--list']).out;
+  check('--list rows carry a verdict token, or an explicit empty footer',
+    /^\s*(OK|STALE|ILLUSTRATION)\s/m.test(listing) ? true : /no count-bearing claims found/.test(listing), true);
+  check('--list prints the claims footer', /count-bearing claim\(s\)|no count-bearing claims found/.test(listing), true);
+  // The by-subject segment must reconcile with the overall totals — a footer
+  // that miscounts a subject would mislead exactly the reader it serves.
+  check('--list footer by-subject counts sum to its overall totals', (() => {
+    const m = listing.match(/count-bearing claim\(s\): (\d+) ok, (\d+) stale, (\d+) illustration — by subject: (.+)/);
+    if (!m) return null;
+    const parts = m[4].split('; ').map((x) => x.match(/^(\S+) (\d+)\/(\d+)\/(\d+)$/)).filter(Boolean);
+    const sum = (i) => parts.reduce((a, p) => a + Number(p[i]), 0);
+    return parts.length > 0 && sum(2) === +m[1] && sum(3) === +m[2] && sum(4) === +m[3];
+  })(), true);
+  check('--list is listed in --help', cli(['--help']).out.includes('--list'), true);
+  check('--list given a value exits 2 (it is boolean)', cli(['--list=1']).code, 2);
+  check('--list --json adds a claims array to the schema-1 report', (() => {
+    try {
+      const o = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((x) => x.trim().startsWith('{')));
+      return Array.isArray(o.claims);
+    } catch {
+      return null;
+    }
+  })(), true);
+  // Pins the --list ordering defect: the block must run AFTER the existence
+  // guard, so a missing --only document exits 2 instead of ENOENT-crashing.
+  check('--list with --only=<missing> exits 2 (list block runs after the guards)', cli(['--only=nosuch.md', '--list']).code, 2);
+  // The matrix must mirror the rows: re-derive every overall AND per-subject
+  // total from the LIVE report, so a claimSummary that lies about its own
+  // claims array fails here rather than in a consumer's dashboard.
+  check('--list --json claimSummary mirrors its claims array', (() => {
+    try {
+      const o = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((x) => x.trim().startsWith('{')));
+      const s = o.claimSummary;
+      const cl = o.claims;
+      if (!s || !Array.isArray(cl)) return false;
+      return s.total === cl.length
+        && ['ok', 'stale', 'illustration'].every((k) => s[k] === cl.filter((c) => c.status === k).length)
+        && Object.keys(s.bySubject).length > 0
+        && Object.entries(s.bySubject).every(([sub, b]) => b.total === cl.filter((c) => c.subject === sub).length);
+    } catch {
+      return null;
+    }
+  })(), true);
+  // Memo-cache pin: three identical argv must cost at most ONE process
+  // launch. A dropped cache (or counters that stop recording) reverts the
+  // self-test to one ~1.5 s spawn per check — measured, not assumed.
+  {
+    const c0 = cliCalls;
+    const s0 = cliSpawns;
+    cli(['--help']);
+    cli(['--help']);
+    cli(['--help']);
+    check('repeated argv hit the cli memo cache (3 calls, at most 1 spawn)',
+      cliCalls - c0 === 3 && cliSpawns - s0 <= 1, true);
+  }
+  // The second fact must be auditable like the first: one verdict line per
+  // document (count compared against the report's own documents field, so
+  // adding a doc to the corpus never breaks this check).
+  check('--list prints deep-claim verdicts for every document', (() => {
+    const line = cli(['--list', '--quiet']).out.split('\n').find((l) => l.startsWith('deep claims: '));
+    if (!line) return null;
+    const parts = line.slice('deep claims: '.length).split('; ');
+    const docs = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((x) => x.trim().startsWith('{'))).documents;
+    return parts.length === docs && parts.every((p) => /^(\S+) (agrees|drifts|silent)$/.test(p));
+  })(), true);
+  check('--json reports deepClaims for every document', (() => {
+    try {
+      const o = JSON.parse(cli(['--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
+      return Array.isArray(o.deepClaims) && o.deepClaims.length === o.documents
+        && o.deepClaims.every((c) => typeof c.file === 'string' && ['agrees', 'drifts', 'silent'].includes(c.verdict));
+    } catch {
+      return null;
+    }
+  })(), true);
+  // The matrix's second axis must reconcile in BOTH directions: every claim
+  // lands in exactly one byFile bucket, and bucket sums rebuild totals — a
+  // byFile that cannot agree with claims[] would silently mislead a dashboard.
+  check('claimSummary.byFile reconciles with claims[] and totals', (() => {
+    try {
+      const o = JSON.parse(cli(['--list', '--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
+      const s = o.claimSummary;
+      if (!s || typeof s.byFile !== 'object' || !s.byFile) return null;
+      const files = [...new Set(o.claims.map((c) => c.file))].sort();
+      if (JSON.stringify(Object.keys(s.byFile).sort()) !== JSON.stringify(files)) return false;
+      let sum = 0;
+      for (const f of files) {
+        const b = s.byFile[f];
+        const own = o.claims.filter((c) => c.file === f);
+        if (b.total !== own.length) return false;
+        if (b.ok + b.stale + b.illustration !== b.total) return false;
+        for (const st of ['ok', 'stale', 'illustration']) {
+          if (b[st] !== own.filter((c) => c.status === st).length) return false;
+        }
+        sum += b.total;
+      }
+      return sum === s.total && s.total === o.claims.length;
+    } catch {
+      return null;
+    }
+  })(), true);
+  // --only scoping of the second fact: a subset run must report ONLY the
+  // selected documents' deep verdicts (length agrees with its own documents
+  // count), never the whole corpus silently re-attached.
+  check('--only subset scopes deepClaims to the selected documents', (() => {
+    try {
+      const o = JSON.parse(cli(['--only=AGENTS.md', '--json', '--quiet']).out.split('\n').find((l) => l.trim().startsWith('{')));
+      return o.documents === 1 && Array.isArray(o.deepClaims) && o.deepClaims.length === 1
+        && o.deepClaims[0].file === 'AGENTS.md'
+        && ['agrees', 'drifts', 'silent'].includes(o.deepClaims[0].verdict);
+    } catch {
+      return null;
+    }
+  })(), true);
+}
+
 
 const failed = cases.filter((c) => !c.pass);
 for (const c of failed) {
@@ -381,14 +617,16 @@ console.error(`FAIL  ${c.name}`);
 console.error(`      expected ${JSON.stringify(c.expected)}`);
 console.error(`      actual   ${JSON.stringify(c.actual)}`);
 }
-console.log(`check-doc-facts self-test: ${cases.length - failed.length}/${cases.length} passed`);
+console.log(`check-doc-facts self-test: ${cases.length - failed.length}/${cases.length} passed (${cliSpawns} spawns / ${cliCalls} cli calls)`);
 process.exit(failed.length > 0 ? 1 : 0);
 }
 
 if (flags['--self-test'] === true) runSelfTest();
 
+
 // ── Main ───────────────────────────────────────────────────────────────
-  const asJson = flags['--json'] === true;
+const asJson = flags['--json'] === true;
+const list = flags['--list'] === true;
 
 const selected = flags['--only']
 ? String(flags['--only']).split(',').map((s) => s.trim()).filter(Boolean)
@@ -396,6 +634,10 @@ const selected = flags['--only']
 
 // False-green guard: checking nothing must never read as "all facts true".
 const docs = selected.map((rel) => ({ rel, abs: path.join(ROOT, rel) }));
+// --list reads documents only AFTER the existence filter below: reading
+// here would turn `--only=<missing>` into an ENOENT crash (exit 1) instead
+// of the contract's "no documents matched" exit 2.
+
 const present = docs.filter((d) => fs.existsSync(d.abs));
 if (!present.length) {
 console.error(
@@ -421,6 +663,44 @@ const subjects = [
 { re: /check-flag-contract/gi, total: flagTotal, label: 'check-flag-contract' },
 ];
 
+
+// --list runs AFTER the existence + totals guards above, so it inherits the
+// exit-2 / exit-1 protections instead of crashing past them (the first
+// version of this block read every selected file before the filter and took
+// the whole tool down with an ENOENT on `--only=<missing>`).
+// One read per document, shared by the claims enumeration, the deep-claim
+// verdicts and the drift findings below — the second fact this tool checks
+// ("CI runs --deep") used to be computed only inside the drift loop, so it
+// was INVISIBLE to --list unless it drifted.
+const docTexts = new Map(present.map((d) => [d.rel, fs.readFileSync(d.abs, 'utf8')]));
+const allClaims = present.flatMap((d) => enumerateClaims(docTexts.get(d.rel), subjects, d.rel));
+const listedClaims = list ? allClaims : null;
+const deepVerdicts = present.map((d) => ({
+  file: d.rel,
+  verdict: deepClaimVerdict(docTexts.get(d.rel), workflowText),
+}));
+if (list) {
+  const width = Math.max(4, ...listedClaims.map((c) => c.file.length));
+  for (const c of listedClaims) {
+    console.log(`${c.status.toUpperCase().padEnd(12)} ${c.file.padEnd(width)}  ${c.claimed.padEnd(7)} ${c.subject}`);
+  }
+  // ONE derivation for the footer AND the JSON matrix: a second hand-rolled
+  // counter here is exactly how the two views drift apart. The by-subject
+  // segment (ok/stale/illustration per subject) is what a reader auditing
+  // one tool needs without re-scanning every row; its sums are check-pinned
+  // against the overall totals below.
+  const cs = buildClaimSummary(listedClaims);
+  console.log(
+    listedClaims.length
+      ? `\n${cs.total} count-bearing claim(s): ${cs.ok} ok, ${cs.stale} stale, ${cs.illustration} illustration — by subject: ${Object.entries(cs.bySubject)
+          .map(([sub, b]) => `${sub} ${b.ok}/${b.stale}/${b.illustration}`)
+          .join('; ')}`
+      : '(no count-bearing claims found)',
+  );
+  // The second fact, auditable like the first: every document's deep-claim
+  // verdict (agrees/drifts/silent), not only the ones that drifted.
+  console.log(`deep claims: ${deepVerdicts.map((v) => `${v.file} ${v.verdict}`).join('; ')}`);
+}
 const drifted = [];
 for (const doc of present) {
 const text = fs.readFileSync(doc.abs, 'utf8');
@@ -449,28 +729,46 @@ denominator: null,
 function formatHint(d, cli, flag) {
   return d.denominator === null ? '' : ` (live totals: ${cli} / ${flag})`;
 }
+
+/**
+ * Machine twin of formatHint: a --json consumer must see the SAME live
+ * totals a human line carries, or the two reports disagree exactly when
+ * there is drift to act on. Extracted so the self-test can drive it — the
+ * live corpus is currently clean, so nothing but a pure check ever would.
+ */
+function driftedEntry(d, cliTotal, flagTotal) {
+  return {
+    file: d.file,
+    claimed: d.claimed,
+    subject: d.subject ?? null,
+    liveTotals: d.denominator === null ? null : { cli: cliTotal, flag: flagTotal },
+  };
+}
 // Machine-readable path. Emitted BEFORE the human lines so a consumer can
 // parse stdout without having to skip prose, and so --json alone still works
 // even when --quiet suppresses the summary.
-if (asJson) {
+if (asJson && !countMode) {
 console.log(
 JSON.stringify({
 schema: 1,
 documents: present.length,
 liveTotals: { checkCli: cliTotal, flagContract: flagTotal },
-drifted: drifted.map((d) => ({ file: d.file, claimed: d.claimed, subject: d.subject ?? null })),
+drifted: drifted.map((d) => driftedEntry(d, cliTotal, flagTotal)),
+deepClaims: deepVerdicts,
 driftedCount: drifted.length,
+  ...(list ? { claims: listedClaims, claimSummary: buildClaimSummary(listedClaims) } : {}),
 ok: drifted.length === 0,
 }),
 );
 }
-for (const d of drifted) {
+if (!countMode) for (const d of drifted) {
   const hint = formatHint(d, cliTotal, flagTotal);
-console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
+  console.log(`STALE  ${d.file}  ${d.claimed}${hint}`);
 }
-if (!quiet) {
+if (!quiet && !list && !countMode) {
 console.log(
 `\ncheck-doc-facts: ${present.length} documents, ${cliTotal} + ${flagTotal} live tool totals, ${drifted.length} drifted claim(s)`,
 );
 }
+if (countMode) { console.log(allClaims.length); process.exit(0); }
 process.exit(drifted.length > 0 ? 1 : 0);

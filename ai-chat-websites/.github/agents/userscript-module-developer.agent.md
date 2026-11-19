@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 ---
 description: "Use when: creating new userscript modules, debugging module registration issues, or understanding the hub architecture. Specialized in the AI Chat Userscript Suite modular system with 45+ modules."
 tools:

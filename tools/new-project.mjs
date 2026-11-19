@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -43,7 +44,7 @@ function canonicalTelemetry() {
 }
 
 function printHelp() {
-  console.log('new-project.mjs — scaffold a workspace-standard Vite/React app\nUsage:\n  node tools/new-project.mjs --name <kebab> [--out <dir>] [--port N] [--app-id <id>] [--force] [--dry-run]\n  node tools/new-project.mjs --self-test\nFlags: --name required ^[a-z0-9][a-z0-9-]*$; --out relative resolves under root (default: <name>); --port default 4173; --app-id default <name>');
+  console.log('new-project.mjs — scaffold a workspace-standard Vite/React app\nUsage:\n  node tools/new-project.mjs --name <kebab> [--out <dir>] [--port N] [--app-id <id>] [--force] [--dry-run] [--json]\n  node tools/new-project.mjs --self-test\nFlags: --name required ^[a-z0-9][a-z0-9-]*$; --out relative resolves under root (default: <name>); --port default 4173; --app-id default <name>');
 }
 
 function filePlan({ name, appId, port }) {
@@ -94,6 +95,32 @@ function runSelfTest() {
   }
   const must = ['package.json', 'vite.config.ts', 'tsconfig.app.json', 'eslint.config.js', 'index.html', 'src/main.tsx', 'src/App.tsx', 'src/lib/telemetry.ts', 'vitest.config.ts', 'playwright.config.js', 'e2e/app.spec.js', 'README.md'];
   for (const f of must) if (!fs.existsSync(path.join(target, f))) fails.push('missing ' + f);
+  // Stronger than existence: every scaffolded file must be non-empty, and
+  // package.json + tsconfig*.json must parse as JSON (catches a broken
+  // template before a user discovers it at build time).
+  for (const [rel] of plan.m) {
+    const abs = path.join(target, rel);
+    try {
+      const st = fs.statSync(abs);
+      if (st.size === 0) fails.push('empty ' + rel);
+    } catch { fails.push('unreadable ' + rel); }
+  }
+  for (const jf of ['package.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json']) {
+    const abs = path.join(target, jf);
+    if (fs.existsSync(abs)) {
+      try { JSON.parse(fs.readFileSync(abs, 'utf8')); }
+      catch (e) { fails.push('invalid JSON ' + jf + ': ' + (e && e.message ? e.message : e)); }
+    }
+  }
+  // Classic/ESM JS configs must at least parse under `node --check` (the same
+  // gate the pre-commit hook uses), so a malformed template fails here.
+  for (const jsf of ['eslint.config.js', 'playwright.config.js', 'e2e/app.spec.js']) {
+    const abs = path.join(target, jsf);
+    if (fs.existsSync(abs)) {
+      const r = spawnSync(process.execPath, ['--check', abs], { stdio: 'ignore' });
+      if (r.status !== 0) fails.push('syntax ' + jsf);
+    }
+  }
   fs.rmSync(tmp, { recursive: true, force: true });
   if (fails.length > 0) { console.error('new-project --self-test FAIL: ' + fails.join(', ')); process.exit(2); }
   console.log('new-project --self-test PASS (' + must.length + ' files)');
@@ -104,7 +131,7 @@ function runSelfTest() {
  * scaffolded real files where the caller expected a dry run. Unknown flags and
  * stray positionals exit 1 (its documented usage-error code) before any write.
  */
-const BOOL_FLAGS = new Set(['--force', '--dry-run', '--self-test']);
+const BOOL_FLAGS = new Set(['--force', '--dry-run', '--self-test', '--json']);
 const VAL_FLAGS = new Set(['--name', '--out', '--port', '--app-id']);
 
 function rejectBadFlags() {
@@ -135,6 +162,13 @@ function runMain() {
   const outRaw = opt('--out', pname);
   const t = path.isAbsolute(outRaw) ? outRaw : path.join(ROOT, outRaw);
   const plan = addPart4(addPart3(addPart2(filePlan({ name: pname, appId: opt('--app-id', pname), port: portN }))));
+  if (has('--json')) {
+    const files = [...plan.m.keys()].sort();
+    if (has('--dry-run')) {
+      console.log(JSON.stringify({ dryRun: true, name: pname, count: files.length, files }, null, 2));
+      return;
+    }
+  }
   if (has('--dry-run')) {
     console.log('new-project: dry-run ' + plan.m.size + ' files for ' + pname + ':');
     for (const f of [...plan.m.keys()].sort()) console.log('  ' + f);
@@ -146,6 +180,10 @@ function runMain() {
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, content, 'utf8');
   }
-  console.log('new-project: scaffolded ' + plan.m.size + ' files -> ' + t);
+  if (has('--json')) {
+    console.log(JSON.stringify({ dryRun: false, name: pname, count: plan.m.size, target: t }, null, 2));
+  } else {
+    console.log('new-project: scaffolded ' + plan.m.size + ' files -> ' + t);
+  }
 }
 runMain();

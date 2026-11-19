@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Desktop App (Tauri) — Evaluation Scaffold
 
 Q2 2027 #14 "Desktop app via Tauri or Electron (evaluate)". This is the

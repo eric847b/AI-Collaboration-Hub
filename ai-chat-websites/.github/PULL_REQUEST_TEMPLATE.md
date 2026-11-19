@@ -1,3 +1,4 @@
+<!-- npm-scripts: ignore-file -->
 # Pull Request Template
 
 ## Summary

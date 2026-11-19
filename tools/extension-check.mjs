@@ -27,6 +27,7 @@
  * Exit codes: 0 all green · 1 any failure · 2 runner setup error.
  */
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,7 +38,7 @@ const EXT = path.join(ROOT, 'ai-chat-websites', 'Userscripts', 'extension');
 // Boolean flags only. Unknown flags, `--flag=value` on a boolean, and stray
 // positionals all exit 2 instead of being silently ignored. No stdin prompts.
 const argv = process.argv.slice(2);
-const BOOLEAN_FLAGS = new Set(['--quiet', '--self-test']);
+const BOOLEAN_FLAGS = new Set(['--quiet', '--json', '--self-test']);
 const flags = {};
 const positionals = [];
 for (const a of argv) {
@@ -67,10 +68,11 @@ function usage() {
     [
       'extension-check.mjs - read-only health check for the ai-chat-websites Unified AI Assistant Suite extension',
       '',
-      'Usage: node tools/extension-check.mjs [--quiet]',
+      'Usage: node tools/extension-check.mjs [--quiet] [--json]',
       '',
       'Flags:',
       '  --quiet   print only the summary line plus failures (no per-check "ok" lines)',
+  '  --json    emit machine-readable JSON (passed, failed, passes[], failures[])',
   '  --self-test  prove the parity + secret rules bite (no extension needed)  [no extension]',
       '  --help    print this text and exit 0',
       '',
@@ -94,6 +96,7 @@ if (positionals.length > 0) {
   process.exit(2);
 }
 const quiet = flags['--quiet'] === true;
+const jsonMode = flags['--json'] === true;
 
 // Dispatch BEFORE any file reading: the self-test must not depend on the extension
 // tree being present, or it could not run in a checkout that has no extension.
@@ -280,6 +283,28 @@ function runSelfTest() {
   // fail-safe: any sk- plus 10+ alphanumerics is reported. Asserting an exemption would
   // push toward special-casing the regex, which is how detectors grow holes.
 
+  // ---- CLI contract: --json emits parseable machine-readable output ----
+  const cli = (args) => {
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...args], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      timeout: 60000,
+    });
+    return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
+  };
+  const _h = cli(['--help']);
+  check('--help exits 0', _h.code === 0);
+  check('unknown flag exits 2', cli(['--nope']).code === 2);
+  const jr = cli(['--json']);
+  check('--json exits 0 or 1 (valid run)', jr.code === 0 || jr.code === 1, jr.code);
+  let jok = false;
+  try {
+    const j = JSON.parse(jr.out);
+    jok = typeof j.passed === 'number' && typeof j.failed === 'number' &&
+      Array.isArray(j.passes) && Array.isArray(j.failures);
+  } catch { jok = false; }
+  check('--json emits parseable JSON with passed/failed/passes/failures', jok, true);
+
   if (failures.length) {
     console.error(`extension-check self-test FAIL: ${failures.length} problem(s):`);
     for (const f of failures) console.error(`  FAIL  ${f}`);
@@ -289,7 +314,9 @@ function runSelfTest() {
 }
 
 // ---- report -----------------------------------------------------------------
-if (!quiet || failures.length > 0) {
+if (jsonMode) {
+  console.log(JSON.stringify({ passed: passes.length, failed: failures.length, passes, failures }, null, 2));
+} else if (!quiet || failures.length > 0) {
   console.log(`extension-check: ${passes.length} passed, ${failures.length} failed`);
   for (const f of failures) console.log(`  FAIL  ${f}`);
   if (!quiet) for (const p of passes) console.log(`  ok    ${p}`);

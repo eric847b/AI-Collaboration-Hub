@@ -136,7 +136,7 @@ const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
-  if (a === '--help' || a === '-h' || a === '--self-test') {
+  if (a === '--help' || a === '-h' || a === '--self-test' || a === '--json') {
     flags[a] = true;
     continue;
   }
@@ -220,6 +220,7 @@ function usage() {
       '  --note <text>    free-text note stored with a `collect` snapshot',
       '  --limit <n>      snapshots shown by `report` (default 5)',
       '  --out <path>     markdown output (default docs/metrics/coverage-report.md)',
+      '  --json           emit machine-readable JSON (report command)',
       '  --help           print this text and exit 0',
       '',
       'Reads coverage-summary.json (istanbul) or coverage-final.json (raw V8) - it never',
@@ -418,34 +419,54 @@ function report() {
   const limit = Number(opt('--limit', '5'));
   const entries = ledger.entries.slice(-limit);
   if (entries.length === 0) {
-    console.log('coverage-trend: ledger is empty. Run `collect` after running coverage in the Node projects.');
+    if (flags['--json']) console.log(JSON.stringify({ entries: [], names: [] }, null, 2));
+    else console.log('coverage-trend: ledger is empty. Run collect after running coverage in the Node projects.');
     return 0;
   }
   const names = Object.keys(entries[entries.length - 1].projects || {}).sort();
+  if (flags['--json']) {
+    console.log(JSON.stringify({
+      entries: entries.map(function (entry) {
+        return {
+          timestamp: entry.timestamp,
+          gitSha: entry.gitSha,
+          note: entry.note || null,
+          projects: Object.fromEntries(names.map(function (name) {
+            const pr = (entry.projects || {})[name];
+            return [name, pr ? { summary: pr.summary || null } : null];
+          })),
+        };
+      }),
+      trend: names.map(function (name) {
+        const series = projectSeries(entries, name, 'lines');
+        return { name: name, series: series, latest: series[series.length - 1] };
+      }),
+    }, null, 2));
+    return 0;
+  }
   for (const entry of entries) {
-    console.log(`\n${entry.timestamp}  (${entry.gitSha}${entry.note ? `, ${entry.note}` : ''})`);
+    console.log('\n' + entry.timestamp + '  (' + entry.gitSha + (entry.note ? ', ' + entry.note : '') + ')');
     for (const name of names) {
       const pr = (entry.projects || {})[name];
       if (!pr) {
-        console.log(`  ${name.padEnd(24)} (not tracked in this snapshot)`);
+        console.log('  ' + name.padEnd(24) + ' (not tracked in this snapshot)');
         continue;
       }
       const s = pr.summary;
       const line = s
-        ? `lines ${fmtPct(s.lines).padStart(7)}  stmts ${fmtPct(s.statements).padStart(7)}  funcs ${fmtPct(s.functions).padStart(7)}  br ${fmtPct(s.branches).padStart(7)}`
+        ? 'lines ' + fmtPct(s.lines).padStart(7) + '  stmts ' + fmtPct(s.statements).padStart(7) + '  funcs ' + fmtPct(s.functions).padStart(7) + '  br ' + fmtPct(s.branches).padStart(7)
         : 'pending (no summary artifact)';
-      console.log(`  ${name.padEnd(24)} ${line}`);
+      console.log('  ' + name.padEnd(24) + ' ' + line);
     }
   }
   console.log('\nTrend (lines %):');
   for (const name of names) {
     const series = projectSeries(entries, name, 'lines');
-    console.log(`  ${name.padEnd(24)} ${spark(series)}  (latest ${fmtPct(series[series.length - 1])})`);
+    console.log('  ' + name.padEnd(24) + ' ' + spark(series) + '  (latest ' + fmtPct(series[series.length - 1]) + ')');
   }
   console.log('');
   return 0;
 }
-
 function markdown() {
   const file = ledgerPath();
   const outArg = opt('--out', '');

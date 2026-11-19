@@ -35,8 +35,8 @@ const argv = process.argv.slice(2);
 // ---- Non-interactive argv tokenizer (Round 12 D hardening) ---------------------
 // Boolean: --check --refresh. Value: --out --max-age-hours. Unknown flags and
 // stray positionals exit 2 instead of being silently ignored. No stdin prompts.
-const BOOLEAN_FLAGS = new Set(['--check', '--refresh', '--self-test']);
-const VALUE_FLAGS = new Set(['--out', '--max-age-hours']);
+const BOOLEAN_FLAGS = new Set(['--check', '--refresh', '--self-test', '--json']);
+const VALUE_FLAGS = new Set(['--out', '--max-age-hours', '--section', '--output']);
 const flags = {};
 const positionals = [];
 for (let i = 0; i < argv.length; i += 1) {
@@ -80,7 +80,7 @@ function usage() {
     [
       'ops-dashboard.mjs - repo-level observability dashboard (workflows, tooling, ledgers, telemetry)',
       '',
-      'Usage: node tools/ops-dashboard.mjs [--out <path>] [--refresh]',
+      'Usage: node tools/ops-dashboard.mjs [--out <path>|--output <path>] [--refresh] [--section <id>]',
       '       node tools/ops-dashboard.mjs --check [--max-age-hours <h>]',
       '',
       'Flags:',
@@ -89,6 +89,7 @@ function usage() {
       '  --max-age-hours <h>  max section age in hours for --check (default 24)',
       '  --out <path>         output file (default docs/metrics/OPS-DASHBOARD.md)',
       '  --refresh            restamp every section even when content is unchanged',
+       '  --json               emit machine-readable JSON (freshness check / --check)',
       '  --self-test          assert the freshness logic (threshold + boundaries); exit 0/1',
       '  --help               print this text and exit 0',
       '',
@@ -113,7 +114,7 @@ if (positionals.length > 0) {
 }
 
 const opt = (name, def) => (flags[name] === undefined ? def : flags[name]);
-const outArg = opt('--out', '');
+const outArg = opt('--output', opt('--out', ''));
 const OUT = path.isAbsolute(outArg) ? outArg : path.join(ROOT, outArg || path.join('docs', 'metrics', 'OPS-DASHBOARD.md'));
 
 const readJsonSafe = (rel) => {
@@ -170,7 +171,7 @@ function workflowsSection() {
 function toolingSection() {
   const lines = [];
   const dir = path.join(ROOT, 'tools');
-  const files = fs.readdirSync(dir).filter((f) => /\.(mjs|cjs|ps1|json)$/.test(f)).sort();
+  const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.') && /\.(mjs|cjs|ps1|json)$/.test(f)).sort();
   lines.push(`## Workspace Tooling (${files.length} files in tools/)`, '');
   for (const f of files) lines.push(`- \`${f}\``);
   lines.push('');
@@ -189,16 +190,31 @@ function bundleSection() {
   const prev = entries.length > 1 ? entries[entries.length - 2] : null;
   const names = Object.keys(latest.projects || {}).sort();
   lines.push(`## Bundle Ledger (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
-  lines.push('| Project | Size | Files | vs prev |');
-  lines.push('|---------|-----:|------:|---------|');
-  for (const n of names) {
+  const headers = ['Project', 'Size', 'Files', 'vs prev'];
+  const rows = names.map((n) => {
     let delta = '—';
     if (prev && prev.projects && prev.projects[n] && prev.projects[n].bytes > 0) {
       const growth = ((latest.projects[n].bytes - prev.projects[n].bytes) / prev.projects[n].bytes) * 100;
       delta = `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
     }
-    lines.push(`| ${n} | ${human(latest.projects[n].bytes)} | ${latest.projects[n].files} | ${delta} |`);
-  }
+    return [n, human(latest.projects[n].bytes), String(latest.projects[n].files), delta];
+  });
+  const widths = headers.map((header, index) => rows.reduce(
+    (width, row) => Math.max(width, row[index].length),
+    header.length,
+  ));
+  const formatRow = (row, isData = false) => '| ' + row.map((cell, index) => {
+    const value = isData && (index === 1 || index === 2)
+      ? cell.padStart(widths[index])
+      : cell.padEnd(widths[index]);
+    return value;
+  }).join(' | ') + ' |';
+  const separator = widths.map((width, index) => (
+    index === 1 || index === 2 ? `${'-'.repeat(width - 1)}:` : '-'.repeat(width)
+  ));
+  lines.push(formatRow(headers));
+  lines.push(`| ${separator.join(' | ')} |`);
+  for (const row of rows) lines.push(formatRow(row, true));
   lines.push('');
   return { id: 'bundle', lines };
 }
@@ -243,6 +259,50 @@ function coverageSection() {
   }
   lines.push('', '_Full history: `docs/metrics/coverage-report.md` (`node tools/coverage-trend.cjs markdown`)._', '');
   return { id: 'coverage', lines };
+}
+
+function repoBloatSection() {
+  // Tracked-repo bloat ledger (tools/repo-bloat.mjs): what gets COMMITTED,
+  // not what builds produce. Mirrors the bundle section's shape but reads
+  // the snapshots array + accepted ratchet set from repo-bloat-history.json.
+  const lines = [];
+  const ledger = readJsonSafe(path.join('docs', 'metrics', 'repo-bloat-history.json'));
+  const snaps = ledger && Array.isArray(ledger.snapshots) ? ledger.snapshots : [];
+  if (snaps.length === 0) {
+    lines.push('## Repo Bloat', '', '_Empty — seed with `npm run bloat:collect` (tracked-files ledger + regression gate)._', '');
+    return { id: 'repo-bloat', lines };
+  }
+  const GRAINS = ' .:-=+*#%@';
+  const spark = (series) => {
+    const nums = series.filter((v) => v !== null && v !== undefined);
+    if (nums.length === 0) return '(no data)';
+    const lo = Math.min(...nums);
+    const hi = Math.max(...nums);
+    const span = hi - lo || 1;
+    return series
+      .map((v) => {
+        if (v === null || v === undefined) return ' ';
+        const i = Math.min(GRAINS.length - 1, Math.floor(((v - lo) / span) * (GRAINS.length - 1)));
+        return GRAINS[i];
+      })
+      .join('');
+  };
+  const latest = snaps[snaps.length - 1];
+  const prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
+  const growth = prev && prev.bytes > 0 ? ((latest.bytes - prev.bytes) / prev.bytes) * 100 : null;
+  const accepted = Array.isArray(ledger.accepted) ? ledger.accepted : [];
+  const offenders = Array.isArray(latest.offenders) ? latest.offenders : [];
+  lines.push(`## Repo Bloat (latest: ${latest.timestamp}, ${latest.gitSha})`, '');
+  lines.push(`- tracked: ${latest.files} files, ${human(latest.bytes)}${growth === null ? '' : ` (${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% vs prev; gate fails above 10%)`}`);
+  lines.push(`- offenders: ${offenders.length} currently tracked, all in the accepted ratchet set (${accepted.length} paths accepted — new ones fail \`check\` until reviewed)`);
+  lines.push(`- bytes trend: \`${spark(snaps.map((s) => s.bytes))}\` · files trend: \`${spark(snaps.map((s) => s.files))}\``);
+  if (offenders.length > 0) {
+    lines.push('', '| Offender | Kind | Size |', '|----------|------|-----:|');
+    for (const o of offenders.slice(0, 5)) lines.push(`| \`${o.path}\` | ${o.kind} | ${human(o.bytes)} |`);
+    if (offenders.length > 5) lines.push(`| … and ${offenders.length - 5} more | | |`);
+  }
+  lines.push('', '_Gate: `npm run bloat:check` · history: `npm run bloat:report` · ledger: `docs/metrics/repo-bloat-history.json`._', '');
+  return { id: 'repo-bloat', lines };
 }
 
 function flakeSection() {
@@ -363,7 +423,7 @@ function machineReportsSection() {
 // stale so the failure is always actionable ("regenerate the dashboard").
 
 const MARKER_RE = /^<!-- ops-section:([a-z0-9-]+) ts:(\S+) -->$/;
-const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports', 'telemetry'];
+const SECTION_IDS = ['workflows', 'tooling', 'bundle', 'coverage', 'repo-bloat', 'flakes', 'parity', 'doclinks', 'extension', 'machine-reports', 'telemetry'];
 
 function parseFreshness(raw) {
   const stamps = new Map();
@@ -419,21 +479,25 @@ function freshnessCheck() {
   const raw = fs.readFileSync(OUT, 'utf8');
   const { stamps } = parseFreshness(raw);
   const now = Date.now();
+  const results = [];
   let stale = 0;
-  console.log(`ops-dashboard: freshness check (max age ${maxAgeHours}h)`);
   for (const id of SECTION_IDS) {
     const { state, ageH } = evaluateSectionFreshness(stamps.get(id), now, maxAgeHours);
-    if (state === 'unknown') {
-      console.log(`  ${id.padEnd(16)} no timestamp marker — regenerate`);
-      stale += 1;
-    } else if (state === 'stale') {
-      console.log(`  ${id.padEnd(16)} ${ageH.toFixed(1)}h  STALE (> ${maxAgeHours}h)`);
-      stale += 1;
-    } else {
-      console.log(`  ${id.padEnd(16)} ${ageH.toFixed(1)}h  ok`);
-    }
+    results.push({ id, state, ageH: ageH === null ? null : Number(ageH.toFixed(1)) });
+    if (state !== 'fresh') stale += 1;
   }
-     if (stale > 0) {
+  if (flags['--json']) {
+    console.log(JSON.stringify({ maxAgeHours, sections: results, stale }, null, 2));
+    if (stale > 0) process.exit(1);
+    return;
+  }
+  console.log(`ops-dashboard: freshness check (max age ${maxAgeHours}h)`);
+  for (const r of results) {
+    if (r.state === 'unknown') console.log(`  ${r.id.padEnd(16)} no timestamp marker — regenerate`);
+    else if (r.state === 'stale') console.log(`  ${r.id.padEnd(16)} ${r.ageH}h  STALE (> ${maxAgeHours}h)`);
+    else console.log(`  ${r.id.padEnd(16)} ${r.ageH}h  ok`);
+  }
+  if (stale > 0) {
     console.log(`ops-dashboard: ${stale} stale/unknown section(s) — run: node tools/ops-dashboard.mjs`);
     process.exit(1);
   }
@@ -547,13 +611,26 @@ const sections = [
   toolingSection(),
   bundleSection(),
   coverageSection(),
+  repoBloatSection(),
   flakeSection(),
   toolOutputSection('parity', 'Fleet Mirror Parity', 'node tools/sync-parity.mjs check'),
   toolOutputSection('doclinks', 'Markdown Link Health', 'node tools/check-doc-links.mjs'),
+  toolOutputSection('jsonValidity', 'JSON Validity', 'node tools/check-json-validity.mjs'),
+  toolOutputSection('npmScripts', 'npm run Reference Health', 'node tools/check-npm-scripts.mjs --check'),
+  toolOutputSection('quickhealth', 'Quick Health Triage', 'node tools/quick-health.mjs'),
   extensionSection(),
   machineReportsSection(),
   telemetrySinkSection(),
 ];
+const sectionFilter = flags['--section'];
+const filteredSections = sectionFilter ? sections.filter((s) => s.id === sectionFilter) : sections;
+if (sectionFilter && filteredSections.length === 0) {
+  console.error(`ops-dashboard: unknown section "${sectionFilter}" (available: ${sections.map((s) => s.id).join(', ')})`);
+  process.exit(2);
+}
+const sectionsToRender = filteredSections;
+
+
 
 const existingRaw = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
 const { stamps: oldStamps, bodies: oldBodies } = parseFreshness(existingRaw);
@@ -562,7 +639,7 @@ const { stamps: oldStamps, bodies: oldBodies } = parseFreshness(existingRaw);
   const forceRefresh = argv.includes('--refresh');
 let anyChanged = false;
 const blocks = [];
-for (const s of sections) {
+for (const s of sectionsToRender) {
   const body = s.lines.join('\n').trimEnd();
     const unchanged = oldBodies.has(s.id) && oldBodies.get(s.id) === body;
   if (!unchanged) anyChanged = true;
@@ -572,6 +649,10 @@ for (const s of sections) {
 
 // Idempotence: a fully unchanged, non-refresh run leaves the file byte-identical.
 if (existingRaw !== null && !anyChanged && !forceRefresh) {
+  if (flags['--json']) {
+    console.log(JSON.stringify({ written: false, unchanged: true, sections: sectionsToRender.length, path: path.relative(ROOT, OUT) }, null, 2));
+    process.exit(0);
+  }
   console.log(`ops-dashboard: unchanged -> ${path.relative(ROOT, OUT)} (no section changed, not rewritten)`);
   process.exit(0);
 }
@@ -585,6 +666,8 @@ const header = [
 const content = header.join('\n') + '\n\n' + blocks.join('\n\n') + '\n';
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, content, 'utf8');
-console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sections.length} sections stamped)`);
-
-
+if (flags['--json']) {
+  console.log(JSON.stringify({ written: true, unchanged: false, sections: sectionsToRender.length, lines: content.split('\n').length, path: path.relative(ROOT, OUT) }, null, 2));
+  process.exit(0);
+}
+console.log(`ops-dashboard: written -> ${path.relative(ROOT, OUT)} (${content.split('\n').length} lines, ${sectionsToRender.length} sections stamped)`);
