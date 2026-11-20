@@ -79,8 +79,9 @@ watch / journal / reset) and the patch driver it invokes, `tools/loop-fix.mjs`
       (deterministic, no network); `verify-tools.mjs --self-test` 47/47 fleet-wide;
       `--check-cli` Round 12 D passes; covered by `multi-os-gate.yml` on both OS runners.
 - [x] **Patch driver + self-test** — `tools/loop-fix.mjs` 3 pure idempotent rules; `--self-test`
-      4/4 green (JSON-exclusion, idempotence, no-memoization transform, absolute
-      byte accounting). Evidence: `node tools/loop-fix.mjs --self-test` → `4/4 invariants passed`; idempotent re-run on a fresh file → `0/0 files (nothing to do)`.
+      5/5 green (JSON-exclusion, idempotence, no-memoization transform, absolute
+      byte accounting, license-header idempotent on shebang files — header after
+      the shebang, never duplicated). Evidence: `node tools/loop-fix.mjs --self-test` → `5/5 invariants passed`; idempotent re-run on a fresh file → `0/0 files (nothing to do)`.
 
 **Verification evidence:** `npm run gate` (unchanged by this addition) + the two
 tools' standalone `--self-test` / `--help` / syntax checks above. No watch-loop

@@ -21,6 +21,8 @@
  *      genuine, auditable transform, never a read-through cache hit.
  *   4. The public `fix` function returns { files, changed, lines } with
  *      `lines` = absolute byte delta, so output is never lossy in sign.
+ *   5. license-header is idempotent on shebang files: the header is inserted
+ *      after the shebang line and a second run changes nothing (B4).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -53,13 +55,20 @@ const RULES = {
         '// See the License for the specific language governing permissions and\n' +
         '// limitations under the License.\n'
       );
-      if (content.startsWith('// Licensed')) return content;
+      // The header goes AFTER a shebang (line 1 must stay the shebang),
+      // and the already-headed check must look past the shebang: checking
+      // only the file start made a second run insert a duplicate header
+      // (B4 — the rule was not idempotent on shebang files).
+      let prefix = '';
+      let body = content;
       if (content.startsWith('#!')) {
         const nl = content.indexOf('\n');
         if (nl === -1) return content; // shebang-only file: nothing safe to do
-        return content.slice(0, nl + 1) + header + content.slice(nl + 1);
+        prefix = content.slice(0, nl + 1);
+        body = content.slice(nl + 1);
       }
-      return header + content;
+      if (body.startsWith('// Licensed')) return content;
+      return prefix + header + body;
     },
   },
 };
@@ -124,12 +133,23 @@ function runSelfTest() {
   const nxt = applyRule('trailing-whitespace', original).next;
   const delta = Math.abs(original.length - nxt.length);
   if (delta !== 2) { failed++; console.error(`  INV-4 lines-delta FAIL (got ${delta})`); }
+  // INV-5: license-header is idempotent on shebang files (B4): the header
+  // lands after the shebang line, and a second run changes nothing.
+  const shebang = '#!/usr/bin/env node\nconsole.log(1);\n';
+  const h1 = applyRule('license-header', shebang).next;
+  const h2 = applyRule('license-header', h1).next;
+  if (h1 !== h2) { failed++; console.error('  INV-5 license-header shebang idempotence FAIL'); }
+  if (!h1.startsWith('#!/usr/bin/env node\n// Licensed')) { failed++; console.error('  INV-5 license-header after shebang FAIL'); }
+  const plain = 'console.log(1);\n';
+  const p1 = applyRule('license-header', plain).next;
+  if (applyRule('license-header', p1).next !== p1) { failed++; console.error('  INV-5 license-header plain idempotence FAIL'); }
+  if (applyRule('license-header', '#!/usr/bin/env node').next !== '#!/usr/bin/env node') { failed++; console.error('  INV-5 license-header shebang-only FAIL'); }
 
   if (failed > 0) {
     console.error(`loop-fix self-test: ${failed} invariant(s) failed`);
     return false;
   }
-  console.error('loop-fix self-test: 4/4 invariants passed');
+  console.error('loop-fix self-test: 5/5 invariants passed');
   return true;
 }
 
