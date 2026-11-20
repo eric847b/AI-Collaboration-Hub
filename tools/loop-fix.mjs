@@ -19,12 +19,16 @@
  *   2. No rule ever rewrites a file whose content is unchanged (idempotence).
  *   3. No rule memoizes results by content — a re-run on a modified file is a
  *      genuine, auditable transform, never a read-through cache hit.
- *   4. The public `fix` function returns { files, changed, lines } with
- *      `lines` = absolute byte delta, so output is never lossy in sign.
+ *   4. The CLI reports { files, changed, lines } with `lines` = absolute
+ *      byte delta, so output is never lossy in sign. `applyRule` is the
+ *      pure public entry point and returns { next, changed }.
  *   5. license-header is idempotent on shebang files: the header is inserted
  *      after the shebang line and a second run changes nothing (B4).
+ *   6. Project targets must resolve inside the workspace root, and
+ *      symlinked entries are never collected for rewriting (B2).
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,17 +59,22 @@ const RULES = {
         '// See the License for the specific language governing permissions and\n' +
         '// limitations under the License.\n'
       );
-      // The header goes AFTER a shebang (line 1 must stay the shebang),
-      // and the already-headed check must look past the shebang: checking
+      // A leading BOM is preserved verbatim and the header goes after it
+      // (and after any shebang) — otherwise the BOM+shebang is broken (N1).
+      // The already-headed check must look past the shebang: checking
       // only the file start made a second run insert a duplicate header
       // (B4 — the rule was not idempotent on shebang files).
       let prefix = '';
       let body = content;
-      if (content.startsWith('#!')) {
-        const nl = content.indexOf('\n');
+      if (body.startsWith('\uFEFF')) {
+        prefix = '\uFEFF';
+        body = body.slice(1);
+      }
+      if (body.startsWith('#!')) {
+        const nl = body.indexOf('\n');
         if (nl === -1) return content; // shebang-only file: nothing safe to do
-        prefix = content.slice(0, nl + 1);
-        body = content.slice(nl + 1);
+        prefix += body.slice(0, nl + 1);
+        body = body.slice(nl + 1);
       }
       if (body.startsWith('// Licensed')) return content;
       return prefix + header + body;
@@ -86,12 +95,61 @@ export function applyRule(ruleName, content) {
 
 export function getRules() { return RULES; }
 
+/**
+ * True when `candidate` resolves to a directory strictly inside `root`
+ * (both already resolved). Pure — the self-test pins it without touching
+ * the filesystem. The root itself is NOT inside itself: `--project .`
+ * must be rejected, or the rule would scan (and rewrite) the whole repo.
+ */
+export function isWithinRoot(root, candidate) {
+  const rel = path.relative(root, candidate);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+/**
+ * List the .js/.mjs/.cjs/.ts/.tsx files under `target` (one level deep).
+ * Symlinked entries are skipped: a symlink inside the target could point
+ * outside the workspace root, and following it would let a rule write
+ * outside the project (B2).
+ */
+export function collectSourceFiles(target) {
+  const files = [];
+  for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue;
+    if (entry.name === 'node_modules') continue;
+    if (entry.isSymbolicLink()) continue;
+    const full = path.join(target, entry.name);
+    if (entry.isDirectory()) {
+      for (const sub of fs.readdirSync(full, { withFileTypes: true })) {
+        if (sub.name === 'node_modules') continue;
+        if (sub.isSymbolicLink()) continue;
+        if (!SRC_EXT.test(sub.name)) continue;
+        files.push(path.join(full, sub.name));
+      }
+    } else if (SRC_EXT.test(entry.name)) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
 function optVal(argv, name, def) {
   const i = argv.indexOf(name);
   return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
 }
 function has(argv, name) { return argv.includes(name); }
 
+// B3: the CLI below runs ONLY when this file is the entry script.
+// Importing it (e.g. `import { applyRule } from './loop-fix.mjs'`) used to
+// run the top-level argument parsing and kill the importer with
+// process.exit(2). The exported pure API stays usable from any harness.
+const isMain = (() => {
+  try {
+    return fs.realpathSync(process.argv[1] || '') === fileURLToPath(import.meta.url);
+  } catch { return false; }
+})();
+
+if (isMain) {
 const argv = process.argv.slice(2);
 
 // --help MUST be checked FIRST, before any other argument processing
@@ -144,12 +202,35 @@ function runSelfTest() {
   const p1 = applyRule('license-header', plain).next;
   if (applyRule('license-header', p1).next !== p1) { failed++; console.error('  INV-5 license-header plain idempotence FAIL'); }
   if (applyRule('license-header', '#!/usr/bin/env node').next !== '#!/usr/bin/env node') { failed++; console.error('  INV-5 license-header shebang-only FAIL'); }
+  // N1: a leading BOM is preserved and the header goes after BOM+shebang.
+  const bom = '\uFEFF#!/usr/bin/env node\nconsole.log(1);\n';
+  const b1 = applyRule('license-header', bom).next;
+  const b2 = applyRule('license-header', b1).next;
+  if (b1 !== b2) { failed++; console.error('  INV-5 license-header BOM idempotence FAIL'); }
+  if (!b1.startsWith('\uFEFF#!/usr/bin/env node\n// Licensed')) { failed++; console.error('  INV-5 license-header BOM placement FAIL'); }
+  // INV-6: project targets stay inside the root, and symlinked entries are
+  // never collected for rewriting (B2).
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-fix-inv6-'));
+  try {
+    if (!isWithinRoot(tmp, path.join(tmp, 'proj'))) { failed++; console.error('  INV-6 isWithinRoot inside FAIL'); }
+    if (isWithinRoot(tmp, tmp)) { failed++; console.error('  INV-6 isWithinRoot root-itself FAIL'); }
+    if (isWithinRoot(tmp, path.join(tmp, '..', 'etc'))) { failed++; console.error('  INV-6 isWithinRoot dotdot FAIL'); }
+    fs.writeFileSync(path.join(tmp, 'real.mjs'), 'const a = 1;\n');
+    fs.symlinkSync(path.join(tmp, 'real.mjs'), path.join(tmp, 'link.mjs'));
+    fs.mkdirSync(path.join(tmp, 'sub'));
+    fs.writeFileSync(path.join(tmp, 'sub', 'inner.mjs'), 'const b = 2;\n');
+    fs.symlinkSync(path.join(tmp, 'sub'), path.join(tmp, 'linkdir'));
+    const found = collectSourceFiles(tmp).map((f) => path.basename(f)).sort();
+    if (JSON.stringify(found) !== JSON.stringify(['inner.mjs', 'real.mjs'])) { failed++; console.error(`  INV-6 symlink skip FAIL (got ${found})`); }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 
   if (failed > 0) {
     console.error(`loop-fix self-test: ${failed} invariant(s) failed`);
     return false;
   }
-  console.error('loop-fix self-test: 5/5 invariants passed');
+  console.error('loop-fix self-test: 6/6 invariants passed');
   return true;
 }
 
@@ -165,26 +246,15 @@ if (!project || !rule) {
 }
 
 const target = path.join(ROOT, project);
-const rel = path.relative(ROOT, target);
-if (rel.startsWith('..') || path.isAbsolute(rel)) { console.error(`loop-fix: project "${project}" escapes the workspace root`); process.exit(2); }
+// B2: the project must resolve to a directory strictly inside the root.
+// `--project .` (rel === '') and any `..` escape are rejected, and a
+// symlinked project dir must still resolve inside the root.
+if (!isWithinRoot(ROOT, target)) { console.error(`loop-fix: project "${project}" must name a directory inside the workspace root`); process.exit(2); }
 if (!fs.existsSync(target)) { console.error(`loop-fix: project "${project}" not found at ${target}`); process.exit(2); }
+if (!isWithinRoot(fs.realpathSync(ROOT), fs.realpathSync(target))) { console.error(`loop-fix: project "${project}" resolves outside the workspace root`); process.exit(2); }
 if (!RULES[rule]) { console.error(`loop-fix: unknown rule "${rule}". Use --list-rules.`); process.exit(2); }
 
-let files = [];
-for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
-  if (entry.name.startsWith('.')) continue;
-  if (entry.name === 'node_modules') continue;
-  const full = path.join(target, entry.name);
-  if (entry.isDirectory()) {
-    for (const sub of fs.readdirSync(full, { withFileTypes: true })) {
-      if (sub.name === 'node_modules') continue;
-      if (!SRC_EXT.test(sub.name)) continue;
-      files.push(path.join(full, sub.name));
-    }
-  } else if (SRC_EXT.test(entry.name)) {
-    files.push(full);
-  }
-}
+const files = collectSourceFiles(target);
 
 if (files.length === 0) {
   console.log(`loop-fix: no matching source files in "${project}" (rule "${rule}").`);
@@ -206,3 +276,4 @@ for (const file of files) {
 const verb = result.changed === 1 ? 'file' : 'files';
 console.log(`loop-fix: applied rule "${rule}" → ${result.changed}/${result.files} ${verb}, ${result.lines} byte(s) net change.`);
 if (result.changed === 0) console.log(`  (idempotent — nothing to do)`);
+} // end if (isMain) — B3: importing this module must not run the CLI

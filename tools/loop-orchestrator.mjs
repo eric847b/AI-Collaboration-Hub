@@ -74,7 +74,6 @@ const cmd = argv[0] || 'run';
 const watch = argv.includes('--watch');
 const watchInterval = optVal('--interval', String(WATCH_INTERVAL_MS));
 const reset = argv.includes('--reset');
-const journal = argv.includes('--journal');
 const help = argv.includes('--help') || argv.includes('-h');
 const selfTest = argv.includes('--self-test');
 
@@ -203,12 +202,16 @@ export function runOnePass() {
 
 // ── Watch mode ────────────────────────────────────────────────────────────
 async function watchMode() {
-  console.log(`loop-orchestrator: watching ${ROOT} (interval ${watchInterval}ms)...`);
+  // N4: an unvalidated --interval (e.g. NaN from 'abc') would poll at ~0 ms
+  // and spawn git rapidly — clamp to a sane minimum.
+  const rawInterval = Number(watchInterval);
+  const interval = Number.isFinite(rawInterval) && rawInterval >= 100 ? rawInterval : WATCH_INTERVAL_MS;
+  console.log(`loop-orchestrator: watching ${ROOT} (interval ${interval}ms)...`);
   let lastCommit = gitHeadSha();
   writeRunState(readRunState());
   setRunState({ ...readRunState(), lastCommit, lastRun: new Date().toISOString() });
   while (true) {
-    await new Promise(r => setTimeout(r, Number(watchInterval)));
+    await new Promise(r => setTimeout(r, interval));
     const head = gitHeadSha();
     if (head && head !== lastCommit) {
       lastCommit = head;
@@ -231,10 +234,10 @@ function runLoopSelfTest() {
   const validSha = /^[0-9a-f]{40}$/;
   if (head !== null && !validSha.test(head)) { failed++; console.error('  [F] gitHeadSha did not return a sha'); }
   const st = gitStatusSummary();
-  if (typeof st !== 'object' || (typeof st.ahead !== 'number') || (typeof st.behind !== 'number')) { failed++; console.error('  [F] gitStatusSummary shape'); }
+  if ((typeof st.ahead !== 'number') || (typeof st.behind !== 'number')) { failed++; console.error('  [F] gitStatusSummary shape'); }
   // discoverProjects returns entries
   const projs = discoverProjects();
-  if (!Array.isArray(projs) || projs.length === 0 || !projs.every(p => p && typeof p.name === 'string' && (p.kind === 'node' || p.kind === 'python'))) { failed++; console.error('  [F] discoverProjects shape'); }
+  if (projs.length === 0 || !projs.every(p => p && typeof p.name === 'string' && (p.kind === 'node' || p.kind === 'python'))) { failed++; console.error('  [F] discoverProjects shape'); }
   // journal read/write round-trip (restores the REAL journal afterwards:
   // a self-test must never delete genuinely deferred ops)
   const journalExisted = fs.existsSync(JOURNAL_FILE);
