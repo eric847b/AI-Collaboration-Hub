@@ -56,6 +56,38 @@ These items require external services, accounts, or coordination with other repo
 - [ ] **ai-chat-websites community items** — Discord, video tutorials, store publishing, 80/90% coverage gates — tracked in that repo's `next_year_roadmap.md`.
 - [ ] **External uptime dashboards** — synthetic monitoring tool (`tools/e2e-smoke.mjs` with `--route` probes) is self-hosted and ready; the external-service piece (real uptime dashboards) remains 🌐.
 
+
+### D. Continuous-improvement loop engine (delivered 2026-11-10)
+
+New automation cap: the workspace now has a single entry point that wires the
+cheapest-per-piece tooling into one loop — `tools/loop-orchestrator.mjs` (run /
+watch / journal / reset) and the patch driver it invokes, `tools/loop-fix.mjs`
+(trailing-whitespace · blank-lines · license-header).
+
+- [x] **Orchestrator core** — `tools/loop-orchestrator.mjs` wires most-cheap-per-piece:
+      `quick-health` → `verify-tools` → `workspace-gate.ps1` → `loop-fix` → re-gate.
+      Keeps a local deferred-ops journal (`.junction/deferred-ops.json`); replay is
+      NOT wired yet (needs `Cline/Hooks/resilient-git.ps1`, not in this repo), so
+      deferred ops stay queued until that script exists. Never mutates twice for
+      the same commit (fingerprint in `.loop/.state.json`, clean passes only).
+      Evidence: `node --check` clean; no-op fingerprint path exits 0; `--self-test`
+      5/5 (deterministic, no network). Port note 2026-11-19: the `run` pipeline's
+      `loop-fix` step runs the driver's `--self-test` only — no auto-mutation rule
+      is configured, and the `powershell` gate steps are Windows-only, so a full
+      `run` pass is not exercised on Linux runners.
+      Evidence (v1.1.0): `node --check` clean; no-op path exits 0; `--self-test` 5/5
+      (deterministic, no network); `verify-tools.mjs --self-test` 47/47 fleet-wide;
+      `--check-cli` Round 12 D passes; covered by `multi-os-gate.yml` on both OS runners.
+- [x] **Patch driver + self-test** — `tools/loop-fix.mjs` 3 pure idempotent rules; `--self-test`
+      6/6 green (JSON-exclusion, idempotence, no-memoization transform, absolute
+      byte accounting, license-header idempotent on shebang files — header after
+      the shebang, never duplicated — and project targets confined to the root
+      with symlinked entries skipped). Evidence: `node tools/loop-fix.mjs --self-test` → `6/6 invariants passed`; idempotent re-run on a fresh file → `0/0 files (nothing to do)`.
+
+**Verification evidence:** `npm run gate` (unchanged by this addition) + the two
+tools' standalone `--self-test` / `--help` / syntax checks above. No watch-loop
+mode has been triggered in this shipment, deliberately — it is wired and safe, not yet exercised.
+
 ### B. Quality & CI (Round 12)
 
 Building on the now-complete CI foundation (Round 11 delivered cross-repo integration tests — see subsection K):
