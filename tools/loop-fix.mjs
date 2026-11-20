@@ -10,12 +10,12 @@
  *   node tools/loop-fix.mjs list-rules
  *
  * Rules are PURE, IDEMPOTENT, SEMANTICS-PRESERVING text transforms. The
- * loop-orchestrator.mjs runs this AFTER triage and BEFORE workspace-gate.ps1,
- * and deliberately does NOT commit or sync — that is the orchestrator's
- * verify + sync step's job.
+ * loop-orchestrator.mjs runs this as a --self-test health-check step (no
+ * auto-mutation rule is configured). It deliberately does NOT commit or
+ * sync — that is the orchestrator's verify + sync step's job.
  *
  * Safety invariants (asserted in self-test):
- *   1. No rule ever rewrites a .json file (semicolons would corrupt JSON).
+ *   1. No rule ever rewrites a .json file (text transforms would corrupt JSON).
  *   2. No rule ever rewrites a file whose content is unchanged (idempotence).
  *   3. No rule memoizes results by content — a re-run on a modified file is a
  *      genuine, auditable transform, never a read-through cache hit.
@@ -28,8 +28,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// JS/TS source only. .json is deliberately EXCLUDED because a "semicolon"
-// transform would render package.json invalid.
+// JS/TS source only. .json is deliberately EXCLUDED because text
+// transforms would render package.json invalid.
 const SRC_EXT = /\.(js|mjs|cjs|ts|tsx)$/;
 
 const RULES = {
@@ -54,6 +54,11 @@ const RULES = {
         '// limitations under the License.\n'
       );
       if (content.startsWith('// Licensed')) return content;
+      if (content.startsWith('#!')) {
+        const nl = content.indexOf('\n');
+        if (nl === -1) return content; // shebang-only file: nothing safe to do
+        return content.slice(0, nl + 1) + header + content.slice(nl + 1);
+      }
       return header + content;
     },
   },
@@ -103,7 +108,7 @@ if (has(argv, '--list-rules') || has(argv, '-l') || cmd === 'list-rules' || cmd 
 function runSelfTest() {
   let failed = 0;
   // INV-1: no rule rewrites a .json file — the source-file filter excludes
-  // .json and includes .js/.ts/.mjs/.cjs/.tsx (semicolons would corrupt JSON).
+  // .json and includes .js/.ts/.mjs/.cjs/.tsx (text transforms would corrupt JSON).
   if (SRC_EXT.test('package.json')) { failed++; console.error('  INV-1 json excluded FAIL'); }
   if (!SRC_EXT.test('app.js')) { failed++; console.error('  INV-1 js included FAIL'); }
   // INV-2: no rule rewrites an unchanged file (idempotence).
@@ -140,15 +145,19 @@ if (!project || !rule) {
 }
 
 const target = path.join(ROOT, project);
+const rel = path.relative(ROOT, target);
+if (rel.startsWith('..') || path.isAbsolute(rel)) { console.error(`loop-fix: project "${project}" escapes the workspace root`); process.exit(2); }
 if (!fs.existsSync(target)) { console.error(`loop-fix: project "${project}" not found at ${target}`); process.exit(2); }
 if (!RULES[rule]) { console.error(`loop-fix: unknown rule "${rule}". Use --list-rules.`); process.exit(2); }
 
 let files = [];
 for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
   if (entry.name.startsWith('.')) continue;
+  if (entry.name === 'node_modules') continue;
   const full = path.join(target, entry.name);
   if (entry.isDirectory()) {
     for (const sub of fs.readdirSync(full, { withFileTypes: true })) {
+      if (sub.name === 'node_modules') continue;
       if (!SRC_EXT.test(sub.name)) continue;
       files.push(path.join(full, sub.name));
     }
@@ -158,17 +167,17 @@ for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
 }
 
 if (files.length === 0) {
-  console.log(`loop-fix: no matching source files in "${project}" (rule "${rule}”).`);
+  console.log(`loop-fix: no matching source files in "${project}" (rule "${rule}").`);
   process.exit(0);
 }
 
 const result = { project, rule, files: 0, changed: 0, lines: 0 };
 for (const file of files) {
+  result.files++;
   const original = fs.readFileSync(file, 'utf8');
   const { next, changed } = applyRule(rule, original);
   if (!changed) continue;
   fs.writeFileSync(file, next, 'utf8');
-  result.files++;
   result.changed++;
   result.lines += Math.abs(original.length - next.length);
   if (verbose) console.log(`  [OK] ${path.relative(ROOT, file)}`);

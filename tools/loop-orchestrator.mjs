@@ -15,19 +15,22 @@
  *   3. smoke      -> node tools/verify-tools.mjs      (syntax + read-only smoke)
  *   4. mutate     -> node tools/loop-fix.mjs --self-test (driver health-check;
  *                no auto-mutation — no rule is configured for the mutate step)
- *   5. verify     -> node tools/workspace-gate.ps1    (npm run gate)
- *   6. sync       -> resilient-git.ps1 sync -Repo <root>  (never plain push/pull)
+ *   5. verify     -> tools/workspace-gate.ps1 via powershell (npm run gate;
+ *                Windows-only - skipped on Linux/macOS)
  *
- * Network resilience: DEFER remote ops to the local journal (~/.cline/sync...
- * .junction/deferred-ops.json) when the network is down; replay on reconnect.
- * Never writes twice for the same git commit (persisted fingerprint in
- * .loop/.state.json), so a stale/rerun run is a no-op, not a duplicate.
+ * The deferred-ops journal (.junction/deferred-ops.json) and the
+ * replayJournal()/deferal() helpers exist for a reconnect-aware sync that
+ * is NOT wired yet: replay needs Cline/Hooks/resilient-git.ps1, which is
+ * not in this repo, so replay degrades to a warning and the ops stay
+ * queued. Never writes twice for the same git commit (persisted
+ * fingerprint in .loop/.state.json), so a stale/rerun run is a no-op,
+ * not a duplicate - but only a CLEAN pass is fingerprinted (see N5).
  */
 'use strict';
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, execSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -94,7 +97,7 @@ if (help) {
 
 if (selfTest) {
   const ok = runLoopSelfTest();
-  console.log(ok ? 'loop-orchestrator self-test: 4/4 passed' : 'loop-orchestrator self-test: FAILURES');
+  console.log(ok ? 'loop-orchestrator self-test: 5/5 passed' : 'loop-orchestrator self-test: FAILURES');
   process.exit(ok ? 0 : 1);
 }
 
@@ -108,8 +111,8 @@ export function gitStatusSummary() {
   const raw = gitOutput([]);
   let aheadN = 0, behindN = 0;
   try {
-    const ahead = execFileSync('git', ['rev-list', '--count', '--left-only', '@{u}...HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
-    const behind = execFileSync('git', ['rev-list', '--count', '--right-only', '@{u}...HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const behind = execFileSync('git', ['rev-list', '--count', '--left-only', '@{u}...HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const ahead = execFileSync('git', ['rev-list', '--count', '--right-only', '@{u}...HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
     aheadN = Number(ahead) || 0;
     behindN = Number(behind) || 0;
   } catch { /* no upstream */ }
@@ -160,9 +163,20 @@ export function runOnePass() {
 
   const results = { tools: 0, ok: 0, failed: 0 };
   for (const s of steps) {
+    // PowerShell steps must run under powershell, not node: execFileSync with
+    // process.execPath would try to load 'powershell' as a JS module
+    // (MODULE_NOT_FOUND) and kill every run. Off Windows they are skipped,
+    // not failed - the gate they run is Windows-only.
+    const isPs = s.cmd[0] === 'powershell';
+    if (isPs && process.platform !== 'win32') {
+      console.log(`  [SKIP] ${s.tool} (Windows-only step, skipped on ${process.platform})`);
+      continue;
+    }
     results.tools++;
     try {
-      execFileSync(process.execPath, s.cmd, { cwd: ROOT, encoding: 'utf8', timeout: DEFAULT_RUN_TIMEOUT_MS, stdio: 'inherit' });
+      const exe = isPs ? 'powershell' : process.execPath;
+      const args = isPs ? s.cmd.slice(1) : s.cmd;
+      execFileSync(exe, args, { cwd: ROOT, encoding: 'utf8', timeout: DEFAULT_RUN_TIMEOUT_MS, stdio: 'inherit' });
       results.ok++;
       console.log(`  [OK] ${s.tool}`);
     } catch (e) {
@@ -177,9 +191,12 @@ export function runOnePass() {
     }
   }
 
-  state.lastCommit = head;
   state.lastRun = new Date().toISOString();
-  state.mutations = results.failed === 0 ? (state.mutations + 1) : state.mutations;
+  // Fingerprint only a clean pass: a failed/aborted pass must retry on the
+  // next run instead of being suppressed until a new commit lands.
+  if (results.failed === 0) {
+    state.lastCommit = head;
+  }
   setRunState(state);
   return { skipped: false, results };
 }
@@ -189,7 +206,6 @@ async function watchMode() {
   console.log(`loop-orchestrator: watching ${ROOT} (interval ${watchInterval}ms)...`);
   let lastCommit = gitHeadSha();
   writeRunState(readRunState());
-  writeJournal({ ops: [], timestamp: new Date().toISOString() });
   setRunState({ ...readRunState(), lastCommit, lastRun: new Date().toISOString() });
   while (true) {
     await new Promise(r => setTimeout(r, Number(watchInterval)));
@@ -198,6 +214,10 @@ async function watchMode() {
       lastCommit = head;
       console.log(`\n[watch] new commit detected → running pass...`);
       const res = runOnePass();
+      if (res.skipped) {
+        console.log('[watch] pass skipped (no new commits).');
+        continue;
+      }
       console.log(`[watch] pass complete. failed=${res.results.failed} ok=${res.results.ok}`);
     }
   }
@@ -215,23 +235,37 @@ function runLoopSelfTest() {
   // discoverProjects returns entries
   const projs = discoverProjects();
   if (!Array.isArray(projs) || projs.length === 0 || !projs.every(p => p && typeof p.name === 'string' && (p.kind === 'node' || p.kind === 'python'))) { failed++; console.error('  [F] discoverProjects shape'); }
-  // journal read/write round-trip (no persistent side effect)
+  // journal read/write round-trip (restores the REAL journal afterwards:
+  // a self-test must never delete genuinely deferred ops)
+  const journalExisted = fs.existsSync(JOURNAL_FILE);
+  const journalBefore = journalExisted ? fs.readFileSync(JOURNAL_FILE, 'utf8') : null;
   const marker = { ops: [{ op: 'self-test-roundtrip' }], timestamp: new Date().toISOString() };
   writeJournal(marker);
   try {
     const back = readJournal();
     if (JSON.stringify(back) !== JSON.stringify(marker)) { failed++; console.error('  [F] journal round-trip mismatch'); }
   } finally {
-    writeJournal({ ops: [], timestamp: null });
+    if (journalBefore !== null) {
+      fs.writeFileSync(JOURNAL_FILE, journalBefore, 'utf8');
+    } else {
+      fs.rmSync(JOURNAL_FILE, { force: true });
+      try { fs.rmdirSync(JOURNAL_DIR); } catch { /* dir was pre-existing/non-empty */ }
+    }
   }
-  // state fingerprint round-trip (persist then remove)
+  // state fingerprint round-trip (restores the REAL fingerprint afterwards)
+  const stateExisted = fs.existsSync(STATE_FILE);
+  const stateBefore = stateExisted ? fs.readFileSync(STATE_FILE, 'utf8') : null;
   const probe = { lastCommit: head, lastRun: new Date().toISOString(), mutations: 0, journal: [] };
   setRunState(probe);
   try {
     const back = readRunState();
     if (JSON.stringify(back) !== JSON.stringify(probe)) { failed++; console.error('  [F] state round-trip mismatch'); }
   } finally {
-    fs.rmSync(STATE_DIR, { recursive: true, force: true });
+    if (stateBefore !== null) {
+      fs.writeFileSync(STATE_FILE, stateBefore, 'utf8');
+    } else {
+      fs.rmSync(STATE_DIR, { recursive: true, force: true });
+    }
   }
   return failed === 0;
 }
@@ -242,6 +276,7 @@ async function main() {
   if (reset) { fs.rmSync(STATE_DIR, { recursive: true, force: true }); console.log('loop-orchestrator: state reset.'); process.exit(0); }
   if (cmd === 'journal') { const n = replayJournal(); console.log(`loop-orchestrator: journal replayed ${n} op(s).`); process.exit(0); }
   if (cmd === 'run') {
+    if (watch) { await watchMode(); return; }
     const res = runOnePass();
     if (res.skipped) { process.exit(0); }
     console.log(`loop-orchestrator: pass done. ok=${res.results.ok} failed=${res.results.failed} tools=${res.results.tools}`);

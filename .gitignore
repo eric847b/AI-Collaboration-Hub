@@ -93,3 +93,7 @@ third-door-blink-controller/.npm-lockgen*.log
 # mutation-probe / tmp scratch files
 tools/.mutation-probe-*
 tools/.tmp-*
+
+# loop-orchestrator runtime state (local only; never commit fingerprints/journals)
+.loop/
+.junction/

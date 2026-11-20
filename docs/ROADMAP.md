@@ -66,15 +66,16 @@ watch / journal / reset) and the patch driver it invokes, `tools/loop-fix.mjs`
 
 - [x] **Orchestrator core** — `tools/loop-orchestrator.mjs` wires most-cheap-per-piece:
       `quick-health` → `verify-tools` → `workspace-gate.ps1` → `loop-fix` → re-gate.
-      DEFERS remote ops to a local journal (`.junction/deferred-ops.json`) on network
-      loss and REPLAYS on reconnect; never mutates twice for the same commit
-      (fingerprint in `.loop/.state.json`).
+      Keeps a local deferred-ops journal (`.junction/deferred-ops.json`); replay is
+      NOT wired yet (needs `Cline/Hooks/resilient-git.ps1`, not in this repo), so
+      deferred ops stay queued until that script exists. Never mutates twice for
+      the same commit (fingerprint in `.loop/.state.json`, clean passes only).
       Evidence: `node --check` clean; no-op fingerprint path exits 0; `--self-test`
-      4/4 (deterministic, no network). Port note 2026-11-19: the `run` pipeline's
+      5/5 (deterministic, no network). Port note 2026-11-19: the `run` pipeline's
       `loop-fix` step runs the driver's `--self-test` only — no auto-mutation rule
       is configured, and the `powershell` gate steps are Windows-only, so a full
       `run` pass is not exercised on Linux runners.
-      Evidence (v1.1.0): `node --check` clean; no-op path exits 0; `--self-test` 4/4
+      Evidence (v1.1.0): `node --check` clean; no-op path exits 0; `--self-test` 5/5
       (deterministic, no network); `verify-tools.mjs --self-test` 47/47 fleet-wide;
       `--check-cli` Round 12 D passes; covered by `multi-os-gate.yml` on both OS runners.
 - [x] **Patch driver + self-test** — `tools/loop-fix.mjs` 3 pure idempotent rules; `--self-test`
