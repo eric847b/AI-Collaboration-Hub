@@ -11,23 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TOOL_VERSION = '5.0.0';
-const FLAG_DECLARATIONS = [
-  ['--help', 'exit 0'], ['-h', 'alias of --help'],
-  ['--version', 'exit 0'], ['-V', 'alias of --version'],
-  ['--strict', 'promote warn to fail'],
-  ['--quiet', 'verdict line only'],
-  ['--json', 'machine-readable report'],
-  ['--only <ids>', 'comma-separated check ids'],
-  ['--list', 'print available check ids'],
-  ['--fail-fast', 'stop at first fail/warn'],
-  ['--verbose', 'print per-check timing'],
-  ['--list-checks', 'alias of --list'],
-  ['--count', 'print check count only'],
-  ['--sort', 'sort order: id|level (default id)'],
-  ['--no-suggestions', 'suppress suggestion hints'],
-  ['--self-test', 'run built-in checks and exit'],
-  ['--sym', 'show summary-only (alias for --count --quiet)'],
-];
+const FLAG_DECLARATIONS=[["--help","exit 0",0],["-h","alias of --help",0],["--version","exit 0",0],["-V","alias of --version",0],["--strict","promote warn to fail",0],["--quiet","verdict line only",0],["--json","machine-readable report",0],["--only <ids>","comma-separated check ids",0],["--list","print available check ids",0],["--fail-fast","stop at first fail/warn",0],["--verbose","print per-check timing",0],["--list-checks","alias of --list",0],["--count","print check count only",0],["--sort","sort order: id|level (default id)",0],["--no-suggestions","suppress suggestion hints",0],["--self-test","run built-in checks and exit",0]];
 const SUGGESTIONS = {
   configs: 'npm run gate',
   workflows: 'actionlint .github/workflows/*.yml',

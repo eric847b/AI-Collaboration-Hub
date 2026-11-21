@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TOOL_VERSION = '4.47.0';
+const TOOL_VERSION = '5.0.0';
 const FLAG_DECLARATIONS = [
   ['--help', 'exit 0'], ['-h', 'alias of --help'],
   ['--version', 'exit 0'], ['-V', 'alias of --version'],
@@ -26,6 +26,7 @@ const FLAG_DECLARATIONS = [
   ['--sort', 'sort order: id|level (default id)'],
   ['--no-suggestions', 'suppress suggestion hints'],
   ['--self-test', 'run built-in checks and exit'],
+  ['--sym', 'show summary-only (alias for --count --quiet)'],
 ];
 const SUGGESTIONS = {
   configs: 'npm run gate',
@@ -56,8 +57,27 @@ const SUGGESTIONS = {
   contributing: 'add CONTRIBUTING.md',
   devcontainer: 'add .devcontainer/ config',
   nvmrc: 'add .nvmrc pinning Node 26',
-  baselines: 'node tools/check-doc-links.mjs --update-baseline (and siblings)',
+  baselines: 'node tools/check-doc-links.mjs --update-baseline',
   doclinks: 'node tools/check-doc-links.mjs',
+  'check-doc-links': 'node tools/check-doc-links.mjs',
+  'check-json-validity': 'node tools/check-json-validity.mjs',
+  'check-npm-scripts': 'node tools/check-npm-scripts.mjs',
+  'verify-tools': 'restore tools/verify-tools.mjs',
+  'check-flag-contract': 'node tools/check-flag-contract.mjs --deep',
+  'mutation-probe': 'node tools/mutation-probe.mjs --self-test',
+  'repo-bloat': 'node tools/repo-bloat.mjs check',
+  'quick-health': 'node tools/quick-health.mjs --self-test',
+  'extension-check': 'node tools/extension-check.mjs --self-test',
+  'workflow-audit': 'node tools/workflow-audit.mjs --self-test',
+  'workflow-bloat': 'node tools/repo-bloat.mjs collect',
+  'ci-health': 'npm run gate && node tools/verify-tools.mjs --self-test',
+  dependabot: 'review & accept Dependabot alerts',
+  'security-alerts': 'node tools/fix-security-alerts.cjs patch',
+  'bundle-trend': 'node tools/bundle-trend.cjs check --project nexus-infinity-hub',
+  'bundle-size': 'node tools/bundle-trend.cjs report --limit 5',
+  'parity-sync': 'node tools/sync-parity.mjs check --strict',
+  'python-deps': 'ensure Python env has required packages',
+  'python-env': 'install Python >=3.11 (or use pyenv)',
 };
 let _gitSnapshot = null;
 function gitSnapshot() {
